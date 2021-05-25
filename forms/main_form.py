@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'main_form.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.0.4
+## Created by: Qt User Interface Compiler version 6.1.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -29,19 +29,22 @@ class Ui_MainWindow(object):
         self.visitors.setObjectName(u"visitors")
         self.label = QLabel(self.visitors)
         self.label.setObjectName(u"label")
-        self.label.setGeometry(QRect(10, 10, 63, 20))
+        self.label.setGeometry(QRect(550, -1, 63, 31))
         self.comboBox = QComboBox(self.visitors)
+        self.comboBox.addItem("")
+        self.comboBox.addItem("")
+        self.comboBox.addItem("")
         self.comboBox.setObjectName(u"comboBox")
-        self.comboBox.setGeometry(QRect(80, 0, 78, 30))
+        self.comboBox.setGeometry(QRect(607, 0, 91, 30))
         self.lineEdit = QLineEdit(self.visitors)
         self.lineEdit.setObjectName(u"lineEdit")
-        self.lineEdit.setGeometry(QRect(160, 0, 271, 30))
+        self.lineEdit.setGeometry(QRect(700, 0, 311, 30))
         self.pushButton = QPushButton(self.visitors)
         self.pushButton.setObjectName(u"pushButton")
-        self.pushButton.setGeometry(QRect(440, 0, 94, 28))
+        self.pushButton.setGeometry(QRect(10, 0, 94, 28))
         self.tableWidget = QTableWidget(self.visitors)
         self.tableWidget.setObjectName(u"tableWidget")
-        self.tableWidget.setGeometry(QRect(10, 40, 1001, 521))
+        self.tableWidget.setGeometry(QRect(10, 30, 1001, 531))
         self.line = QFrame(self.visitors)
         self.line.setObjectName(u"line")
         self.line.setGeometry(QRect(530, 0, 20, 31))
@@ -49,7 +52,13 @@ class Ui_MainWindow(object):
         self.line.setFrameShadow(QFrame.Sunken)
         self.pushButton_2 = QPushButton(self.visitors)
         self.pushButton_2.setObjectName(u"pushButton_2")
-        self.pushButton_2.setGeometry(QRect(540, 0, 94, 28))
+        self.pushButton_2.setGeometry(QRect(110, 0, 94, 28))
+        self.pushButton_3 = QPushButton(self.visitors)
+        self.pushButton_3.setObjectName(u"pushButton_3")
+        self.pushButton_3.setGeometry(QRect(210, 0, 94, 28))
+        self.pushButton_4 = QPushButton(self.visitors)
+        self.pushButton_4.setObjectName(u"pushButton_4")
+        self.pushButton_4.setGeometry(QRect(310, 0, 94, 28))
         self.tabWidget.addTab(self.visitors, "")
         self.sales = QWidget()
         self.sales.setObjectName(u"sales")
@@ -86,8 +95,14 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"PyMASL", None))
         self.action.setText(QCoreApplication.translate("MainWindow", u"\u041e \u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u0435", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"\u041f\u043e\u0438\u0441\u043a:", None))
+        self.comboBox.setItemText(0, QCoreApplication.translate("MainWindow", u"\u0442\u0435\u043b\u0435\u0444\u043e\u043d", None))
+        self.comboBox.setItemText(1, QCoreApplication.translate("MainWindow", u"\u0444\u0430\u043c\u0438\u043b\u0438\u044f", None))
+        self.comboBox.setItemText(2, QCoreApplication.translate("MainWindow", u"\u0438\u043c\u044f", None))
+
         self.pushButton.setText(QCoreApplication.translate("MainWindow", u"\u041d\u0430\u0439\u0442\u0438", None))
         self.pushButton_2.setText(QCoreApplication.translate("MainWindow", u"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c", None))
+        self.pushButton_3.setText(QCoreApplication.translate("MainWindow", u"\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c", None))
+        self.pushButton_4.setText(QCoreApplication.translate("MainWindow", u"Search all", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.visitors), QCoreApplication.translate("MainWindow", u"\u041f\u043e\u0441\u0435\u0442\u0438\u0442\u0435\u043b\u0438", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.sales), QCoreApplication.translate("MainWindow", u"\u041f\u0440\u043e\u0434\u0430\u0436\u0438", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tickets), QCoreApplication.translate("MainWindow", u"\u0411\u0438\u043b\u0435\u0442\u044b", None))

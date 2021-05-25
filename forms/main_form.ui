@@ -33,10 +33,10 @@
      <widget class="QLabel" name="label">
       <property name="geometry">
        <rect>
-        <x>10</x>
-        <y>10</y>
+        <x>550</x>
+        <y>-1</y>
         <width>63</width>
-        <height>20</height>
+        <height>31</height>
        </rect>
       </property>
       <property name="text">
@@ -46,19 +46,34 @@
      <widget class="QComboBox" name="comboBox">
       <property name="geometry">
        <rect>
-        <x>80</x>
+        <x>607</x>
         <y>0</y>
-        <width>78</width>
+        <width>91</width>
         <height>30</height>
        </rect>
       </property>
+      <item>
+       <property name="text">
+        <string>телефон</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>фамилия</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>имя</string>
+       </property>
+      </item>
      </widget>
      <widget class="QLineEdit" name="lineEdit">
       <property name="geometry">
        <rect>
-        <x>160</x>
+        <x>700</x>
         <y>0</y>
-        <width>271</width>
+        <width>311</width>
         <height>30</height>
        </rect>
       </property>
@@ -66,7 +81,7 @@
      <widget class="QPushButton" name="pushButton">
       <property name="geometry">
        <rect>
-        <x>440</x>
+        <x>10</x>
         <y>0</y>
         <width>94</width>
         <height>28</height>
@@ -80,9 +95,9 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>40</y>
+        <y>30</y>
         <width>1001</width>
-        <height>521</height>
+        <height>531</height>
        </rect>
       </property>
      </widget>
@@ -102,7 +117,7 @@
      <widget class="QPushButton" name="pushButton_2">
       <property name="geometry">
        <rect>
-        <x>540</x>
+        <x>110</x>
         <y>0</y>
         <width>94</width>
         <height>28</height>
@@ -110,6 +125,32 @@
       </property>
       <property name="text">
        <string>Добавить</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButton_3">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>0</y>
+        <width>94</width>
+        <height>28</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Изменить</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButton_4">
+      <property name="geometry">
+       <rect>
+        <x>310</x>
+        <y>0</y>
+        <width>94</width>
+        <height>28</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Search all</string>
       </property>
      </widget>
     </widget>

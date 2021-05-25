@@ -169,3 +169,4 @@ class Ui_Dialog_Client(object):
         self.pushButton.setText(QCoreApplication.translate("Dialog_Client", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c", None))
         self.pushButton_2.setText(QCoreApplication.translate("Dialog_Client", u"\u041e\u0442\u043c\u0435\u043d\u0430", None))
     # retranslateUi
+

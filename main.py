@@ -21,12 +21,34 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.pushButton_2.clicked.connect(self.openClient)
+        self.ui.pushButton_4.clicked.connect(self.buttonAllClient)
 
 
     def openClient(self):
         client = ClientForm()
         client.show()
         client.exec_()
+
+
+    def buttonAllClient(self):
+        session = Session()
+        clients = session.query(Client).order_by(Client.id)
+
+        for client in clients:
+            print(client.id, client.first_name, client.last_name, client.middle_name, client.gender, client.birth_date, client.privilege, client.phone, client.email)
+
+            row = self.ui.tableWidget.rowCount()
+            self.ui.tableWidget.insertRow(row)
+
+            self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.middle_name}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.gender}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.birth_date}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.privilege}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.phone}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.email}"))
 
 
 class AuthForm(QDialog):
@@ -53,6 +75,7 @@ class ClientForm(QDialog):
         self.ui.pushButton.clicked.connect(self.buttonSave)
         self.ui.pushButton_2.clicked.connect(self.close)
 
+
     def buttonSave(self):
         session = Session()
         add_client = Client(first_name=str(self.ui.lineEdit.text()),
@@ -67,6 +90,23 @@ class ClientForm(QDialog):
         session.commit()
         session.close()
         self.close()
+
+
+    def buttonAllClient(self):
+        session = Session()
+        clients = session.query(Client).order_by(Client.id)
+        for client in clients:
+            row = self.ui.tableWidget.rowCount()
+            self.ui.tableWidget.insertRow(row)
+            self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.middle_name}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.gender}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.birth_date}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.privilege}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.phone}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.email}"))
 
 
 if __name__ == "__main__":
