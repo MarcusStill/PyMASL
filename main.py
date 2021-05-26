@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         self.ui.pushButton.clicked.connect(self.search_client)
 
 
-    def search_client(self):
+    def search_client2(self):
         """Поиск клиента"""
         combo_active_item = self.ui.comboBox.currentText()
         print(combo_active_item)
@@ -60,18 +60,18 @@ class MainWindow(QMainWindow):
             session = Session()
             search = session.query(Client).filter_by(last_name=self.ui.lineEdit.text()).all()
             print(search)
-            # for client in search_last_name:
-            #     row = self.ui.tableWidget.rowCount()
-            #     self.ui.tableWidget.insertRow(row)
-            #     self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
-            #     self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
-            #     self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.last_name}"))
-            #     self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
-            #     self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
-            #     self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
-            #     self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
-            #     self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
-            #     self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
+            for client in search:
+                row = self.ui.tableWidget.rowCount()
+                self.ui.tableWidget.insertRow(row)
+                self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
+                self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
+                self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.last_name}"))
+                self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
+                self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
+                self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
+                self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
+                self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
+                self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
             session.close()
         elif combo_active_item == 'имя':
             """Очищаем tableWidget"""
@@ -79,18 +79,18 @@ class MainWindow(QMainWindow):
             session = Session()
             search = session.query(Client).filter_by(first_name=self.ui.lineEdit.text()).all()
             print(search)
-            # for client in search_first_name:
-            #     row = self.ui.tableWidget.rowCount()
-            #     self.ui.tableWidget.insertRow(row)
-            #     self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
-            #     self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
-            #     self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.last_name}"))
-            #     self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
-            #     self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
-            #     self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
-            #     self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
-            #     self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
-            #     self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
+            for client in search:
+                row = self.ui.tableWidget.rowCount()
+                self.ui.tableWidget.insertRow(row)
+                self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
+                self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
+                self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.last_name}"))
+                self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
+                self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
+                self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
+                self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
+                self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
+                self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
             session.close()
 
 
