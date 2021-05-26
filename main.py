@@ -59,6 +59,7 @@ class MainWindow(QMainWindow):
         elif combo_active_item == 'фамилия':
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
+            """Problem"""
             print(str.capitalize(self.ui.lineEdit.text()))
             print('lineEdit.text', self.ui.lineEdit.text())
             session = Session()

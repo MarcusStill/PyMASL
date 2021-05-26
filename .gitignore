@@ -1,2 +1,3 @@
 /venv/
 /dump_*.sql
+/alembic/versions/
