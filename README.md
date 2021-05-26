@@ -25,7 +25,7 @@ PyMASL написан на Python и использует ряд проекто�
 - [PySide6](https://pypi.org/project/PySide6/) - is the official Python module from the Qt for Python project, which provides access to the complete Qt 6.0+ framework.
 - [PostgreSQL](https://www.postgresql.org/) - the World's Most Advanced Open Source Relational Database
 - [And other] - список дополняется.
-- 
+
 И, конечно же, PyMASL это open source проект, размещенный в [публичном репозитории](https://github.com/MarcusStill/PyMASL) на GitHub.
 
 ## Установка
