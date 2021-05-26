@@ -22,8 +22,8 @@ class Client(Base):
         primary_key=True,
         autoincrement=True
     )
-    first_name = Column(String(64), nullable=False, comment='Фамилия')
-    last_name = Column(String(64), nullable=False, comment='Имя')
+    last_name = Column(String(64), nullable=False, comment='Фамилия')
+    first_name = Column(String(64), nullable=False, comment='Имя')
     middle_name = Column(String(64), comment='Отчество')
     birth_date = Column(Date, nullable=False, comment='Дата рождения')
     gender = Column(String(3), comment='Отчество')

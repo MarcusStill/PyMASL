@@ -1,14 +1,15 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog, QWidget, QVBoxLayout, QComboBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog
 from PySide6.QtCore import Qt
 from forms.authorization import Ui_Dialog
 from forms.main_form import Ui_MainWindow
 from forms.client import Ui_Dialog_Client
 from models.client import Client
-from sqlalchemy import create_engine
+from models.user import User
+from sqlalchemy import create_engine, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
-
+from connect import connect
 
 engine = create_engine("postgresql://postgres:secret@localhost:5432/masl", echo=True)
 Base = declarative_base(bind=engine)
@@ -39,10 +40,7 @@ class MainWindow(QMainWindow):
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
             session = Session()
-            #search = session.query(Client).filter_by(phone=self.ui.lineEdit.text()).all()
             search = session.query(Client).filter(Client.phone.like('%'+self.ui.lineEdit.text()+'%')).all()
-            print('Result:', search)
-            print('Type:', type(search))
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
@@ -59,13 +57,8 @@ class MainWindow(QMainWindow):
         elif combo_active_item == 'фамилия':
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
-            """Problem"""
-            print(str.capitalize(self.ui.lineEdit.text()))
-            print('lineEdit.text', self.ui.lineEdit.text())
             session = Session()
-            search = session.query(Client).filter(Client.last_name.like('%'+str.capitalize(self.ui.lineEdit.text())+'%')).all()
-            print('Result:', search)
-            print('Type:', type(search))
+            search = session.query(Client).filter(Client.last_name.ilike('%'+self.ui.lineEdit.text()+'%')).all()
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
@@ -83,7 +76,7 @@ class MainWindow(QMainWindow):
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
             session = Session()
-            search = session.query(Client).filter(Client.first_name.like('%'+self.ui.lineEdit.text()+'%')).all()
+            search = session.query(Client).filter(Client.first_name.ilike('%'+self.ui.lineEdit.text()+'%')).all()
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
@@ -108,8 +101,8 @@ class MainWindow(QMainWindow):
             search_client = session.query(Client).filter_by(id=(row_number+1)).first()
             """Передаем в форму данные клиента"""
             client = ClientForm()
-            client.ui.lineEdit.setText(search_client.first_name)
-            client.ui.lineEdit_2.setText(search_client.last_name)
+            client.ui.lineEdit.setText(search_client.last_name)
+            client.ui.lineEdit_2.setText(search_client.first_name)
             client.ui.lineEdit_3.setText(search_client.middle_name)
             client.ui.dateEdit.setDate(search_client.birth_date)
             """Поиск значения для установки в ComboBox gender"""
@@ -123,7 +116,7 @@ class MainWindow(QMainWindow):
                                                        Qt.MatchFixedString)
             if index_privilege >= 0:
                 client.ui.comboBox_2.setCurrentIndex(index_privilege)
-            """bug Запись сохраняется повторно"""
+            """bug Запись сохраняется с новым id"""
             client.ui.pushButton.clicked.connect(client.buttonSave)
             session.close()
             client.show()
@@ -146,8 +139,8 @@ class MainWindow(QMainWindow):
             row = self.ui.tableWidget.rowCount()
             self.ui.tableWidget.insertRow(row)
             self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
-            self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.last_name}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
+            self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.first_name}"))
             self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
             self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
             self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
@@ -159,11 +152,26 @@ class MainWindow(QMainWindow):
 
 class AuthForm(QDialog):
     """Форма авторизации"""
+    """Проверяем есть ли в таблице user запись с указанными полями"""
+    def logincheck(self):
+        session = Session()
+        result = session.query(User).filter(and_(User.login == self.ui.lineEdit.text(), User.login == self.ui.lineEdit_2.text())).first()
+        session.close()
+        if result:
+            print('Ok')
+            self.openMain()
+
     def __init__(self):
         super(AuthForm, self).__init__()
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
-        self.ui.pushButton.clicked.connect(self.openMain)
+        """Проверяем статус соединения с БД"""
+        db_version = connect()
+        if db_version:
+            self.ui.label_3.setText('установлено')
+        else:
+            self.ui.label_3.setText('ошибка!')
+        self.ui.pushButton.clicked.connect(self.logincheck)
         self.ui.pushButton_2.clicked.connect(self.close)
 
 
@@ -189,8 +197,8 @@ class ClientForm(QDialog):
     def buttonSave(self):
         """Сохраняем информацию о новом клиенте"""
         session = Session()
-        add_client = Client(first_name=str(self.ui.lineEdit.text()),
-                            last_name=str(self.ui.lineEdit_2.text()),
+        add_client = Client(last_name=str(self.ui.lineEdit.text()),
+                            first_name=str(self.ui.lineEdit_2.text()),
                             middle_name=str(self.ui.lineEdit_3.text()),
                             birth_date=self.ui.dateEdit.date().toString("yyyy-MM-dd"),
                             gender=str(self.ui.comboBox.currentText()),
