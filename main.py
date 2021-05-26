@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         self.ui.pushButton.clicked.connect(self.search_client)
 
 
-    def search_client2(self):
+    def search_client(self):
         """Поиск клиента"""
         combo_active_item = self.ui.comboBox.currentText()
         print(combo_active_item)
@@ -39,7 +39,10 @@ class MainWindow(QMainWindow):
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
             session = Session()
-            search = session.query(Client).filter_by(phone=self.ui.lineEdit.text()).all()
+            #search = session.query(Client).filter_by(phone=self.ui.lineEdit.text()).all()
+            search = session.query(Client).filter(Client.phone.like('%'+self.ui.lineEdit.text()+'%')).all()
+            print('Result:', search)
+            print('Type:', type(search))
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
@@ -56,10 +59,12 @@ class MainWindow(QMainWindow):
         elif combo_active_item == 'фамилия':
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
+            print(str.capitalize(self.ui.lineEdit.text()))
             print('lineEdit.text', self.ui.lineEdit.text())
             session = Session()
-            search = session.query(Client).filter_by(last_name=self.ui.lineEdit.text()).all()
-            print(search)
+            search = session.query(Client).filter(Client.last_name.like('%'+str.capitalize(self.ui.lineEdit.text())+'%')).all()
+            print('Result:', search)
+            print('Type:', type(search))
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
@@ -77,8 +82,7 @@ class MainWindow(QMainWindow):
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
             session = Session()
-            search = session.query(Client).filter_by(first_name=self.ui.lineEdit.text()).all()
-            print(search)
+            search = session.query(Client).filter(Client.first_name.like('%'+self.ui.lineEdit.text()+'%')).all()
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
