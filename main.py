@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from connect import connect
+import KKT
 
 engine = create_engine("postgresql://postgres:secret@localhost:5432/masl", echo=True)
 Base = declarative_base(bind=engine)
@@ -30,7 +31,7 @@ class MainWindow(QMainWindow):
         self.ui.tableWidget.doubleClicked.connect(self.search_selected_item)
         self.ui.pushButton_3.clicked.connect(self.search_selected_item)
         self.ui.pushButton.clicked.connect(self.search_client)
-
+        self.ui.pushButton_8.clicked.connect(KKT.get_info())
 
     def search_client(self):
         """Поиск клиента"""
@@ -162,7 +163,8 @@ class AuthForm(QDialog):
             self.openMain()
 
     def __init__(self):
-        super(AuthForm, self).__init__()
+        super().__init__()
+        #super(AuthForm, self).__init__()
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
         """Проверяем статус соединения с БД"""
