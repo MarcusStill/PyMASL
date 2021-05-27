@@ -7,9 +7,9 @@ from sqlalchemy import (
 
 from models.base import Base
 
-class Price_service(Base):
+class Price_ticket(Base):
 
-    __tablename__ = 'price_service'
+    __tablename__ = 'price_ticket'
     __tableargs__ = {
         'comment': 'Прайс-лист билетов'
     }

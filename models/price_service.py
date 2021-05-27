@@ -7,9 +7,9 @@ from sqlalchemy import (
 
 from models.base import Base
 
-class Price_ticket(Base):
+class Price_service(Base):
 
-    __tablename__ = 'price_ticket'
+    __tablename__ = 'price_service'
     __tableargs__ = {
         'comment': 'Прайс-лист услуг'
     }
@@ -22,7 +22,7 @@ class Price_ticket(Base):
         autoincrement=True
     )
     description = Column(String(64), comment='Описание')
-    price = Column(SmallInteger, comment='Цена в будний день')
+    price = Column(SmallInteger, comment='Цена')
 
 
     def __repr__(self):
