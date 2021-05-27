@@ -234,6 +234,8 @@ class ClientForm(QDialog):
 
 if __name__ == "__main__":
     app = QApplication()
+
     auth = AuthForm()
     auth.show()
+
     sys.exit(app.exec_())

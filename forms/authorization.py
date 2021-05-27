@@ -1,5 +1,6 @@
 from PySide6.QtCore import QRect, QCoreApplication, QMetaObject
 from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QFrame
+from PySide6.QtGui import QPixmap, Qt
 
 
 class Ui_Dialog(object):
