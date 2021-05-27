@@ -10,7 +10,8 @@ from sqlalchemy import create_engine, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from connect import connect
-import KKT
+import kkt
+
 
 engine = create_engine("postgresql://postgres:secret@localhost:5432/masl", echo=True)
 Base = declarative_base(bind=engine)
@@ -21,7 +22,7 @@ Session = scoped_session(session_factory)
 class MainWindow(QMainWindow):
     """Главная форма"""
     def __init__(self):
-        super(MainWindow, self).__init__()
+        super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         """Открыть окно добавления нового клиента"""
@@ -31,7 +32,8 @@ class MainWindow(QMainWindow):
         self.ui.tableWidget.doubleClicked.connect(self.search_selected_item)
         self.ui.pushButton_3.clicked.connect(self.search_selected_item)
         self.ui.pushButton.clicked.connect(self.search_client)
-        self.ui.pushButton_8.clicked.connect(KKT.get_info())
+        self.ui.pushButton_8.clicked.connect(kkt.get_info())
+
 
     def search_client(self):
         """Поиск клиента"""
@@ -113,8 +115,7 @@ class MainWindow(QMainWindow):
             client.ui.lineEdit_4.setText(search_client.phone)
             client.ui.lineEdit_5.setText(search_client.email)
             """Поиск значения для установки в ComboBox privilege"""
-            index_privilege = client.ui.comboBox.findText(search_client.privilege,
-                                                       Qt.MatchFixedString)
+            index_privilege = client.ui.comboBox.findText(search_client.privilege, Qt.MatchFixedString)
             if index_privilege >= 0:
                 client.ui.comboBox_2.setCurrentIndex(index_privilege)
             """bug Запись сохраняется с новым id"""
@@ -159,12 +160,11 @@ class AuthForm(QDialog):
         result = session.query(User).filter(and_(User.login == self.ui.lineEdit.text(), User.login == self.ui.lineEdit_2.text())).first()
         session.close()
         if result:
-            print('Ok')
             self.openMain()
+
 
     def __init__(self):
         super().__init__()
-        #super(AuthForm, self).__init__()
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
         """Проверяем статус соединения с БД"""
@@ -189,7 +189,7 @@ class AuthForm(QDialog):
 class ClientForm(QDialog):
     """Форма с данными клиента"""
     def __init__(self):
-        super(ClientForm, self).__init__()
+        super().__init__()
         self.ui = Ui_Dialog_Client()
         self.ui.setupUi(self)
         self.ui.pushButton.clicked.connect(self.buttonSave)
@@ -234,8 +234,6 @@ class ClientForm(QDialog):
 
 if __name__ == "__main__":
     app = QApplication()
-
     auth = AuthForm()
     auth.show()
-
     sys.exit(app.exec_())

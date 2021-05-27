@@ -1,16 +1,5 @@
-# -*- coding: utf-8 -*-
-
-################################################################################
-## Form generated from reading UI file 'authorization.ui'
-##
-## Created by: Qt User Interface Compiler version 6.1.0
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
-
-from PySide6.QtCore import *
-from PySide6.QtGui import *
-from PySide6.QtWidgets import *
+from PySide6.QtCore import QRect, QCoreApplication, QMetaObject
+from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QFrame
 
 
 class Ui_Dialog(object):
