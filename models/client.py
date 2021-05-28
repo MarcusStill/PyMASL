@@ -31,6 +31,11 @@ class Client(Base):
     email = Column(String(20), comment='Адрес электронной почты')
     privilege = Column(String(1), comment='Наличие льгот')
 
-    def __repr__(self):
+
+    def __str__(self):
         return f'{self.id} {self.first_name} {self.last_name} {self.middle_name} {self.birth_date}' \
                f' {self.gender} {self.phone} {self.email} {self.privilege}'
+
+
+    def __repr__(self):
+        return str(self)

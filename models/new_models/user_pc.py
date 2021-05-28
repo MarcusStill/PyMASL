@@ -1,16 +1,16 @@
 from sqlalchemy import (
     Column,
-    Date,
     Integer,
+    String,
 )
 
 from models.base import Base
 
-class Weekend(Base):
+class User_pc(Base):
 
-    __tablename__ = 'Weekend'
+    __tablename__ = 'user_pc'
     __tableargs__ = {
-        'comment': 'Перечень праздничных и выходных дней'
+        'comment': 'Информация о РМ кассира'
     }
 
     id = Column(
@@ -20,8 +20,8 @@ class Weekend(Base):
         primary_key=True,
         autoincrement=True
     )
-    date = Column(Date, nullable=False, comment='Дата')
+    name = Column(String(16), nullable=False, comment='Имя РМ кассира')
 
 
     def __repr__(self):
-        return f'{self.id} {self.date}'
+        return f'{self.id} {self.name}'

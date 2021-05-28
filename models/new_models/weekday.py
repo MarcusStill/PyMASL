@@ -8,7 +8,7 @@ from models.base import Base
 
 
 class Weekday(Base):
-    __tablename__ = 'Weekday'
+    __tablename__ = 'weekday'
     __tableargs__ = {
         'comment': 'Перечень рабочих дней'
     }

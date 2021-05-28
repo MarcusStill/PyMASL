@@ -1,8 +1,9 @@
+from datetime import datetime
 from sqlalchemy import (
     Column,
     Integer,
     String,
-    Date,
+    DateTime,
 )
 
 from models.base import Base
@@ -27,8 +28,11 @@ class User(Base):
     middle_name = Column(String(64), comment='Отчество')
     login = Column(String(15), comment='Логин')
     password = Column(String(15), comment='Пароль')
-    created_at = Column(Date, nullable=False, comment='Дата создания')
+    created_at = Column(DateTime, default=datetime.utcnow, comment='Дата создания')
 
+
+    def __str__(self):
+        return f'{self.id} {self.first_name} {self.last_name} {self.middle_name} {self.login} {self.password} {self.created_at}'
 
     def __repr__(self):
-        return f'{self.id} {self.first_name} {self.last_name} {self.middle_name} {self.login} {self.password} {self.created_at}'
+        return str(self)

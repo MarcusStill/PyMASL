@@ -2,6 +2,7 @@ from sqlalchemy import (
     Column,
     Integer,
     ForeignKey,
+    DateTime,
 )
 from sqlalchemy.orm import relationship
 from models.base import Base
@@ -23,6 +24,7 @@ class Service(Base):
     id_price_service = Column(Integer, ForeignKey('price_service.id'),comment='Id услуги в прайс-листе')
     id_client = Column(Integer, ForeignKey('client.id'), comment='Id клиента')
     id_sale = Column(Integer, ForeignKey('sale.id'),comment='Id продажи')
+    datetime = Column(DateTime, nullable=False, comment='Дата и время')
     price_service = relationship('price_service', backref='service_price_service', lazy='subquery')
     client = relationship('client', backref='service_client', lazy='subquery')
     sale = relationship('sale', backref='service_sale', lazy='subquery')

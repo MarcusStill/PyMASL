@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import (
     Column,
     Integer,
@@ -26,14 +27,16 @@ class Ticket(Base):
     id_client = Column(Integer, ForeignKey('client.id'), comment='Id клиента')
     id_sale = Column(Integer, ForeignKey('sale.id'), comment='Id продажи')
     client_age = Column(SmallInteger, comment='Возраст клиента')
-    datetime = Column(DateTime, nullable=False, comment='Дата и время')
+    datetime = Column(DateTime, default=datetime.utcnow, comment='Дата и время')
     arrival_time = Column(SmallInteger, comment='Время пребывания')
     talent = Column(SmallInteger, comment='Количество золотых талантов')
     price = Column(SmallInteger, comment='Цена')
     description = Column(String(64), comment='Примечание')
+    id_type_ticket = Column(Integer, ForeignKey('type_ticket.id'), comment='Id типа билета')
     client = relationship('client', backref='ticket_client', lazy='subquery')
     sale = relationship('sale', backref='ticket_sale', lazy='subquery')
+    type_ticket = relationship('type_ticket', backref='ticket_type_ticket', lazy='subquery')
 
 
     def __repr__(self):
-        return f'{self.id} {self.id_client} {self.id_sale} {self.client_age} {self.datetime} {self.arrival_time} {self.talent} {self.price} {self.description}'
+        return f'{self.id} {self.id_client} {self.id_sale} {self.client_age} {self.datetime} {self.arrival_time} {self.talent} {self.price} {self.description} {self.id_type_ticket}'
