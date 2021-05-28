@@ -1,16 +1,16 @@
 from sqlalchemy import (
     Column,
-    Integer,
     String,
+    Integer,
 )
 
 from models.base import Base
 
-class Type_sale(Base):
+class Currency_type(Base):
 
-    __tablename__ = 'type_sale'
+    __tablename__ = 'currency_type'
     __tableargs__ = {
-        'comment': 'Информация о типах продаж'
+        'comment': 'Тип валюты'
     }
 
     id = Column(
@@ -20,7 +20,7 @@ class Type_sale(Base):
         primary_key=True,
         autoincrement=True
     )
-    description = Column(String(16), nullable=False, comment='Описание')
+    description = Column(String(16), comment='Описание')
 
 
     def __repr__(self):
