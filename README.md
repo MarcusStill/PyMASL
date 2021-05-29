@@ -20,10 +20,13 @@ PyMASL это небольшая программа, позволяющая ве
 ## Tech
 
 PyMASL написан на Python и использует ряд проектов с открытым исходным кодом:
-- [Alembic](https://alembic.sqlalchemy.org/) - is a lightweight database migration tool for usage with the SQLAlchemy Database Toolkit for Python.
+- [Docker](https://www.docker.com/) - is a set of platform as a service (PaaS) products that use OS-level virtualization to deliver software in packages called containers.
+- [Docker Compose](https://docs.docker.com/compose/) - is a tool for defining and running multi-container Docker applications.  
 - [SQLAlchemy](https://www.sqlalchemy.org/) - the Python SQL Toolkit and Object Relational Mapper.
-- [PySide6](https://pypi.org/project/PySide6/) - is the official Python module from the Qt for Python project, which provides access to the complete Qt 6.0+ framework.
 - [PostgreSQL](https://www.postgresql.org/) - the World's Most Advanced Open Source Relational Database
+- [Alembic](https://alembic.sqlalchemy.org/) - is a lightweight database migration tool for usage with the SQLAlchemy Database Toolkit for Python.
+- [PySide6](https://pypi.org/project/PySide6/) - is the official Python module from the Qt for Python project, which provides access to the complete Qt 6.0+ framework.
+
 - [And other] - список дополняется.
 
 И, конечно же, PyMASL это open source проект, размещенный в [публичном репозитории](https://github.com/MarcusStill/PyMASL) на GitHub.

@@ -13,6 +13,7 @@ from connect import connect
 import kkt
 
 
+
 engine = create_engine("postgresql://postgres:secret@localhost:5432/masl", echo=True)
 Base = declarative_base(bind=engine)
 session_factory = sessionmaker(bind=engine)
@@ -32,7 +33,12 @@ class MainWindow(QMainWindow):
         self.ui.tableWidget.doubleClicked.connect(self.search_selected_item)
         self.ui.pushButton_3.clicked.connect(self.search_selected_item)
         self.ui.pushButton.clicked.connect(self.search_client)
-        self.ui.pushButton_8.clicked.connect(kkt.get_info())
+        self.ui.pushButton_8.clicked.connect(kkt.get_info)
+        self.ui.pushButton_11.clicked.connect(kkt.last_document)
+        self.ui.pushButton_9.clicked.connect(kkt.get_time)
+        self.ui.pushButton_5.clicked.connect(kkt.report_x)
+        self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
+        self.ui.pushButton_6.clicked.connect(kkt.smena_close())
 
 
     def search_client(self):

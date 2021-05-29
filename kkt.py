@@ -5,17 +5,20 @@ fptr = IFptr('')
 
 
 def get_model():
-	"""Запрос информации о модели ККТ"""
+	""""Запрос информации о модели ККТ"""
+	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
 	fptr.queryData()
 	print('модель: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_MODEL))
 	print('Название: ', fptr.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME))
 	print('FirmwareVersion: ', fptr.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION))
+	fptr.close()
 
 
 def get_info():
 	"""Запрос информации о ККТ"""
 	"""Заводской номер ККТ"""
+	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SERIAL_NUMBER)
 	fptr.queryData()
 	print('Заводской номер ККТ: ', fptr.getParamString(IFptr.LIBFPTR_PARAM_SERIAL_NUMBER))
@@ -27,10 +30,11 @@ def get_info():
 	fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_FN_INFO)
 	fptr.fnQueryData()
 	print('Серийный номер ФН: ', fptr.getParamString(IFptr.LIBFPTR_PARAM_SERIAL_NUMBER))
-
+	fptr.close()
 
 def get_status_obmena():
 	"""Статус информационного обмена"""
+	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS)
 	fptr.fnQueryData()
 	print('ExchangeStatus: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS))
@@ -38,13 +42,16 @@ def get_status_obmena():
 	print('FirstUnsentNumber: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER))
 	print('OfdMessageRead: ', fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ))
 	print('Date FN: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
+	fptr.close()
 
 
 def get_time():
 	"""Запрос текущих даты и времени ККТ"""
+	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
 	fptr.queryData()
 	print('Текущие дата и время ККТ: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
+	fptr.close()
 
 
 def smena_info():
@@ -58,9 +65,10 @@ def smena_info():
 
 def last_document():
 	"""Копия последнего документа"""
+	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT)
 	fptr.report()	
-
+	fptr.close()
 
 def report_payment():
 	"""Отчет о состоянии расчетов"""
@@ -69,8 +77,10 @@ def report_payment():
 
 def report_x():
 	"""X-отчет"""
+	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
 	fptr.report()
+	fptr.slose()
 
 def kassir_reg():
 	"""Регистрация кассира"""
@@ -121,38 +131,11 @@ def check_open():
 
 def smena_close():
 	"""Закрытие смены"""
+	fptr.open()
 	fptr.setParam(1021, "Кассир Иванов И.")
 	fptr.setParam(1203, "123456789047")
 	fptr.operatorLogin()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
 	fptr.report()
 	fptr.checkDocumentClosed()
-
-
-def main():
-	"""Подключение к устройству"""
-	settings = {
-	    IFptr.LIBFPTR_SETTING_MODEL: IFptr.LIBFPTR_MODEL_ATOL_AUTO,
-	    IFptr.LIBFPTR_SETTING_PORT: str(IFptr.LIBFPTR_PORT_USB),
-	}
-	fptr.setSettings(settings)
-	"""Открытие соединения с устройством"""
-	fptr.open()
-	get_model()
-	get_info()
-	#get_status_obmena()
-	#get_time()
-	#get_status_obmena()
-	#smena_info()
-	#last_document()
-	#report_payment()
-	#report_x()
-	#kassir_reg()
-	#smena_open()
-	#check_open()
-	"""Закрытие соединения с устройством"""
 	fptr.close()
-
-
-if __name__ == '__main__':
-	main()
