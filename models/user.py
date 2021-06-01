@@ -5,6 +5,7 @@ from sqlalchemy import (
     String,
     DateTime,
 )
+from sqlalchemy.orm import relationship
 
 from models.base import Base
 
