@@ -1,7 +1,16 @@
-from PySide6.QtCore import QRect, QCoreApplication, QMetaObject
-from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QWidget, QTabWidget, QLabel, QComboBox, QLineEdit, QPushButton, QTableWidget,\
-    QTableWidgetItem, QFrame, QMenu, QMenuBar, QStatusBar
+# -*- coding: utf-8 -*-
+
+################################################################################
+## Form generated from reading UI file 'main_form.ui'
+##
+## Created by: Qt User Interface Compiler version 6.1.0
+##
+## WARNING! All changes made in this file will be lost when recompiling UI file!
+################################################################################
+
+from PySide6.QtCore import *
+from PySide6.QtGui import *
+from PySide6.QtWidgets import *
 
 
 class Ui_MainWindow(object):
@@ -73,6 +82,9 @@ class Ui_MainWindow(object):
         self.tabWidget.addTab(self.visitors, "")
         self.sales = QWidget()
         self.sales.setObjectName(u"sales")
+        self.pushButton_12 = QPushButton(self.sales)
+        self.pushButton_12.setObjectName(u"pushButton_12")
+        self.pushButton_12.setGeometry(QRect(0, 0, 94, 28))
         self.tabWidget.addTab(self.sales, "")
         self.tickets = QWidget()
         self.tickets.setObjectName(u"tickets")
@@ -169,6 +181,7 @@ class Ui_MainWindow(object):
         self.pushButton_3.setText(QCoreApplication.translate("MainWindow", u"\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c", None))
         self.pushButton_4.setText(QCoreApplication.translate("MainWindow", u"Search all", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.visitors), QCoreApplication.translate("MainWindow", u"\u041f\u043e\u0441\u0435\u0442\u0438\u0442\u0435\u043b\u0438", None))
+        self.pushButton_12.setText(QCoreApplication.translate("MainWindow", u"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.sales), QCoreApplication.translate("MainWindow", u"\u041f\u0440\u043e\u0434\u0430\u0436\u0438", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tickets), QCoreApplication.translate("MainWindow", u"\u0411\u0438\u043b\u0435\u0442\u044b", None))
         self.pushButton_5.setText(QCoreApplication.translate("MainWindow", u"x-\u043e\u0442\u0447\u0435\u0442", None))

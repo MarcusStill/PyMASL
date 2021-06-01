@@ -24,7 +24,7 @@ class Ticket(Base):
         primary_key=True,
         autoincrement=True
     )
-    #id_client = Column(Integer, ForeignKey('client.id'), comment='Id клиента')
+    id_client = Column(Integer, ForeignKey('client.id'), comment='Id клиента')
     id_sale = Column(Integer, ForeignKey('sale.id'), comment='Id продажи')
     client_age = Column(SmallInteger, comment='Возраст клиента')
     datetime = Column(DateTime, default=datetime.utcnow, comment='Дата и время')
@@ -33,7 +33,7 @@ class Ticket(Base):
     price = Column(SmallInteger, comment='Цена')
     description = Column(String(64), comment='Примечание')
     #id_type_ticket = Column(Integer, ForeignKey('type_ticket.id'), comment='Id типа билета')
-    #client = relationship('client', backref='ticket_client', lazy='subquery')
+    client = relationship('Client', backref='ticket_client', lazy='subquery')
     sale = relationship('Sale', backref='ticket_sale', lazy='subquery')
     #type_ticket = relationship('type_ticket', backref='ticket_type_ticket', lazy='subquery')
 

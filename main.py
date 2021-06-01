@@ -1,9 +1,11 @@
+from datetime import datetime, date
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog
 from PySide6.QtCore import Qt
 from forms.authorization import Ui_Dialog
 from forms.main_form import Ui_MainWindow
 from forms.client import Ui_Dialog_Client
+from forms.sale import Ui_Dialog_Sale
 from models.client import Client
 from models.user import User
 from sqlalchemy import create_engine, and_
@@ -39,6 +41,7 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_5.clicked.connect(kkt.report_x)
         self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
         self.ui.pushButton_6.clicked.connect(kkt.smena_close())
+        self.ui.pushButton_12.clicked.connect(self.openSale)
 
 
     def search_client(self):
@@ -138,6 +141,14 @@ class MainWindow(QMainWindow):
         client.exec_()
 
 
+    def openSale(self):
+        """Открываем форму с продажей"""
+        sale = SaleForm()
+        sale.buttonAllClient()
+        sale.show()
+        sale.exec_()
+
+
     def buttonAllClient(self):
         """Очищаем tableWidget"""
         self.ui.tableWidget.setRowCount(0)
@@ -226,16 +237,93 @@ class ClientForm(QDialog):
         for client in clients:
             row = self.ui.tableWidget.rowCount()
             self.ui.tableWidget.insertRow(row)
+            # self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
+            # self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
+            # self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
+            # self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.middle_name}"))
+            # self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.gender}"))
+            # self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.birth_date}"))
+            # self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.privilege}"))
+            # self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.phone}"))
+            # self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.email}"))
             self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
             self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.middle_name}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.gender}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.birth_date}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.privilege}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.phone}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.email}"))
+            self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.first_name}"))
+            self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
+            self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
+            self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
+            self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
+            self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
+            self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
         session.close()
+
+
+class SaleForm(QDialog):
+    """Форма с данными клиента"""
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Dialog_Sale()
+        self.ui.setupUi(self)
+        self.ui.pushButton_3.clicked.connect(self.close)
+        self.ui.pushButton_4.clicked.connect(self.close)
+        self.ui.tableWidget.doubleClicked.connect(self.search_selected_item)
+
+    def buttonAllClient(self):
+        """Выводим в tableWidget список всех клиентов"""
+        session = Session()
+        clients = session.query(Client).order_by(Client.id)
+        for client in clients:
+            row = self.ui.tableWidget.rowCount()
+            self.ui.tableWidget.insertRow(row)
+            self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.last_name}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
+            self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.middle_name}"))
+            self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.birth_date}"))
+            self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.privilege}"))
+            self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.phone}"))
+        session.close()
+
+
+    def search_selected_item(self):
+        """Поиск выделенной строки в таблице и открытие формы с найденными данными"""
+        for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
+            """Номер строки найден"""
+            row_number = idx.row()
+            session = Session()
+            search_client = session.query(Client).filter_by(id=(row_number+1)).first()
+            print(search_client)
+            """Передаем в таблицу заказа данные клиента"""
+            row = self.ui.tableWidget_2.rowCount()
+            self.ui.tableWidget_2.insertRow(row)
+            self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{search_client.last_name}"))
+            self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{search_client.first_name}"))
+            self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{search_client.middle_name}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem("тип билета"))
+            self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("время"))
+            self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem("цена"))
+            self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem("печать"))
+            self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(str(date.today())))
+            self.ui.tableWidget_2.setItem(row, 8, QTableWidgetItem(f"{search_client.privilege}"))
+            # client = ClientForm()
+            # client.ui.lineEdit.setText(search_client.last_name)
+            # client.ui.lineEdit_2.setText(search_client.first_name)
+            # client.ui.lineEdit_3.setText(search_client.middle_name)
+            # client.ui.dateEdit.setDate(search_client.birth_date)
+            """Поиск значения для установки в ComboBox gender"""
+            # index_gender = client.ui.comboBox.findText(search_client.gender, Qt.MatchFixedString)
+            # if index_gender >= 0:
+            #     client.ui.comboBox.setCurrentIndex(index_gender)
+            # client.ui.lineEdit_4.setText(search_client.phone)
+            # client.ui.lineEdit_5.setText(search_client.email)
+            """Поиск значения для установки в ComboBox privilege"""
+            # index_privilege = client.ui.comboBox.findText(search_client.privilege, Qt.MatchFixedString)
+            # if index_privilege >= 0:
+            #     client.ui.comboBox_2.setCurrentIndex(index_privilege)
+            """bug Запись сохраняется с новым id"""
+            # client.ui.pushButton.clicked.connect(client.buttonSave)
+            session.close()
+            # client.show()
+            # client.exec_()
 
 
 if __name__ == "__main__":
