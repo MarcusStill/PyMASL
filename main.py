@@ -1,6 +1,6 @@
 from datetime import datetime, date
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog
+from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog, QCheckBox
 from PySide6.QtCore import Qt
 from forms.authorization import Ui_Dialog
 from forms.main_form import Ui_MainWindow
@@ -280,6 +280,7 @@ class SaleForm(QDialog):
         self.ui.tableWidget_2.doubleClicked.connect(self.edit_sale)
         cur_today = date.today()
         self.ui.dateEdit.setDate(cur_today)
+        self.ui.checkBox_2.setChecked(Qt.Checked)
 
 
     def buttonAllClient(self):
@@ -334,22 +335,10 @@ class SaleForm(QDialog):
             """Заполняем таблицу с итоговой информацией"""
 
 
-    # def mousePressEvent(self, event):
-    #     if event.button() == Qt.LeftButton:
-    #         self.mouse_press = "mouse left press"
-    #     elif event.button() == Qt.RightButton:
-    #         self.mouse_press = "mouse right press"
-    #     elif event.button() == Qt.MidButton:
-    #         self.mouse_press = "mouse middle press"
-    #     self.ui.tableWidget_2.mousePressEvent(event)
-    #
-    # def clickedRowColumn(self, r, c):
-    #     print("{}: row={}, column={}".format(self.tableWidget_2.mouse_press, r, c))
-
-
     def edit_sale(self):
         """Обновляем таблицу заказа при двойном клике по ней"""
         time_ticket = self.ui.comboBox.currentText()
+        sale = 0
         if (int(time_ticket)) == 1:
             price = 200
         elif (int(time_ticket)) == 2:
@@ -358,8 +347,14 @@ class SaleForm(QDialog):
             price = 600
         rows = self.ui.tableWidget_2.rowCount()
         for row in range(rows):
-            _data = self.ui.tableWidget_2.item(row, 3).text()
             self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{price}"))
+            sale = sale + price
+            self.ui.label_8.setText(str(sale))
+        """применяем скидку"""
+        discount = int(self.ui.comboBox_2.currentText())
+        if sale >= 0:
+            new_price = sale - (sale/100 * discount)
+            self.ui.label_8.setText(str(new_price))
         # """Номер выделенной ячейки"""
         # x = self.ui.tableWidget_2.currentRow()
         # y = self.ui.tableWidget_2.currentColumn()
