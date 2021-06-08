@@ -276,6 +276,7 @@ class SaleForm(QDialog):
         self.ui.setupUi(self)
         self.ui.pushButton_3.clicked.connect(self.close)
         self.ui.pushButton_4.clicked.connect(self.close)
+        self.ui.pushButton_5.clicked.connect(self.check_ticket_generate)
         self.ui.tableWidget.doubleClicked.connect(self.search_selected_item)
         self.ui.tableWidget_2.doubleClicked.connect(self.edit_sale)
         cur_today = date.today()
@@ -337,6 +338,10 @@ class SaleForm(QDialog):
 
     def edit_sale(self):
         """Обновляем таблицу заказа при двойном клике по ней"""
+        kol_adult = 0
+        kol_child = 0
+        price_adult = 0
+        price_child = 0
         time_ticket = self.ui.comboBox.currentText()
         sale = 0
         if (int(time_ticket)) == 1:
@@ -345,20 +350,42 @@ class SaleForm(QDialog):
             price = 400
         else:
             price = 600
+        """считаем общую сумму"""
         rows = self.ui.tableWidget_2.rowCount()
         for row in range(rows):
             self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{price}"))
             sale = sale + price
             self.ui.label_8.setText(str(sale))
+            """Считаем общее количество позиций и берем цену"""
+            type = self.ui.tableWidget_2.item(row, 3).text()
+            if type == 'взрослый':
+                kol_adult += 1
+                price_adult = self.ui.tableWidget_2.item(row, 4).text()
+            else:
+                kol_child += 1
+                price_child = self.ui.tableWidget_2.item(row, 4).text()
+        self.ui.label_5.setText(str(kol_adult))
+        self.ui.label_7.setText(str(kol_child))
         """применяем скидку"""
         discount = int(self.ui.comboBox_2.currentText())
         if sale >= 0:
             new_price = sale - (sale/100 * discount)
+            new_price = int(new_price)
+            print('new_price', new_price)
             self.ui.label_8.setText(str(new_price))
+        """Сохраняем продажу"""
+        new_sale = (kol_adult, int(price_adult), kol_child, int(price_child), new_price)
         # """Номер выделенной ячейки"""
         # x = self.ui.tableWidget_2.currentRow()
         # y = self.ui.tableWidget_2.currentColumn()
         # print('row', x, 'col', y)
+        return new_sale
+
+
+    def check_ticket_generate(self):
+        new_sale = self.edit_sale()
+        kkt.check_open_2(new_sale)
+
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>911</width>
+    <width>920</width>
     <height>791</height>
    </rect>
   </property>
@@ -268,25 +268,25 @@
     <rect>
      <x>740</x>
      <y>40</y>
-     <width>121</width>
+     <width>151</width>
      <height>20</height>
     </rect>
    </property>
    <property name="text">
-    <string>Взрослый билет:</string>
+    <string>Взрослый билет, шт.:</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_5">
    <property name="geometry">
     <rect>
-     <x>870</x>
+     <x>900</x>
      <y>40</y>
-     <width>31</width>
+     <width>21</width>
      <height>20</height>
     </rect>
    </property>
    <property name="text">
-    <string>- шт.</string>
+    <string>-</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_6">
@@ -294,25 +294,25 @@
     <rect>
      <x>740</x>
      <y>70</y>
-     <width>121</width>
+     <width>141</width>
      <height>20</height>
     </rect>
    </property>
    <property name="text">
-    <string>Детский билет:</string>
+    <string>Детский билет, шт.:</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_7">
    <property name="geometry">
     <rect>
-     <x>870</x>
+     <x>900</x>
      <y>70</y>
-     <width>31</width>
+     <width>21</width>
      <height>20</height>
     </rect>
    </property>
    <property name="text">
-    <string>- шт.</string>
+    <string>-</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_8">

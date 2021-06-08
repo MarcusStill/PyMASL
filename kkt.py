@@ -56,11 +56,14 @@ def get_time():
 
 def smena_info():
 	"""Запрос состояния смены"""
+	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
 	fptr.queryData()
 	print('Состояние смены: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE))
 	print('Номер смены: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER))
 	print('Текущие дата и время ККТ: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
+	fptr.beep()
+	fptr.close()
 
 
 def last_document():
@@ -72,36 +75,46 @@ def last_document():
 
 def report_payment():
 	"""Отчет о состоянии расчетов"""
+	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS)
 	fptr.report()
+	fptr.close()
+
 
 def report_x():
 	"""X-отчет"""
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
 	fptr.report()
-	fptr.slose()
+	fptr.close()
 
 def kassir_reg():
 	"""Регистрация кассира"""
-	fptr.setParam(1021, "Кассир Иванов И.")
-	fptr.setParam(1203, "123456789047")
+	fptr.open()
+	fptr.setParam(1021, "Кассир Иванов И. И.")
+	fptr.setParam(1203, "312329419227")
 	fptr.operatorLogin()
+	fptr.beep()
+	fptr.close()
 
 
 def smena_open():
 	"""Открытие смены"""
-	fptr.setParam(1021, "Кассир Иванов И.")
-	fptr.setParam(1203, "123456789047")
+	fptr.open()
+	fptr.setParam(1021, "Кассир Иванов И. И.")
+	fptr.setParam(1203, "312329419227")
 	fptr.operatorLogin()
 	fptr.openShift()
 	fptr.checkDocumentClosed()
+	fptr.beep()
+	fptr.close()
 
 
 def check_open():
 	"""Открытие печатного чека"""
-	fptr.setParam(1021, "Кассир Иванов И.")
-	fptr.setParam(1203, "123456789047")
+	fptr.open()
+	fptr.setParam(1021, "Кассир Иванов И. И.")
+	fptr.setParam(1203, "312329419227")
 	fptr.operatorLogin()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
 	fptr.openReceipt()
@@ -110,16 +123,15 @@ def check_open():
 	fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, 100)
 	fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, 1)
 	fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-	fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_SUM, 20)
 	fptr.registration()
 	"""Оплата чека"""
 	fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
 	fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, 100.00)
 	fptr.payment()
 	"""Регистрация налога на чек"""
-	fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-	fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_SUM, 100.00)
-	fptr.receiptTax()
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_SUM, 100.00)
+	# fptr.receiptTax()
 	"""Регистрация итога чека"""
 	fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, 100.00)
 	fptr.receiptTotal()
@@ -127,15 +139,88 @@ def check_open():
 	fptr.closeReceipt()
 	"""Допечатывание документа"""
 	fptr.continuePrint()
+	fptr.close()
+
+def check_open_2(my_tuple):
+	sale = my_tuple
+	"""Открытие печатного чека"""
+	fptr.open()
+	fptr.setParam(1021, "Кассир Иванов И. И.")
+	fptr.setParam(1203, "312329419227")
+	fptr.operatorLogin()
+	fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
+	fptr.openReceipt()
+	"""Регистрация позиции с указанием суммы налога"""
+	if sale[0] > 0:
+		fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, "Билет взрослый")
+		fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale[1])
+		fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale[0])
+		fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+		fptr.registration()
+	if sale[2] > 0:
+		fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, "Билет детский")
+		fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale[3])
+		fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale[2])
+		fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+		fptr.registration()
+	"""Оплата чека"""
+	fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
+	fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale[4])
+	fptr.payment()
+	"""Регистрация налога на чек"""
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_SUM, 100.00)
+	# fptr.receiptTax()
+	"""Регистрация итога чека"""
+	fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, sale[4])
+	fptr.receiptTotal()
+	"""Закрытие полностью оплаченного чека"""
+	fptr.closeReceipt()
+	"""Допечатывание документа"""
+	fptr.continuePrint()
+	fptr.close()
 
 
 def smena_close():
 	"""Закрытие смены"""
 	fptr.open()
-	fptr.setParam(1021, "Кассир Иванов И.")
-	fptr.setParam(1203, "123456789047")
+	fptr.setParam(1021, "Кассир Иванов И. И.")
+	fptr.setParam(1203, "312329419227")
 	fptr.operatorLogin()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
 	fptr.report()
 	fptr.checkDocumentClosed()
+	fptr.beep()
 	fptr.close()
+
+
+def check_info():
+	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_RECEIPT_STATE)
+	fptr.queryData()
+
+	receiptType = fptr.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE)
+	receiptNumber = fptr.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_NUMBER)
+	documentNumber = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+	documentNumber = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+	sum = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_RECEIPT_SUM)
+	remainder = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_REMAINDER)
+	change = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_CHANGE)
+
+
+if __name__ == "__main__":
+ 	"""Открытие соединения с устройством"""
+	# fptr.open()
+	# get_info()
+
+	# last_document()
+	# report_payment()
+	# get_time()
+	# smena_close()
+	# kassir_reg()
+	# smena_open()
+	# smena_info()
+	# check_open()
+	# report_x()
+	# # check_info()
+	# smena_close()
+	# # fptr.close()
