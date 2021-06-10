@@ -29,7 +29,7 @@ class Sale(Base):
     #id_status_sale = Column(Integer, ForeignKey('status_sale.id'), comment='Id статуса продажи')
     #id_discount = Column(Integer, ForeignKey('discount.id'), comment='Id скидки')
     price = Column(SmallInteger, comment='Цена')
-    datetime = Column(DateTime, nullable=False, comment='Дата и время продажи')
+    datetime = Column(DateTime, nullable=False, comment='Дата и время продажи') #добавить default=datetime.utcnow
     #pc_name = Column(Integer, ForeignKey('user_pc.id'), comment='Id РМ кассира')
     client = relationship('Client', backref='sale_client', lazy='subquery')
     #currency_type = relationship('currency_type', backref='sale_currency_type', lazy='subquery')

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'main_form.ui'
+## Form generated from reading UI file 'main_form_1.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.1.0
 ##
@@ -17,14 +17,14 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1043, 666)
+        MainWindow.resize(1920, 1080)
         self.action = QAction(MainWindow)
         self.action.setObjectName(u"action")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.tabWidget = QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName(u"tabWidget")
-        self.tabWidget.setGeometry(QRect(10, 10, 1021, 611))
+        self.tabWidget.setGeometry(QRect(10, 10, 1901, 1031))
         self.visitors = QWidget()
         self.visitors.setObjectName(u"visitors")
         self.label = QLabel(self.visitors)
@@ -64,7 +64,7 @@ class Ui_MainWindow(object):
         __qtablewidgetitem8 = QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(8, __qtablewidgetitem8)
         self.tableWidget.setObjectName(u"tableWidget")
-        self.tableWidget.setGeometry(QRect(10, 30, 1001, 531))
+        self.tableWidget.setGeometry(QRect(10, 30, 1881, 941))
         self.line = QFrame(self.visitors)
         self.line.setObjectName(u"line")
         self.line.setGeometry(QRect(310, 0, 20, 31))
@@ -85,6 +85,9 @@ class Ui_MainWindow(object):
         self.pushButton_12 = QPushButton(self.sales)
         self.pushButton_12.setObjectName(u"pushButton_12")
         self.pushButton_12.setGeometry(QRect(0, 0, 94, 28))
+        self.tableWidget_2 = QTableWidget(self.sales)
+        self.tableWidget_2.setObjectName(u"tableWidget_2")
+        self.tableWidget_2.setGeometry(QRect(0, 50, 1891, 191))
         self.tabWidget.addTab(self.sales, "")
         self.tickets = QWidget()
         self.tickets.setObjectName(u"tickets")
@@ -131,7 +134,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1043, 30))
+        self.menubar.setGeometry(QRect(0, 0, 1920, 30))
         self.menu = QMenu(self.menubar)
         self.menu.setObjectName(u"menu")
         MainWindow.setMenuBar(self.menubar)

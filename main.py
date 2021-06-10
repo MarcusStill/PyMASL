@@ -8,6 +8,7 @@ from forms.client import Ui_Dialog_Client
 from forms.sale import Ui_Dialog_Sale
 from models.client import Client
 from models.user import User
+from models.sale import Sale
 from sqlalchemy import create_engine, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -26,6 +27,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui = Ui_MainWindow()
+        self.setWindowState(Qt.WindowMaximized)
         self.ui.setupUi(self)
         """Открыть окно добавления нового клиента"""
         self.ui.pushButton_2.clicked.connect(self.openClient)
@@ -312,10 +314,10 @@ class SaleForm(QDialog):
             today = date.today()
             age = today.year - search_client.birth_date.year - ((today.month, today.day) < (search_client.birth_date.month, search_client.birth_date.day))
             """Определяем тип билета и цену"""
-            if age >= 14:
-                type_ticket = 'взрослый'
-            else:
+            if 5 <= age < 14:
                 type_ticket = 'детский'
+            elif age >= 14:
+                type_ticket = 'взрослый'
             """Определяем тип билета и цену"""
             time_ticket = self.ui.comboBox.currentText()
             if (int(time_ticket)) == 1:
@@ -333,6 +335,7 @@ class SaleForm(QDialog):
             self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{type_ticket}"))
             self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{price}"))
             self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client.privilege}"))
+            self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client.id}"))
             """Заполняем таблицу с итоговой информацией"""
 
 
@@ -342,6 +345,7 @@ class SaleForm(QDialog):
         kol_child = 0
         price_adult = 0
         price_child = 0
+        id_adult = 0
         time_ticket = self.ui.comboBox.currentText()
         sale = 0
         if (int(time_ticket)) == 1:
@@ -359,6 +363,9 @@ class SaleForm(QDialog):
             """Считаем общее количество позиций и берем цену"""
             type = self.ui.tableWidget_2.item(row, 3).text()
             if type == 'взрослый':
+                """Привязываем продажу ко взрослому"""
+                if id_adult == 0:
+                    id_adult = self.ui.tableWidget_2.item(row, 6).text()
                 kol_adult += 1
                 price_adult = self.ui.tableWidget_2.item(row, 4).text()
             else:
@@ -373,8 +380,8 @@ class SaleForm(QDialog):
             new_price = int(new_price)
             print('new_price', new_price)
             self.ui.label_8.setText(str(new_price))
-        """Сохраняем продажу"""
-        new_sale = (kol_adult, int(price_adult), kol_child, int(price_child), new_price)
+        """Сохраняем данные продажи"""
+        new_sale = (kol_adult, int(price_adult), kol_child, int(price_child), new_price, id_adult)
         # """Номер выделенной ячейки"""
         # x = self.ui.tableWidget_2.currentRow()
         # y = self.ui.tableWidget_2.currentColumn()
@@ -383,10 +390,25 @@ class SaleForm(QDialog):
 
 
     def check_ticket_generate(self):
+        """Сохраняем данные данные заказа"""
         new_sale = self.edit_sale()
-        kkt.check_open_2(new_sale)
-
-
+        state_check = kkt.check_open_2(new_sale)
+        """Если прошла оплата"""
+        if state_check == 1:
+            """Сохраняем данные о продаже"""
+            session = Session()
+            add_sale = Sale(price=int(self.ui.label_8.text()),
+                                datetime=datetime.utcnow(),
+                                id_user='1', #id кассира
+                                id_client=new_sale[5])
+            session.add(add_sale)
+            session.commit()
+            session.close()
+            self.close()
+        else:
+            print("Оплата не прошла")
+        """Сохраняем билеты"""
+        """Распечатываем билеты"""
 
 if __name__ == "__main__":
     app = QApplication()

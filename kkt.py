@@ -143,42 +143,46 @@ def check_open():
 
 def check_open_2(my_tuple):
 	sale = my_tuple
-	"""Открытие печатного чека"""
-	fptr.open()
-	fptr.setParam(1021, "Кассир Иванов И. И.")
-	fptr.setParam(1203, "312329419227")
-	fptr.operatorLogin()
-	fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
-	fptr.openReceipt()
-	"""Регистрация позиции с указанием суммы налога"""
-	if sale[0] > 0:
-		fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, "Билет взрослый")
-		fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale[1])
-		fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale[0])
-		fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-		fptr.registration()
-	if sale[2] > 0:
-		fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, "Билет детский")
-		fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale[3])
-		fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale[2])
-		fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-		fptr.registration()
-	"""Оплата чека"""
-	fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
-	fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale[4])
-	fptr.payment()
-	"""Регистрация налога на чек"""
-	# fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-	# fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_SUM, 100.00)
-	# fptr.receiptTax()
-	"""Регистрация итога чека"""
-	fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, sale[4])
-	fptr.receiptTotal()
-	"""Закрытие полностью оплаченного чека"""
-	fptr.closeReceipt()
-	"""Допечатывание документа"""
-	fptr.continuePrint()
-	fptr.close()
+	state = 0
+	# """Открытие печатного чека"""
+	# fptr.open()
+	# fptr.setParam(1021, "Кассир Иванов И. И.")
+	# fptr.setParam(1203, "312329419227")
+	# fptr.operatorLogin()
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
+	# fptr.openReceipt()
+	# """Регистрация позиции с указанием суммы налога"""
+	# if sale[0] > 0:
+	# 	fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, "Билет взрослый")
+	# 	fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale[1])
+	# 	fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale[0])
+	# 	fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+	# 	fptr.registration()
+	# if sale[2] > 0:
+	# 	fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, "Билет детский")
+	# 	fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale[3])
+	# 	fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale[2])
+	# 	fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+	# 	fptr.registration()
+	# """Оплата чека"""
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale[4])
+	# fptr.payment()
+	# """Регистрация налога на чек"""
+	# # fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+	# # fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_SUM, 100.00)
+	# # fptr.receiptTax()
+	# """Регистрация итога чека"""
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, sale[4])
+	# fptr.receiptTotal()
+	# """Закрытие полностью оплаченного чека"""
+	# fptr.closeReceipt()
+	"""Оплата прошла, можно сохранять"""
+	state = 1
+	# """Допечатывание документа"""
+	# fptr.continuePrint()
+	# fptr.close()
+	return state
 
 
 def smena_close():

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'sale_3.ui'
+## Form generated from reading UI file 'sale_4.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.1.0
 ##
@@ -84,8 +84,8 @@ class Ui_Dialog_Sale(object):
         self.line_2.setFrameShape(QFrame.HLine)
         self.line_2.setFrameShadow(QFrame.Sunken)
         self.tableWidget_2 = QTableWidget(Dialog_Sale)
-        if (self.tableWidget_2.columnCount() < 6):
-            self.tableWidget_2.setColumnCount(6)
+        if (self.tableWidget_2.columnCount() < 7):
+            self.tableWidget_2.setColumnCount(7)
         __qtablewidgetitem6 = QTableWidgetItem()
         self.tableWidget_2.setHorizontalHeaderItem(0, __qtablewidgetitem6)
         __qtablewidgetitem7 = QTableWidgetItem()
@@ -98,6 +98,8 @@ class Ui_Dialog_Sale(object):
         self.tableWidget_2.setHorizontalHeaderItem(4, __qtablewidgetitem10)
         __qtablewidgetitem11 = QTableWidgetItem()
         self.tableWidget_2.setHorizontalHeaderItem(5, __qtablewidgetitem11)
+        __qtablewidgetitem12 = QTableWidgetItem()
+        self.tableWidget_2.setHorizontalHeaderItem(6, __qtablewidgetitem12)
         self.tableWidget_2.setObjectName(u"tableWidget_2")
         self.tableWidget_2.setGeometry(QRect(0, 400, 601, 381))
         self.tableWidget_2.setEditTriggers(QAbstractItemView.DoubleClicked)
@@ -249,6 +251,8 @@ class Ui_Dialog_Sale(object):
         ___qtablewidgetitem10.setText(QCoreApplication.translate("Dialog_Sale", u"\u0426\u0435\u043d\u0430", None));
         ___qtablewidgetitem11 = self.tableWidget_2.horizontalHeaderItem(5)
         ___qtablewidgetitem11.setText(QCoreApplication.translate("Dialog_Sale", u"\u0424\u043b\u0430\u0433", None));
+        ___qtablewidgetitem12 = self.tableWidget_2.horizontalHeaderItem(6)
+        ___qtablewidgetitem12.setText(QCoreApplication.translate("Dialog_Sale", u"id", None));
         self.label_2.setText(QCoreApplication.translate("Dialog_Sale", u"\u0418\u0442\u043e\u0433\u043e:", None))
         self.label_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u041e\u043f\u043b\u0430\u0442\u0430", None))
         self.pushButton_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c", None))
