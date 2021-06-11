@@ -9,6 +9,7 @@ from forms.sale import Ui_Dialog_Sale
 from models.client import Client
 from models.user import User
 from models.sale import Sale
+from models.ticket import Ticket
 from sqlalchemy import create_engine, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -348,6 +349,7 @@ class SaleForm(QDialog):
         id_adult = 0
         time_ticket = self.ui.comboBox.currentText()
         sale = 0
+        tickets = []
         if (int(time_ticket)) == 1:
             price = 200
         elif (int(time_ticket)) == 2:
@@ -373,26 +375,26 @@ class SaleForm(QDialog):
                 price_child = self.ui.tableWidget_2.item(row, 4).text()
         self.ui.label_5.setText(str(kol_adult))
         self.ui.label_7.setText(str(kol_child))
+        """проверить есть ли взрослый"""
+        #!
         """применяем скидку"""
         discount = int(self.ui.comboBox_2.currentText())
         if sale >= 0:
             new_price = sale - (sale/100 * discount)
             new_price = int(new_price)
-            print('new_price', new_price)
             self.ui.label_8.setText(str(new_price))
         """Сохраняем данные продажи"""
-        new_sale = (kol_adult, int(price_adult), kol_child, int(price_child), new_price, id_adult)
-        # """Номер выделенной ячейки"""
-        # x = self.ui.tableWidget_2.currentRow()
-        # y = self.ui.tableWidget_2.currentColumn()
-        # print('row', x, 'col', y)
-        return new_sale
+        sale_tuple = (kol_adult, int(price_adult), kol_child, int(price_child), new_price, id_adult)
+        """Генерируем список с билетами"""
+        for row in range(rows):
+            tickets.append((self.ui.tableWidget_2.item(row, 0).text(), self.ui.tableWidget_2.item(row, 1).text(), self.ui.tableWidget_2.item(row, 2).text(), self.ui.tableWidget_2.item(row, 3).text(), self.ui.tableWidget_2.item(row, 4).text(), self.ui.tableWidget_2.item(row, 5).text(), self.ui.tableWidget_2.item(row, 6).text()))
+        return sale_tuple, tickets
 
 
     def check_ticket_generate(self):
         """Сохраняем данные данные заказа"""
-        new_sale = self.edit_sale()
-        state_check = kkt.check_open_2(new_sale)
+        sale_tuple, tickets = self.edit_sale()
+        state_check = kkt.check_open_2(sale_tuple)
         """Если прошла оплата"""
         if state_check == 1:
             """Сохраняем данные о продаже"""
@@ -400,15 +402,33 @@ class SaleForm(QDialog):
             add_sale = Sale(price=int(self.ui.label_8.text()),
                                 datetime=datetime.utcnow(),
                                 id_user='1', #id кассира
-                                id_client=new_sale[5])
+                                id_client=sale_tuple[5])
             session.add(add_sale)
             session.commit()
+           session.close()
+            self.close()
+            """Сохраняем билеты"""
+            session = Session()
+            sale_index = session.query(Sale).count()
+            for l in tickets:
+                price = int([l[4]])
+                add_ticket = Ticket(client_age='1',
+                                    datetime=datetime.utcnow(),
+                                    arrival_time='1',
+                                    talent='1',
+                                    price=price, #BUG
+                                    description=[l[5]],
+                                    id_sale=int(sale_index),
+                                    id_client=int(l[6]))
+                                    #id_client=client_id)
+                session.add(add_ticket)
+                session.commit()
             session.close()
             self.close()
+            """Распечатываем билеты"""
         else:
             print("Оплата не прошла")
-        """Сохраняем билеты"""
-        """Распечатываем билеты"""
+
 
 if __name__ == "__main__":
     app = QApplication()

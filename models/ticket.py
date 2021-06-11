@@ -30,7 +30,7 @@ class Ticket(Base):
     datetime = Column(DateTime, default=datetime.utcnow, comment='Дата и время')
     arrival_time = Column(SmallInteger, comment='Время пребывания')
     talent = Column(SmallInteger, comment='Количество золотых талантов')
-    price = Column(SmallInteger, comment='Цена')
+    price = Column(SmallInteger, comment='Цена') #int!
     description = Column(String(64), comment='Примечание')
     #id_type_ticket = Column(Integer, ForeignKey('type_ticket.id'), comment='Id типа билета')
     client = relationship('Client', backref='ticket_client', lazy='subquery')

@@ -141,8 +141,8 @@ def check_open():
 	fptr.continuePrint()
 	fptr.close()
 
-def check_open_2(my_tuple):
-	sale = my_tuple
+def check_open_2(sale_tuple):
+	sale = sale_tuple
 	state = 0
 	# """Открытие печатного чека"""
 	# fptr.open()
