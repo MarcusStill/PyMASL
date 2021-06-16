@@ -44,6 +44,8 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
         self.ui.pushButton_6.clicked.connect(kkt.smena_close())
         self.ui.pushButton_12.clicked.connect(self.openSale)
+        self.ui.pushButton_13.clicked.connect(self.buttonAllSales)
+        self.ui.pushButton_14.clicked.connect(self.buttonAllTickets)
 
 
     def search_client(self):
@@ -171,6 +173,41 @@ class MainWindow(QMainWindow):
         session.close()
 
 
+    def buttonAllSales(self):
+        """Очищаем tableWidget"""
+        self.ui.tableWidget_2.setRowCount(0)
+        session = Session()
+        sales = session.query(Sale).order_by(Sale.id)
+        for sale in sales:
+            row = self.ui.tableWidget_2.rowCount()
+            self.ui.tableWidget_2.insertRow(row)
+            self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{sale.id}"))
+            self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{sale.id_client}"))
+            self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{sale.price}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.datetime}"))
+        session.close()
+
+
+    def buttonAllTickets(self):
+        """Очищаем tableWidget"""
+        self.ui.tableWidget_3.setRowCount(0)
+        session = Session()
+        tickets = session.query(Ticket).order_by(Ticket.id)
+        for ticket in tickets:
+            row = self.ui.tableWidget_3.rowCount()
+            self.ui.tableWidget_3.insertRow(row)
+            self.ui.tableWidget_3.setItem(row, 0, QTableWidgetItem(f"{ticket.id}"))
+            self.ui.tableWidget_3.setItem(row, 1, QTableWidgetItem(f"{ticket.id_client}"))
+            self.ui.tableWidget_3.setItem(row, 2, QTableWidgetItem(f"{ticket.id_sale}"))
+            self.ui.tableWidget_3.setItem(row, 3, QTableWidgetItem(f"{ticket.client_age}"))
+            self.ui.tableWidget_3.setItem(row, 4, QTableWidgetItem(f"{ticket.datetime}"))
+            self.ui.tableWidget_3.setItem(row, 5, QTableWidgetItem(f"{ticket.arrival_time}"))
+            self.ui.tableWidget_3.setItem(row, 6, QTableWidgetItem(f"{ticket.talent}"))
+            self.ui.tableWidget_3.setItem(row, 7, QTableWidgetItem(f"{ticket.price}"))
+            self.ui.tableWidget_3.setItem(row, 8, QTableWidgetItem(f"{ticket.description}"))
+        session.close()
+
+
 class AuthForm(QDialog):
     """Форма авторизации"""
     """Проверяем есть ли в таблице user запись с указанными полями"""
@@ -252,23 +289,23 @@ class ClientForm(QDialog):
         self.close()
 
 
-    def buttonAllClient(self):
-        """Выводим в tableWidget список всех клиентов"""
-        session = Session()
-        clients = session.query(Client).order_by(Client.id)
-        for client in clients:
-            row = self.ui.tableWidget.rowCount()
-            self.ui.tableWidget.insertRow(row)
-            self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
-            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
-            self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.first_name}"))
-            self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
-            self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
-            self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
-            self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
-            self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
-            self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
-        session.close()
+    # def buttonAllClient(self):
+    #     """Выводим в tableWidget список всех клиентов"""
+    #     session = Session()
+    #     clients = session.query(Client).order_by(Client.id)
+    #     for client in clients:
+    #         row = self.ui.tableWidget.rowCount()
+    #         self.ui.tableWidget.insertRow(row)
+    #         self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
+    #         self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
+    #         self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.first_name}"))
+    #         self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
+    #         self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
+    #         self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
+    #         self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
+    #         self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
+    #         self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
+    #     session.close()
 
 
 class SaleForm(QDialog):
@@ -384,7 +421,7 @@ class SaleForm(QDialog):
             new_price = int(new_price)
             self.ui.label_8.setText(str(new_price))
         """Сохраняем данные продажи"""
-        sale_tuple = (kol_adult, int(price_adult), kol_child, int(price_child), new_price, id_adult)
+        sale_tuple = (kol_adult, int(price_adult), kol_child, int(price_child), int(new_price), id_adult)
         """Генерируем список с билетами"""
         for row in range(rows):
             tickets.append((self.ui.tableWidget_2.item(row, 0).text(), self.ui.tableWidget_2.item(row, 1).text(), self.ui.tableWidget_2.item(row, 2).text(), self.ui.tableWidget_2.item(row, 3).text(), self.ui.tableWidget_2.item(row, 4).text(), self.ui.tableWidget_2.item(row, 5).text(), self.ui.tableWidget_2.item(row, 6).text()))
@@ -395,39 +432,42 @@ class SaleForm(QDialog):
         """Сохраняем данные данные заказа"""
         sale_tuple, tickets = self.edit_sale()
         state_check = kkt.check_open_2(sale_tuple)
+        price = 0
         """Если прошла оплата"""
         if state_check == 1:
             """Сохраняем данные о продаже"""
             session = Session()
             add_sale = Sale(price=int(self.ui.label_8.text()),
-                                datetime=datetime.utcnow(),
-                                id_user='1', #id кассира
-                                id_client=sale_tuple[5])
+                            id_user='1', #id кассира
+                            id_client=sale_tuple[5])
             session.add(add_sale)
             session.commit()
-           session.close()
+            session.close()
             self.close()
             """Сохраняем билеты"""
             session = Session()
             sale_index = session.query(Sale).count()
             for l in tickets:
-                price = int([l[4]])
-                add_ticket = Ticket(client_age='1',
-                                    datetime=datetime.utcnow(),
-                                    arrival_time='1',
-                                    talent='1',
-                                    price=price, #BUG
-                                    description=[l[5]],
-                                    id_sale=int(sale_index),
-                                    id_client=int(l[6]))
-                                    #id_client=client_id)
+                for l in tickets:
+                #price = str([l[4]]).replace("'", "")
+                    if [l[5]] == 'взрослый':
+                        price = sale_tuple[1]
+                    elif [l[5]] == 'детский':
+                        price = sale_tuple[3]
+                    add_ticket = Ticket(id_client=int(l[6]),
+                                        id_sale=int(sale_index),
+                                        client_age='1',
+                                        arrival_time=self.ui.comboBox.currentText(),
+                                        talent='1',
+                                        price=price,
+                                        description=[l[5]])
                 session.add(add_ticket)
                 session.commit()
             session.close()
             self.close()
-            """Распечатываем билеты"""
+            """Печатаем билеты"""
         else:
-            print("Оплата не прошла")
+            print('Оплата не прошла')
 
 
 if __name__ == "__main__":
