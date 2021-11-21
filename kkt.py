@@ -216,10 +216,17 @@ def check_info():
 
 
 if __name__ == "__main__":
- 	"""Открытие соединения с устройством"""
-	# fptr.open()
-	# get_info()
+	fptr.open()
+	fptr.enableOfdChannel()
 
+	# fptr.setSingleSetting(IFptr.LIBFPTR_SETTING_MODEL, str(IFptr.LIBFPTR_MODEL_ATOL_AUTO))
+	# fptr.setSingleSetting(IFptr.LIBFPTR_SETTING_PORT, str(IFptr.LIBFPTR_PORT_USB))
+	# fptr.setSingleSetting(IFptr.LIBFPTR_SETTING_OFD_CHANNEL, str(IFptr.LIBFPTR_OFD_CHANNEL_AUTO))
+	# fptr.applySingleSettings()
+
+
+	#get_status_obmena()
+	fptr.close()
 	# last_document()
 	# report_payment()
 	# get_time()
@@ -228,7 +235,7 @@ if __name__ == "__main__":
 	# smena_open()
 	# smena_info()
 	# check_open()
-	# report_x()
+	#report_x()
 	# # check_info()
-	# smena_close()
+	#smena_close()
 	# # fptr.close()

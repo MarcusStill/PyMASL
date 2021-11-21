@@ -1,5 +1,6 @@
 from datetime import datetime, date
 import sys
+import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog, QCheckBox
 from PySide6.QtCore import Qt
 from forms.authorization import Ui_Dialog
@@ -15,9 +16,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from connect import connect
 import kkt
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import cm, mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+engine = create_engine("postgresql://postgres:secret@192.168.251.111:5432/masl", echo=True)
 
 
-engine = create_engine("postgresql://postgres:secret@localhost:5432/masl", echo=True)
 Base = declarative_base(bind=engine)
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
@@ -161,6 +166,7 @@ class MainWindow(QMainWindow):
         for client in clients:
             row = self.ui.tableWidget.rowCount()
             self.ui.tableWidget.insertRow(row)
+            # !убрать id из таблицы
             self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
             self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
             self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.first_name}"))
@@ -188,6 +194,7 @@ class MainWindow(QMainWindow):
         session.close()
 
 
+    # !нужно ли?
     def buttonAllTickets(self):
         """Очищаем tableWidget"""
         self.ui.tableWidget_3.setRowCount(0)
@@ -317,6 +324,7 @@ class SaleForm(QDialog):
         self.ui.pushButton_3.clicked.connect(self.close)
         self.ui.pushButton_4.clicked.connect(self.close)
         self.ui.pushButton_5.clicked.connect(self.check_ticket_generate)
+        self.ui.pushButton_6.clicked.connect(self.del_selected_item)
         self.ui.tableWidget.doubleClicked.connect(self.search_selected_item)
         self.ui.tableWidget_2.doubleClicked.connect(self.edit_sale)
         cur_today = date.today()
@@ -377,6 +385,13 @@ class SaleForm(QDialog):
             """Заполняем таблицу с итоговой информацией"""
 
 
+    def del_selected_item(self):
+        """Удаляем запись из таблицы при нажатии кнопки "возврат" """
+        if self.ui.tableWidget_2.rowCount() > 0:
+            currentrow = self.ui.tableWidget_2.currentRow()
+            self.ui.tableWidget_2.removeRow(currentrow)
+
+
     def edit_sale(self):
         """Обновляем таблицу заказа при двойном клике по ней"""
         kol_adult = 0
@@ -425,13 +440,24 @@ class SaleForm(QDialog):
         """Генерируем список с билетами"""
         for row in range(rows):
             tickets.append((self.ui.tableWidget_2.item(row, 0).text(), self.ui.tableWidget_2.item(row, 1).text(), self.ui.tableWidget_2.item(row, 2).text(), self.ui.tableWidget_2.item(row, 3).text(), self.ui.tableWidget_2.item(row, 4).text(), self.ui.tableWidget_2.item(row, 5).text(), self.ui.tableWidget_2.item(row, 6).text()))
+        print(tickets)
+        # for l in tickets:
+        #     for l in tickets:
+        #         print([l[0]])
+        #         print([l[1]])
+        #         print([l[2]])
+        #         print([l[3]])
+        #         print([l[4]])
+        #         print([l[5]])
         return sale_tuple, tickets
+
 
 
     def check_ticket_generate(self):
         """Сохраняем данные данные заказа"""
         sale_tuple, tickets = self.edit_sale()
-        state_check = kkt.check_open_2(sale_tuple)
+        #state_check = kkt.check_open_2(sale_tuple)
+        state_check = 1
         price = 0
         """Если прошла оплата"""
         if state_check == 1:
@@ -444,12 +470,30 @@ class SaleForm(QDialog):
             session.commit()
             session.close()
             self.close()
+            """Устанавливаем параметры макета билета"""
+            pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf'))
+            c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
+            c.setFont('DejaVuSerif', 12)
             """Сохраняем билеты"""
             session = Session()
             sale_index = session.query(Sale).count()
             for l in tickets:
                 for l in tickets:
-                #price = str([l[4]]).replace("'", "")
+                    """Сохраняем макет билета"""
+                    c.setFont('DejaVuSerif', 12)
+                    c.drawString(20 * mm, 53 * mm, str([l[0]]).replace("'", "").replace("[", "").replace("]", ""))
+                    c.drawString(20 * mm, 47 * mm, str([l[1]]).replace("'", "").replace("[", "").replace("]", ""))
+                    c.drawString(95 * mm, 53 * mm, "Возраст")
+                    c.drawString(20 * mm, 41 * mm, str([l[6]]).replace("'", "").replace("[", "").replace("]", ""))
+                    c.drawString(95 * mm, 41 * mm, str(date.today()))
+                    c.drawString(70 * mm, 30 * mm, "МАСТЕРСЛАВЛЬ")
+                    c.drawString(70 * mm, 23 * mm, "БЕЛГОРОД")
+                    c.drawString(121 * mm, 30 * mm, str([l[4]]).replace("'", "").replace("[", "").replace("]", ""))
+                    c.drawString(31 * mm, 13 * mm, str([l[5]]).replace("'", "").replace("[", "").replace("]", ""))
+                    c.drawString(90 * mm, 13 * mm, "Примечание 2")
+                    c.drawString(153 * mm, 40 * mm, "Таланты")
+                    c.showPage()
+                    #price = str([l[4]]).replace("'", "")
                     if [l[5]] == 'взрослый':
                         price = sale_tuple[1]
                     elif [l[5]] == 'детский':
@@ -465,7 +509,10 @@ class SaleForm(QDialog):
                 session.commit()
             session.close()
             self.close()
+            c.save()
             """Печатаем билеты"""
+
+
         else:
             print('Оплата не прошла')
 
