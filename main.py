@@ -440,7 +440,6 @@ class SaleForm(QDialog):
         """Генерируем список с билетами"""
         for row in range(rows):
             tickets.append((self.ui.tableWidget_2.item(row, 0).text(), self.ui.tableWidget_2.item(row, 1).text(), self.ui.tableWidget_2.item(row, 2).text(), self.ui.tableWidget_2.item(row, 3).text(), self.ui.tableWidget_2.item(row, 4).text(), self.ui.tableWidget_2.item(row, 5).text(), self.ui.tableWidget_2.item(row, 6).text()))
-        print(tickets)
         # for l in tickets:
         #     for l in tickets:
         #         print([l[0]])
@@ -452,7 +451,6 @@ class SaleForm(QDialog):
         return sale_tuple, tickets
 
 
-
     def check_ticket_generate(self):
         """Сохраняем данные данные заказа"""
         sale_tuple, tickets = self.edit_sale()
@@ -461,6 +459,8 @@ class SaleForm(QDialog):
         price = 0
         """Если прошла оплата"""
         if state_check == 1:
+            """Сохраняем данные о чеках"""
+            #!
             """Сохраняем данные о продаже"""
             session = Session()
             add_sale = Sale(price=int(self.ui.label_8.text()),
@@ -470,48 +470,50 @@ class SaleForm(QDialog):
             session.commit()
             session.close()
             self.close()
+            """Сохраняем билеты"""
+            session = Session()
+            sale_index = session.query(Sale).count()
+            for i in tickets:
+                if i[3] == 'взрослый':
+                    price = sale_tuple[1]
+                elif i[3] == 'детский':
+                    price = sale_tuple[3]
+                add_ticket = Ticket(id_client=int(i[6]),
+                                id_sale=int(sale_index),
+                                client_age='1',
+                                arrival_time=self.ui.comboBox.currentText(),
+                                talent='1',
+                                price=price,
+                                description=i[5])
+                session.add(add_ticket)
+                session.commit()
+            session.close()
+            """Сохраняем печатную форму билетОВ"""
             """Устанавливаем параметры макета билета"""
             pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf'))
             c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
             c.setFont('DejaVuSerif', 12)
-            """Сохраняем билеты"""
-            session = Session()
-            sale_index = session.query(Sale).count()
             for l in tickets:
-                for l in tickets:
-                    """Сохраняем макет билета"""
-                    c.setFont('DejaVuSerif', 12)
-                    c.drawString(20 * mm, 53 * mm, str([l[0]]).replace("'", "").replace("[", "").replace("]", ""))
-                    c.drawString(20 * mm, 47 * mm, str([l[1]]).replace("'", "").replace("[", "").replace("]", ""))
-                    c.drawString(95 * mm, 53 * mm, "Возраст")
-                    c.drawString(20 * mm, 41 * mm, str([l[6]]).replace("'", "").replace("[", "").replace("]", ""))
-                    c.drawString(95 * mm, 41 * mm, str(date.today()))
-                    c.drawString(70 * mm, 30 * mm, "МАСТЕРСЛАВЛЬ")
-                    c.drawString(70 * mm, 23 * mm, "БЕЛГОРОД")
-                    c.drawString(121 * mm, 30 * mm, str([l[4]]).replace("'", "").replace("[", "").replace("]", ""))
-                    c.drawString(31 * mm, 13 * mm, str([l[5]]).replace("'", "").replace("[", "").replace("]", ""))
-                    c.drawString(90 * mm, 13 * mm, "Примечание 2")
-                    c.drawString(153 * mm, 40 * mm, "Таланты")
-                    c.showPage()
-                    #price = str([l[4]]).replace("'", "")
-                    if [l[5]] == 'взрослый':
-                        price = sale_tuple[1]
-                    elif [l[5]] == 'детский':
-                        price = sale_tuple[3]
-                    add_ticket = Ticket(id_client=int(l[6]),
-                                        id_sale=int(sale_index),
-                                        client_age='1',
-                                        arrival_time=self.ui.comboBox.currentText(),
-                                        talent='1',
-                                        price=price,
-                                        description=[l[5]])
-                session.add(add_ticket)
-                session.commit()
-            session.close()
+                """Сохраняем макет билета"""
+                c.setFont('DejaVuSerif', 12)
+                c.drawString(20 * mm, 53 * mm, str([l[0]]).replace("'", "").replace("[", "").replace("]", ""))
+                c.drawString(20 * mm, 47 * mm, str([l[1]]).replace("'", "").replace("[", "").replace("]", ""))
+                c.drawString(95 * mm, 53 * mm, "Возраст")
+                c.drawString(20 * mm, 41 * mm, str([l[6]]).replace("'", "").replace("[", "").replace("]", ""))
+                c.drawString(95 * mm, 41 * mm, str(date.today()))
+                c.drawString(70 * mm, 30 * mm, "МАСТЕРСЛАВЛЬ")
+                c.drawString(70 * mm, 23 * mm, "БЕЛГОРОД")
+                c.drawString(121 * mm, 30 * mm, str([l[4]]).replace("'", "").replace("[", "").replace("]", ""))
+                c.drawString(31 * mm, 13 * mm, str([l[5]]).replace("'", "").replace("[", "").replace("]", ""))
+                c.drawString(90 * mm, 13 * mm, "Примечание 2")
+                c.drawString(153 * mm, 40 * mm, "Таланты")
+                c.showPage()
+                #price = str([l[4]]).replace("'", "")
             self.close()
             c.save()
             """Печатаем билеты"""
-
+            #!
+            """Закрываем окно продажи"""
 
         else:
             print('Оплата не прошла')
