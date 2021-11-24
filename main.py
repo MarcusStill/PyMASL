@@ -183,14 +183,18 @@ class MainWindow(QMainWindow):
         """Очищаем tableWidget"""
         self.ui.tableWidget_2.setRowCount(0)
         session = Session()
-        sales = session.query(Sale).order_by(Sale.id)
+        # select sale.id, client.last_name, client.first_name, sale.price, sale.datetime
+        # from sale
+        # join client on sale.id_client = client.id
+        sales = (session.query(Sale.id, Client.last_name, Client.first_name, Sale.price, Sale.datetime).join(Client))
         for sale in sales:
             row = self.ui.tableWidget_2.rowCount()
             self.ui.tableWidget_2.insertRow(row)
             self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{sale.id}"))
-            self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{sale.id_client}"))
-            self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{sale.price}"))
-            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.datetime}"))
+            self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{sale.last_name}"))
+            self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{sale.first_name}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.price}"))
+            self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{sale.datetime}"))
         session.close()
 
 
@@ -488,7 +492,7 @@ class SaleForm(QDialog):
                 session.add(add_ticket)
                 session.commit()
             session.close()
-            """Сохраняем печатную форму билетОВ"""
+            """Сохраняем печатную форму билетов"""
             """Устанавливаем параметры макета билета"""
             pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf'))
             c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
