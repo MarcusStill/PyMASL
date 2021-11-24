@@ -489,6 +489,7 @@ class SaleForm(QDialog):
                 session.commit()
             session.close()
             """Сохраняем печатную форму билетОВ"""
+
             """Устанавливаем параметры макета билета"""
             pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf'))
             c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
