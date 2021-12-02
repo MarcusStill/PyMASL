@@ -393,9 +393,6 @@ class SaleForm(QDialog):
             currentrow = self.ui.tableWidget_2.currentRow()
             self.ui.tableWidget_2.removeRow(currentrow)
 
-    # def on_combobox_changed(self, value):
-    #     print("combobox changed", value)
-
 
     def edit_sale(self):
         """Обновляем таблицу заказа при двойном клике по ней"""
@@ -516,8 +513,9 @@ class SaleForm(QDialog):
             self.close()
             c.save()
             """Печатаем билеты"""
-
-
+            os.startfile("ticket.pdf", "print")
+            # pause 15 sec.
+            # os.system("TASKKILL /F /IM AcroRD32.exe")
         else:
             print('Оплата не прошла')
 
