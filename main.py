@@ -39,8 +39,8 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_2.clicked.connect(self.openClient)
         """Отображение всех клиентов"""
         self.ui.pushButton_4.clicked.connect(self.buttonAllClient)
-        self.ui.tableWidget.doubleClicked.connect(self.search_selected_item)
-        self.ui.pushButton_3.clicked.connect(self.search_selected_item)
+        self.ui.tableWidget.doubleClicked.connect(self.search_selected_client)
+        self.ui.pushButton_3.clicked.connect(self.search_selected_client)
         self.ui.pushButton.clicked.connect(self.search_client)
         self.ui.pushButton_8.clicked.connect(kkt.get_info)
         self.ui.pushButton_11.clicked.connect(kkt.last_document)
@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_12.clicked.connect(self.openSale)
         self.ui.pushButton_13.clicked.connect(self.buttonAllSales)
         self.ui.pushButton_14.clicked.connect(self.buttonAllTickets)
+        self.ui.tableWidget_2.doubleClicked.connect(self.search_selected_sale)
 
 
     def search_client(self):
@@ -113,8 +114,8 @@ class MainWindow(QMainWindow):
             session.close()
 
 
-    def search_selected_item(self):
-        """Поиск выделенной строки в таблице и открытие формы с найденными данными"""
+    def search_selected_client(self):
+        """Поиск выделенной строки в таблице клиентов и открытие формы с найденными данными"""
         for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
@@ -142,6 +143,15 @@ class MainWindow(QMainWindow):
             client.show()
             client.exec_()
 
+    def search_selected_sale(self):
+        """Поиск выделенной строки в таблице продаж и открытие формы с найденными данными"""
+        for idx in self.ui.tableWidget_2.selectionModel().selectedIndexes():
+            """Номер строки найден"""
+            row_number = idx.row()
+            session = Session()
+            search_sale = session.query(Sale).filter_by(id=(row_number+1)).first()
+            print(search_sale)
+
 
     def openClient(self):
         """Открываем форму с данными клиента"""
@@ -153,7 +163,7 @@ class MainWindow(QMainWindow):
     def openSale(self):
         """Открываем форму с продажей"""
         sale = SaleForm()
-        sale.buttonAllClient()
+        sale.button_all_clients_to_sale()
         sale.show()
         sale.exec_()
 
@@ -296,25 +306,6 @@ class ClientForm(QDialog):
         self.close()
 
 
-    # def buttonAllClient(self):
-    #     """Выводим в tableWidget список всех клиентов"""
-    #     session = Session()
-    #     clients = session.query(Client).order_by(Client.id)
-    #     for client in clients:
-    #         row = self.ui.tableWidget.rowCount()
-    #         self.ui.tableWidget.insertRow(row)
-    #         self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
-    #         self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
-    #         self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.first_name}"))
-    #         self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
-    #         self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
-    #         self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
-    #         self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
-    #         self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
-    #         self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
-    #     session.close()
-
-
 class SaleForm(QDialog):
     """Форма с данными клиента"""
     def __init__(self):
@@ -325,16 +316,15 @@ class SaleForm(QDialog):
         self.ui.pushButton_4.clicked.connect(self.close)
         self.ui.pushButton_5.clicked.connect(self.check_ticket_generate)
         self.ui.pushButton_6.clicked.connect(self.del_selected_item)
-        self.ui.tableWidget.doubleClicked.connect(self.search_selected_item)
-        #self.ui.tableWidget_2.doubleClicked.connect(self.edit_sale)
+        self.ui.tableWidget.doubleClicked.connect(self.add_client_to_sale)
         cur_today = date.today()
         self.ui.dateEdit.setDate(cur_today)
         self.ui.checkBox_2.setChecked(Qt.Checked)
         self.ui.comboBox.currentTextChanged.connect(self.edit_sale)
 
 
-    def buttonAllClient(self):
-        """Выводим в tableWidget список всех клиентов"""
+    def button_all_clients_to_sale(self):
+        """Выводим в tableWidget новой продажи список всех клиентов"""
         session = Session()
         clients = session.query(Client).order_by(Client.id)
         for client in clients:
@@ -349,8 +339,8 @@ class SaleForm(QDialog):
         session.close()
 
 
-    def search_selected_item(self):
-        """Поиск выделенной строки в таблице и открытие формы с найденными данными"""
+    def add_client_to_sale(self):
+        """Поиск выделенной строки в таблице клиентов и передача ее в таблицу заказа"""
         for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
@@ -395,7 +385,7 @@ class SaleForm(QDialog):
 
 
     def edit_sale(self):
-        """Обновляем таблицу заказа при двойном клике по ней"""
+        """Обновляем таблицу заказа"""
         kol_adult = 0
         kol_child = 0
         price_adult = 0
@@ -442,15 +432,6 @@ class SaleForm(QDialog):
         """Генерируем список с билетами"""
         for row in range(rows):
             tickets.append((self.ui.tableWidget_2.item(row, 0).text(), self.ui.tableWidget_2.item(row, 1).text(), self.ui.tableWidget_2.item(row, 2).text(), self.ui.tableWidget_2.item(row, 3).text(), self.ui.tableWidget_2.item(row, 4).text(), self.ui.tableWidget_2.item(row, 5).text(), self.ui.tableWidget_2.item(row, 6).text()))
-        print(tickets)
-        # for l in tickets:
-        #     for l in tickets:
-        #         print([l[0]])
-        #         print([l[1]])
-        #         print([l[2]])
-        #         print([l[3]])
-        #         print([l[4]])
-        #         print([l[5]])
         return sale_tuple, tickets
 
 
