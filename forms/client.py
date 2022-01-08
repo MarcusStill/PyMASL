@@ -1,18 +1,30 @@
-from PySide6.QtCore import QRect, QCoreApplication, QMetaObject
-from PySide6.QtWidgets import QToolBox, QWidget, QFormLayout, QDateEdit, QLabel, QLineEdit, QGridLayout, QComboBox, QHBoxLayout, QPushButton
+# -*- coding: utf-8 -*-
+
+################################################################################
+## Form generated from reading UI file 'client_2.ui'
+##
+## Created by: Qt User Interface Compiler version 6.1.0
+##
+## WARNING! All changes made in this file will be lost when recompiling UI file!
+################################################################################
+
+from PySide6.QtCore import *
+from PySide6.QtGui import *
+from PySide6.QtWidgets import *
 
 
 class Ui_Dialog_Client(object):
     def setupUi(self, Dialog_Client):
         if not Dialog_Client.objectName():
             Dialog_Client.setObjectName(u"Dialog_Client")
+        Dialog_Client.setWindowModality(Qt.ApplicationModal)
         Dialog_Client.resize(346, 313)
         self.toolBox = QToolBox(Dialog_Client)
         self.toolBox.setObjectName(u"toolBox")
         self.toolBox.setGeometry(QRect(10, 10, 341, 261))
         self.client = QWidget()
         self.client.setObjectName(u"client")
-        self.client.setGeometry(QRect(0, 0, 341, 227))
+        self.client.setGeometry(QRect(0, 0, 341, 231))
         self.layoutWidget = QWidget(self.client)
         self.layoutWidget.setObjectName(u"layoutWidget")
         self.layoutWidget.setGeometry(QRect(0, 0, 333, 221))
@@ -158,4 +170,3 @@ class Ui_Dialog_Client(object):
         self.pushButton.setText(QCoreApplication.translate("Dialog_Client", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c", None))
         self.pushButton_2.setText(QCoreApplication.translate("Dialog_Client", u"\u041e\u0442\u043c\u0435\u043d\u0430", None))
     # retranslateUi
-

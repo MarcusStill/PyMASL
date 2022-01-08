@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'sale_4.ui'
+## Form generated from reading UI file 'sale_6.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.1.0
 ##
@@ -17,6 +17,7 @@ class Ui_Dialog_Sale(object):
     def setupUi(self, Dialog_Sale):
         if not Dialog_Sale.objectName():
             Dialog_Sale.setObjectName(u"Dialog_Sale")
+        Dialog_Sale.setWindowModality(Qt.ApplicationModal)
         Dialog_Sale.resize(920, 791)
         self.groupBox = QGroupBox(Dialog_Sale)
         self.groupBox.setObjectName(u"groupBox")
@@ -47,6 +48,7 @@ class Ui_Dialog_Sale(object):
         self.tableWidget.setHorizontalHeaderItem(5, __qtablewidgetitem5)
         self.tableWidget.setObjectName(u"tableWidget")
         self.tableWidget.setGeometry(QRect(0, 60, 771, 331))
+        self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.layoutWidget = QWidget(self.groupBox)
         self.layoutWidget.setObjectName(u"layoutWidget")
         self.layoutWidget.setGeometry(QRect(110, 0, 305, 27))
@@ -102,7 +104,7 @@ class Ui_Dialog_Sale(object):
         self.tableWidget_2.setHorizontalHeaderItem(6, __qtablewidgetitem12)
         self.tableWidget_2.setObjectName(u"tableWidget_2")
         self.tableWidget_2.setGeometry(QRect(0, 400, 601, 381))
-        self.tableWidget_2.setEditTriggers(QAbstractItemView.DoubleClicked)
+        self.tableWidget_2.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.label_2 = QLabel(Dialog_Sale)
         self.label_2.setObjectName(u"label_2")
         self.label_2.setGeometry(QRect(740, 10, 161, 20))
@@ -187,7 +189,7 @@ class Ui_Dialog_Sale(object):
         self.line_4.setFrameShadow(QFrame.Sunken)
         self.checkBox_2 = QCheckBox(Dialog_Sale)
         self.checkBox_2.setObjectName(u"checkBox_2")
-        self.checkBox_2.setEnabled(False)
+        self.checkBox_2.setEnabled(True)
         self.checkBox_2.setGeometry(QRect(740, 230, 95, 25))
         self.comboBox_2 = QComboBox(Dialog_Sale)
         self.comboBox_2.addItem("")
@@ -196,8 +198,18 @@ class Ui_Dialog_Sale(object):
         self.comboBox_2.addItem("")
         self.comboBox_2.addItem("")
         self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
         self.comboBox_2.setObjectName(u"comboBox_2")
-        self.comboBox_2.setEnabled(True)
+        self.comboBox_2.setEnabled(False)
         self.comboBox_2.setGeometry(QRect(740, 290, 78, 30))
         self.line_5 = QFrame(Dialog_Sale)
         self.line_5.setObjectName(u"line_5")
@@ -284,6 +296,16 @@ class Ui_Dialog_Sale(object):
         self.comboBox_2.setItemText(3, QCoreApplication.translate("Dialog_Sale", u"15", None))
         self.comboBox_2.setItemText(4, QCoreApplication.translate("Dialog_Sale", u"20", None))
         self.comboBox_2.setItemText(5, QCoreApplication.translate("Dialog_Sale", u"25", None))
+        self.comboBox_2.setItemText(6, QCoreApplication.translate("Dialog_Sale", u"30", None))
+        self.comboBox_2.setItemText(7, QCoreApplication.translate("Dialog_Sale", u"35", None))
+        self.comboBox_2.setItemText(8, QCoreApplication.translate("Dialog_Sale", u"40", None))
+        self.comboBox_2.setItemText(9, QCoreApplication.translate("Dialog_Sale", u"45", None))
+        self.comboBox_2.setItemText(10, QCoreApplication.translate("Dialog_Sale", u"50", None))
+        self.comboBox_2.setItemText(11, QCoreApplication.translate("Dialog_Sale", u"60", None))
+        self.comboBox_2.setItemText(12, QCoreApplication.translate("Dialog_Sale", u"70", None))
+        self.comboBox_2.setItemText(13, QCoreApplication.translate("Dialog_Sale", u"80", None))
+        self.comboBox_2.setItemText(14, QCoreApplication.translate("Dialog_Sale", u"90", None))
+        self.comboBox_2.setItemText(15, QCoreApplication.translate("Dialog_Sale", u"100", None))
 
         self.label_15.setText(QCoreApplication.translate("Dialog_Sale", u"\u0411\u0435\u0437 \u0432\u0437\u0440\u043e\u0441\u043b\u043e\u0433\u043e", None))
     # retranslateUi

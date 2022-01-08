@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'main_form_2.ui'
+## Form generated from reading UI file 'main_form_3.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.1.0
 ##
@@ -17,6 +17,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
+        MainWindow.setWindowModality(Qt.WindowModal)
         MainWindow.resize(1920, 1080)
         self.action = QAction(MainWindow)
         self.action.setObjectName(u"action")
@@ -173,7 +174,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1920, 30))
+        self.menubar.setGeometry(QRect(0, 0, 1920, 22))
         self.menu = QMenu(self.menubar)
         self.menu.setObjectName(u"menu")
         MainWindow.setMenuBar(self.menubar)
@@ -186,7 +187,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)

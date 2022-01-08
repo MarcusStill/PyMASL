@@ -1,12 +1,13 @@
-from datetime import datetime, date
+from datetime import date, time
 import sys
 import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog, QCheckBox
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from forms.authorization import Ui_Dialog
 from forms.main_form import Ui_MainWindow
 from forms.client import Ui_Dialog_Client
 from forms.sale import Ui_Dialog_Sale
+from forms.pay import Ui_Dialog_Pay
 from models.client import Client
 from models.user import User
 from models.sale import Sale
@@ -143,6 +144,7 @@ class MainWindow(QMainWindow):
             client.show()
             client.exec_()
 
+
     def search_selected_sale(self):
         """Поиск выделенной строки в таблице продаж и открытие формы с найденными данными"""
         for idx in self.ui.tableWidget_2.selectionModel().selectedIndexes():
@@ -151,6 +153,8 @@ class MainWindow(QMainWindow):
             session = Session()
             search_sale = session.query(Sale).filter_by(id=(row_number+1)).first()
             print(search_sale)
+            session.close()
+        #search_sale = "WITH client_in_sale AS(SELECT * from client join ticket on client.id = ticket.id_client) SELECT * from client_in_sale WHERE id_sale = search_sale[0]"
 
 
     def openClient(self):
@@ -314,13 +318,22 @@ class SaleForm(QDialog):
         self.ui.setupUi(self)
         self.ui.pushButton_3.clicked.connect(self.close)
         self.ui.pushButton_4.clicked.connect(self.close)
-        self.ui.pushButton_5.clicked.connect(self.check_ticket_generate)
-        self.ui.pushButton_6.clicked.connect(self.del_selected_item)
+        #self.ui.pushButton_5.clicked.connect(self.openPay)
+        self.ui.pushButton_5.clicked.connect(lambda: self.openPay(self.ui.label_8.text()))
+        self.ui.pushButton_5.clicked.connect(self.close)
+        #self.ui.pushButton_5.clicked.connect(self.check_ticket_generate)
         self.ui.tableWidget.doubleClicked.connect(self.add_client_to_sale)
         cur_today = date.today()
         self.ui.dateEdit.setDate(cur_today)
-        self.ui.checkBox_2.setChecked(Qt.Checked)
         self.ui.comboBox.currentTextChanged.connect(self.edit_sale)
+        self.ui.checkBox_2.stateChanged.connect(self.check_sale_enabled)
+
+
+    def check_sale_enabled(self):
+        if self.ui.checkBox_2.isChecked():
+            self.ui.comboBox_2.setEnabled(True)
+        else:
+            self.ui.comboBox_2.setEnabled(False)
 
 
     def button_all_clients_to_sale(self):
@@ -373,12 +386,19 @@ class SaleForm(QDialog):
             self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{price}"))
             self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client.privilege}"))
             self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client.id}"))
+            self.ui.tableWidget_2.setColumnHidden(6, True)
             """Заполняем таблицу с итоговой информацией"""
             self.edit_sale()
 
+    def keyPressEvent(self, event):
+        """Отслеживаем нажатие кнопок "delete", "backspace" """
+        if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
+            self.del_selected_item()
+        QDialog.keyPressEvent(self, event)
+
 
     def del_selected_item(self):
-        """Удаляем запись из таблицы при нажатии кнопки "возврат" """
+        """Удаляем запись из таблицы при нажатии кнопки в keyPressEvent"""
         if self.ui.tableWidget_2.rowCount() > 0:
             currentrow = self.ui.tableWidget_2.currentRow()
             self.ui.tableWidget_2.removeRow(currentrow)
@@ -435,12 +455,11 @@ class SaleForm(QDialog):
         return sale_tuple, tickets
 
 
-
     def check_ticket_generate(self):
         """Сохраняем данные данные заказа"""
         sale_tuple, tickets = self.edit_sale()
-        #state_check = kkt.check_open_2(sale_tuple)
-        state_check = 1
+        state_check = kkt.check_open_2(sale_tuple)
+        #state_check = 1
         price = 0
         """Если прошла оплата"""
         if state_check == 1:
@@ -457,6 +476,8 @@ class SaleForm(QDialog):
             pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf'))
             c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
             c.setFont('DejaVuSerif', 12)
+            """Удаляем предыдущий файл с билетами"""
+            os.remove("ticket.pdf")
             """Сохраняем билеты"""
             session = Session()
             sale_index = session.query(Sale).count()
@@ -495,14 +516,75 @@ class SaleForm(QDialog):
             c.save()
             """Печатаем билеты"""
             os.startfile("ticket.pdf", "print")
-            # pause 15 sec.
-            # os.system("TASKKILL /F /IM AcroRD32.exe")
+            time.sleep(5)
+            os.system("TASKKILL /F /IM AcroRD32.exe")
         else:
             print('Оплата не прошла')
 
 
+    def openPay(self, txt):
+        """Открываем форму оплаты"""
+        # pay = PayForm()
+        # # Передаем текст в форму PayForm
+        # pay.setText(txt)
+        # # При нажатии на кнопку на форме PayForm в SaleForm запустится метод генерации чека
+        # pay.startGenerate.connect(self.check_ticket_generate)
+        # pay.exec_()
+
+        pay = PayForm()
+        # Передаем текст в форму PayForm
+        pay.setText(txt)
+        res = pay.exec_()
+        # если пользователь нажал крестик или кнопку Escape,
+        # то по-умолчанию возвращается QDialog.Rejected
+        if res == QDialog.Rejected:
+            # наверное, надо ничего не делать в этом случае и
+            # просто завершить работу функции
+            return
+            # или закрыть SaleForm при помощи вызова reject()
+
+        # иначе, если оплата выбрана
+        if res == PaymentType.ByCard:
+        # Оплачено картой
+            self.check_ticket_generate()
+            pass
+        elif res == PaymentType.ByCash:
+            self.check_ticket_generate()
+            pass
+        # Генерируем чек
+        # Закрываем окно продажи и возвращаем QDialog.Accepted
+        #self.accept()
+
+
+# Тип платежа (перечисление)
+class PaymentType:
+    ByCard = 101
+    ByCash = 102
+
+
+class PayForm(QDialog):
+    """Форма оплаты"""
+    startGenerate = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Dialog_Pay()
+        self.ui.setupUi(self)
+        # Посылаем сигнал генерации чека
+        # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
+        # при вызове done() окно должно закрыться и exec_ вернет переданный аргумент из done()
+        self.ui.pushButton.clicked.connect(lambda: self.done(PaymentType.ByCash))
+        self.ui.pushButton_2.clicked.connect(lambda: self.done(PaymentType.ByCard))
+
+
+        # Устанавливаем текстовое значение в метку
+    def setText(self, txt):
+        self.ui.label_2.setText(txt)
+
+
 if __name__ == "__main__":
-    app = QApplication()
+    app = QApplication(sys.argv)
+    #app = QApplication()
 
     auth = AuthForm()
     auth.show()
