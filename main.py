@@ -12,21 +12,44 @@ from models.client import Client
 from models.user import User
 from models.sale import Sale
 from models.ticket import Ticket
-from sqlalchemy import create_engine, and_
+from sqlalchemy import create_engine, and_, exc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
-from connect import connect
 import kkt
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-engine = create_engine("postgresql://postgres:secret@192.168.251.111:5432/masl", echo=True)
+from configparser import ConfigParser
+
+
+#Чтение параметров подключения из файла конфигурации
+config = ConfigParser()
+config.read("config.ini")
+host = config.get("DATABASE", "host")
+port = config.get("DATABASE", "port")
+database = config.get("DATABASE", "database")
+user = config.get("DATABASE", "user")
+password = config.get("DATABASE", "password")
+
+
+engine = create_engine("postgresql://postgres:" + password + "@" + host + ":" + port + "/" + database, echo=True)
 
 
 Base = declarative_base(bind=engine)
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
+
+#Прверка соединения с БД
+test_conn = engine.connect()
+
+try:
+    test_conn.execute("SELECT * FROM user")
+    test_conn.close()
+    test_conn = 1
+except exc.DBAPIError:
+    if engine.connection_invalidated:
+        print("Connection was invalidated!")
 
 
 class MainWindow(QMainWindow):
@@ -245,8 +268,7 @@ class AuthForm(QDialog):
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
         """Проверяем статус соединения с БД"""
-        db_version = connect()
-        if db_version:
+        if test_conn == 1:
             self.ui.label_3.setText('установлено')
         else:
             self.ui.label_3.setText('ошибка!')
