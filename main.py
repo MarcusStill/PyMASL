@@ -524,13 +524,6 @@ class SaleForm(QDialog):
 
     def openPay(self, txt):
         """Открываем форму оплаты"""
-        # pay = PayForm()
-        # # Передаем текст в форму PayForm
-        # pay.setText(txt)
-        # # При нажатии на кнопку на форме PayForm в SaleForm запустится метод генерации чека
-        # pay.startGenerate.connect(self.check_ticket_generate)
-        # pay.exec_()
-
         pay = PayForm()
         # Передаем текст в форму PayForm
         pay.setText(txt)
@@ -546,14 +539,15 @@ class SaleForm(QDialog):
         # иначе, если оплата выбрана
         if res == PaymentType.ByCard:
         # Оплачено картой
-            self.check_ticket_generate()
-            pass
+            print('CARD')
+
         elif res == PaymentType.ByCash:
-            self.check_ticket_generate()
-            pass
+            print('CASH')
+
         # Генерируем чек
+        self.check_ticket_generate()
         # Закрываем окно продажи и возвращаем QDialog.Accepted
-        #self.accept()
+        self.accept()
 
 
 # Тип платежа (перечисление)
@@ -584,7 +578,6 @@ class PayForm(QDialog):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    #app = QApplication()
 
     auth = AuthForm()
     auth.show()
