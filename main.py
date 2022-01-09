@@ -21,9 +21,10 @@ from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from configparser import ConfigParser
+from logger import *
 
 
-#Чтение параметров подключения из файла конфигурации
+#Чтение параметров из файла конфигурации
 config = ConfigParser()
 config.read("config.ini")
 host = config.get("DATABASE", "host")
@@ -31,6 +32,7 @@ port = config.get("DATABASE", "port")
 database = config.get("DATABASE", "database")
 user = config.get("DATABASE", "user")
 password = config.get("DATABASE", "password")
+software_version = config.get("OTHER", "version")
 
 
 engine = create_engine("postgresql://postgres:" + password + "@" + host + ":" + port + "/" + database, echo=True)
@@ -40,16 +42,19 @@ Base = declarative_base(bind=engine)
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 
-#Прверка соединения с БД
-test_conn = engine.connect()
 
+logger.add("debug.log", rotation="10 KB")
+
+#Прверка соединения с БД
+logger.info("Test connection")
+test_conn = engine.connect()
 try:
-    test_conn.execute("SELECT * FROM user")
+    test_conn.execute("SELECT id FROM public." + 'user' + " WHERE id=1")
     test_conn.close()
     test_conn = 1
 except exc.DBAPIError:
     if engine.connection_invalidated:
-        print("Connection was invalidated!")
+        logger.info("Connection was invalidated!")
 
 
 class MainWindow(QMainWindow):
@@ -78,10 +83,12 @@ class MainWindow(QMainWindow):
         self.ui.tableWidget_2.doubleClicked.connect(self.search_selected_sale)
 
 
+    @logger_wraps()
     def search_client(self):
         """Поиск клиента"""
+        logger.info("Inside the function def search_client")
         combo_active_item = self.ui.comboBox.currentText()
-        print(combo_active_item)
+        logger.info(combo_active_item)
         if combo_active_item == 'телефон':
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
@@ -138,8 +145,10 @@ class MainWindow(QMainWindow):
             session.close()
 
 
+    @logger_wraps()
     def search_selected_client(self):
         """Поиск выделенной строки в таблице клиентов и открытие формы с найденными данными"""
+        logger.info("Inside the function def search_selected_client")
         for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
@@ -168,35 +177,43 @@ class MainWindow(QMainWindow):
             client.exec_()
 
 
+    @logger_wraps()
     def search_selected_sale(self):
         """Поиск выделенной строки в таблице продаж и открытие формы с найденными данными"""
+        logger.info("Inside the function def search_client")
         for idx in self.ui.tableWidget_2.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
             session = Session()
             search_sale = session.query(Sale).filter_by(id=(row_number+1)).first()
-            print(search_sale)
+            logger.info(search_sale)
             session.close()
         #search_sale = "WITH client_in_sale AS(SELECT * from client join ticket on client.id = ticket.id_client) SELECT * from client_in_sale WHERE id_sale = search_sale[0]"
 
 
+    @logger_wraps()
     def openClient(self):
         """Открываем форму с данными клиента"""
+        logger.info("Inside the function def openClient")
         client = ClientForm()
         client.show()
         client.exec_()
 
 
+    @logger_wraps()
     def openSale(self):
         """Открываем форму с продажей"""
+        logger.info("Inside the function def openSale")
         sale = SaleForm()
         sale.button_all_clients_to_sale()
         sale.show()
         sale.exec_()
 
 
+    @logger_wraps()
     def buttonAllClient(self):
         """Очищаем tableWidget"""
+        logger.info("Inside the function def buttonAllClient")
         self.ui.tableWidget.setRowCount(0)
         session = Session()
         clients = session.query(Client).order_by(Client.id)
@@ -216,8 +233,10 @@ class MainWindow(QMainWindow):
         session.close()
 
 
+    @logger_wraps()
     def buttonAllSales(self):
         """Очищаем tableWidget"""
+        logger.info("Inside the function def buttonAllSales")
         self.ui.tableWidget_2.setRowCount(0)
         session = Session()
         sales = session.query(Sale).order_by(Sale.id)
@@ -232,8 +251,10 @@ class MainWindow(QMainWindow):
 
 
     # !нужно ли?
+    @logger_wraps()
     def buttonAllTickets(self):
         """Очищаем tableWidget"""
+        logger.info("Inside the function def buttonAllTickets")
         self.ui.tableWidget_3.setRowCount(0)
         session = Session()
         tickets = session.query(Ticket).order_by(Ticket.id)
@@ -254,8 +275,10 @@ class MainWindow(QMainWindow):
 
 class AuthForm(QDialog):
     """Форма авторизации"""
-    """Проверяем есть ли в таблице user запись с указанными полями"""
+    @logger_wraps()
     def logincheck(self):
+        """Проверяем есть ли в таблице user запись с указанными полями"""
+        logger.info("Inside the function def logincheck")
         session = Session()
         result = session.query(User).filter(and_(User.login == self.ui.lineEdit.text(), User.login == self.ui.lineEdit_2.text())).first()
         session.close()
@@ -272,12 +295,15 @@ class AuthForm(QDialog):
             self.ui.label_3.setText('установлено')
         else:
             self.ui.label_3.setText('ошибка!')
+        self.ui.label_7.setText(software_version)
         self.ui.pushButton.clicked.connect(self.logincheck)
         self.ui.pushButton_2.clicked.connect(self.close)
 
 
+    @logger_wraps()
     def openMain(self):
         """После закрытия окна авторизации открываем главную форму"""
+        logger.info("Inside the function def openMain")
         auth.close()
         window = MainWindow()
         window.buttonAllClient()
@@ -315,8 +341,10 @@ class ClientForm(QDialog):
     #         print("Ошибка ввода! Введите дату корректно.")
 
 
+    @logger_wraps()
     def buttonSave(self):
         """Сохраняем информацию о новом клиенте"""
+        logger.info("Inside the function def buttonSave")
         session = Session()
         add_client = Client(last_name=str(self.ui.lineEdit.text()),
                             first_name=str(self.ui.lineEdit_2.text()),
@@ -351,15 +379,19 @@ class SaleForm(QDialog):
         self.ui.checkBox_2.stateChanged.connect(self.check_sale_enabled)
 
 
+    @logger_wraps()
     def check_sale_enabled(self):
+        logger.info("Inside the function def check_sale_enabled")
         if self.ui.checkBox_2.isChecked():
             self.ui.comboBox_2.setEnabled(True)
         else:
             self.ui.comboBox_2.setEnabled(False)
 
 
+    @logger_wraps()
     def button_all_clients_to_sale(self):
         """Выводим в tableWidget новой продажи список всех клиентов"""
+        logger.info("Inside the function def button_all_clients_to_sale")
         session = Session()
         clients = session.query(Client).order_by(Client.id)
         for client in clients:
@@ -374,8 +406,10 @@ class SaleForm(QDialog):
         session.close()
 
 
-    def add_client_to_sale(self):
+    @logger_wraps()
+    def add_client_to_sale(self, *args, **kwargs):
         """Поиск выделенной строки в таблице клиентов и передача ее в таблицу заказа"""
+        logger.info("Inside the function def add_client_to_sale")
         for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
@@ -412,22 +446,29 @@ class SaleForm(QDialog):
             """Заполняем таблицу с итоговой информацией"""
             self.edit_sale()
 
+
+    @logger_wraps()
     def keyPressEvent(self, event):
         """Отслеживаем нажатие кнопок "delete", "backspace" """
+        logger.info("Inside the function def keyPressEvent")
         if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
             self.del_selected_item()
         QDialog.keyPressEvent(self, event)
 
 
+    @logger_wraps()
     def del_selected_item(self):
         """Удаляем запись из таблицы при нажатии кнопки в keyPressEvent"""
+        logger.info("Inside the function def del_selected_item")
         if self.ui.tableWidget_2.rowCount() > 0:
             currentrow = self.ui.tableWidget_2.currentRow()
             self.ui.tableWidget_2.removeRow(currentrow)
 
 
+    @logger_wraps()
     def edit_sale(self):
         """Обновляем таблицу заказа"""
+        logger.info("Inside the function def edit_sale")
         kol_adult = 0
         kol_child = 0
         price_adult = 0
@@ -477,8 +518,10 @@ class SaleForm(QDialog):
         return sale_tuple, tickets
 
 
+    @logger_wraps()
     def check_ticket_generate(self):
         """Сохраняем данные данные заказа"""
+        logger.info("Inside the function def check_ticket_generate")
         sale_tuple, tickets = self.edit_sale()
         state_check = kkt.check_open_2(sale_tuple)
         #state_check = 1
@@ -541,11 +584,13 @@ class SaleForm(QDialog):
             time.sleep(5)
             os.system("TASKKILL /F /IM AcroRD32.exe")
         else:
-            print('Оплата не прошла')
+            logger.info('Оплата не прошла')
 
 
+    @logger_wraps()
     def openPay(self, txt):
         """Открываем форму оплаты"""
+        logger.info("Inside the function def openPay")
         pay = PayForm()
         # Передаем текст в форму PayForm
         pay.setText(txt)
@@ -561,10 +606,10 @@ class SaleForm(QDialog):
         # иначе, если оплата выбрана
         if res == PaymentType.ByCard:
         # Оплачено картой
-            print('CARD')
+            logger.info('CARD')
 
         elif res == PaymentType.ByCash:
-            print('CASH')
+            logger.info('CASH')
 
         # Генерируем чек
         self.check_ticket_generate()
@@ -581,17 +626,15 @@ class PaymentType:
 class PayForm(QDialog):
     """Форма оплаты"""
     startGenerate = Signal()
-
     def __init__(self):
-        super().__init__()
-        self.ui = Ui_Dialog_Pay()
-        self.ui.setupUi(self)
-        # Посылаем сигнал генерации чека
-        # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
-        # при вызове done() окно должно закрыться и exec_ вернет переданный аргумент из done()
-        self.ui.pushButton.clicked.connect(lambda: self.done(PaymentType.ByCash))
-        self.ui.pushButton_2.clicked.connect(lambda: self.done(PaymentType.ByCard))
-
+            super().__init__()
+            self.ui = Ui_Dialog_Pay()
+            self.ui.setupUi(self)
+            # Посылаем сигнал генерации чека
+            # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
+            # при вызове done() окно должно закрыться и exec_ вернет переданный аргумент из done()
+            self.ui.pushButton.clicked.connect(lambda: self.done(PaymentType.ByCash))
+            self.ui.pushButton_2.clicked.connect(lambda: self.done(PaymentType.ByCard))
 
         # Устанавливаем текстовое значение в метку
     def setText(self, txt):

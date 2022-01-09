@@ -1,11 +1,14 @@
 from libfptr10 import IFptr
+from logger import *
 
 
 fptr = IFptr('')
 
 
+@logger_wraps()
 def get_model():
 	""""Запрос информации о модели ККТ"""
+	logger.info("Inside the function def get_model_kkt")
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
 	fptr.queryData()
@@ -15,81 +18,99 @@ def get_model():
 	fptr.close()
 
 
+@logger_wraps()
 def get_info():
 	"""Запрос информации о ККТ"""
+	logger.info("Inside the function def get_info")
 	"""Заводской номер ККТ"""
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SERIAL_NUMBER)
 	fptr.queryData()
-	print('Заводской номер ККТ: ', fptr.getParamString(IFptr.LIBFPTR_PARAM_SERIAL_NUMBER))
+	logger.info('Заводской номер ККТ: ', fptr.getParamString(IFptr.LIBFPTR_PARAM_SERIAL_NUMBER))
 	"""РН ККТ"""
 	fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_REG_INFO)
 	fptr.fnQueryData()
-	print('PH: ', fptr.getParamString(1037))
+	logger.info('PH: ', fptr.getParamString(1037))
 	"""Серийный номер ФН"""
 	fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_FN_INFO)
 	fptr.fnQueryData()
-	print('Серийный номер ФН: ', fptr.getParamString(IFptr.LIBFPTR_PARAM_SERIAL_NUMBER))
+	logger.info('Серийный номер ФН: ', fptr.getParamString(IFptr.LIBFPTR_PARAM_SERIAL_NUMBER))
 	fptr.close()
 
+
+@logger_wraps()
 def get_status_obmena():
 	"""Статус информационного обмена"""
+	logger.info("Inside the function def get_status_obmena")
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS)
 	fptr.fnQueryData()
-	print('ExchangeStatus: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS))
-	print('UnsentCount: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT))
-	print('FirstUnsentNumber: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER))
-	print('OfdMessageRead: ', fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ))
-	print('Date FN: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
+	logger.info('ExchangeStatus: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS))
+	logger.info('UnsentCount: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT))
+	logger.info('FirstUnsentNumber: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER))
+	logger.info('OfdMessageRead: ', fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ))
+	logger.info('Date FN: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
 	fptr.close()
 
-
+@logger_wraps()
 def get_time():
 	"""Запрос текущих даты и времени ККТ"""
+	logger.info("Inside the function def get_time")
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
 	fptr.queryData()
-	print('Текущие дата и время ККТ: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
+	logger.info('Текущие дата и время ККТ: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
 	fptr.close()
 
 
+@logger_wraps()
 def smena_info():
 	"""Запрос состояния смены"""
+	logger.info("Inside the function def smena_info")
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
 	fptr.queryData()
-	print('Состояние смены: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE))
-	print('Номер смены: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER))
-	print('Текущие дата и время ККТ: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
+	logger.info('Состояние смены: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE))
+	logger.info('Номер смены: ', fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER))
+	logger.info('Текущие дата и время ККТ: ', fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME))
 	fptr.beep()
 	fptr.close()
 
 
+@logger_wraps()
 def last_document():
 	"""Копия последнего документа"""
+	logger.info("Inside the function def last_document")
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT)
 	fptr.report()	
 	fptr.close()
 
+
+@logger_wraps()
 def report_payment():
 	"""Отчет о состоянии расчетов"""
+	logger.info("Inside the function def report_payment")
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS)
 	fptr.report()
 	fptr.close()
 
 
+@logger_wraps()
 def report_x():
 	"""X-отчет"""
+	logger.info("Inside the function def report_x")
 	fptr.open()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
 	fptr.report()
 	fptr.close()
 
+
+@logger_wraps()
 def kassir_reg():
 	"""Регистрация кассира"""
+	logger.info("Inside the function def kassir_reg")
 	fptr.open()
 	fptr.setParam(1021, "Кассир Иванов И. И.")
 	fptr.setParam(1203, "312329419227")
@@ -98,8 +119,10 @@ def kassir_reg():
 	fptr.close()
 
 
+@logger_wraps()
 def smena_open():
 	"""Открытие смены"""
+	logger.info("Inside the function def smena_open")
 	fptr.open()
 	fptr.setParam(1021, "Кассир Иванов И. И.")
 	fptr.setParam(1203, "312329419227")
@@ -110,8 +133,10 @@ def smena_open():
 	fptr.close()
 
 
+@logger_wraps()
 def check_open():
 	"""Открытие печатного чека"""
+	logger.info("Inside the function def check_open")
 	fptr.open()
 	fptr.setParam(1021, "Кассир Иванов И. И.")
 	fptr.setParam(1203, "312329419227")
@@ -141,7 +166,10 @@ def check_open():
 	fptr.continuePrint()
 	fptr.close()
 
+
+@logger_wraps()
 def check_open_2(sale_tuple):
+	logger.info("Inside the function def check_open_2")
 	sale = sale_tuple
 	state = 0
 	"""Открытие печатного чека"""
@@ -189,8 +217,10 @@ def check_open_2(sale_tuple):
 	return state
 
 
+@logger_wraps()
 def smena_close():
 	"""Закрытие смены"""
+	logger.info("Inside the function def smena_close")
 	fptr.open()
 	fptr.setParam(1021, "Кассир Иванов И. И.")
 	fptr.setParam(1203, "312329419227")
@@ -202,7 +232,9 @@ def smena_close():
 	fptr.close()
 
 
+@logger_wraps()
 def check_info():
+	logger.info("Inside the function def check_info")
 	fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_RECEIPT_STATE)
 	fptr.queryData()
 
