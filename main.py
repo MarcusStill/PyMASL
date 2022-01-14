@@ -1,7 +1,8 @@
-from datetime import date, time
+from datetime import date
+import time as t
 import sys
 import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog, QCheckBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog, QCheckBox, QWidget, QMessageBox
 from PySide6.QtCore import Qt, Signal
 from forms.authorization import Ui_Dialog
 from forms.main_form import Ui_MainWindow
@@ -22,6 +23,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from configparser import ConfigParser
 from logger import *
+import psycopg2
+import windows
 
 
 #Чтение параметров из файла конфигурации
@@ -33,6 +36,7 @@ database = config.get("DATABASE", "database")
 user = config.get("DATABASE", "user")
 password = config.get("DATABASE", "password")
 software_version = config.get("OTHER", "version")
+log_file = config.get("OTHER", "log_file")
 
 
 engine = create_engine("postgresql://postgres:" + password + "@" + host + ":" + port + "/" + database, echo=True)
@@ -43,18 +47,7 @@ session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 
 
-logger.add("debug.log", rotation="10 KB")
-
-#Прверка соединения с БД
-logger.info("Test connection")
-test_conn = engine.connect()
-try:
-    test_conn.execute("SELECT id FROM public." + 'user' + " WHERE id=1")
-    test_conn.close()
-    test_conn = 1
-except exc.DBAPIError:
-    if engine.connection_invalidated:
-        logger.info("Connection was invalidated!")
+logger.add(log_file)
 
 
 class MainWindow(QMainWindow):
@@ -72,11 +65,12 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_3.clicked.connect(self.search_selected_client)
         self.ui.pushButton.clicked.connect(self.search_client)
         self.ui.pushButton_8.clicked.connect(kkt.get_info)
-        self.ui.pushButton_11.clicked.connect(kkt.last_document)
+        self.ui.pushButton_11.clicked.connect(kkt.last_document) #+
         self.ui.pushButton_9.clicked.connect(kkt.get_time)
-        self.ui.pushButton_5.clicked.connect(kkt.report_x)
+        self.ui.pushButton_5.clicked.connect(kkt.report_x) #+
         self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
-        self.ui.pushButton_6.clicked.connect(kkt.smena_close())
+        self.ui.pushButton_6.clicked.connect(kkt.smena_close)
+        self.ui.pushButton_10.clicked.connect(kkt.smena_info)
         self.ui.pushButton_12.clicked.connect(self.openSale)
         self.ui.pushButton_13.clicked.connect(self.buttonAllSales)
         self.ui.pushButton_14.clicked.connect(self.buttonAllTickets)
@@ -275,40 +269,56 @@ class MainWindow(QMainWindow):
 
 class AuthForm(QDialog):
     """Форма авторизации"""
-    @logger_wraps()
+
+
+    #@logger_wraps()
     def logincheck(self):
         """Проверяем есть ли в таблице user запись с указанными полями"""
         logger.info("Inside the function def logincheck")
         session = Session()
-        result = session.query(User).filter(and_(User.login == self.ui.lineEdit.text(), User.login == self.ui.lineEdit_2.text())).first()
+        result = session.query(User).filter(and_(User.login == self.ui.lineEdit.text(), User.password == self.ui.lineEdit_2.text())).first()
+        kassir = session.query(User.last_name, User.first_name, User.middle_name).filter(and_(User.login == self.ui.lineEdit.text(), User.password == self.ui.lineEdit_2.text())).first()
         session.close()
         if result:
-            self.openMain()
-
-
-    def __init__(self):
-        super().__init__()
-        self.ui = Ui_Dialog()
-        self.ui.setupUi(self)
-        """Проверяем статус соединения с БД"""
-        if test_conn == 1:
-            self.ui.label_3.setText('установлено')
+            """После закрытия окна авторизации открываем главную форму"""
+            auth.close()
+            self.openMain(kassir)
         else:
-            self.ui.label_3.setText('ошибка!')
-        self.ui.label_7.setText(software_version)
-        self.ui.pushButton.clicked.connect(self.logincheck)
-        self.ui.pushButton_2.clicked.connect(self.close)
+            info = 'Пользователь не найден'
+            windows.info_window(info, 'Проверьте правильность ввода логина и пароля.')
 
 
     @logger_wraps()
-    def openMain(self):
+    def openMain(self, kassir):
         """После закрытия окна авторизации открываем главную форму"""
         logger.info("Inside the function def openMain")
+        logger.debug(kassir)
         auth.close()
         window = MainWindow()
         window.buttonAllClient()
         window.show()
         window.exec_()
+
+    def __init__(self):
+        super().__init__()
+        """Проверяем статус соединения с БД"""
+        try:
+            db = psycopg2.connect("dbname="+database+" user="+user+" host="+host+" password="+password)
+            if db:
+                result = 1
+        except:
+            logger.warning("Connection was invalidated")
+            result = 0
+        finally:
+            self.ui = Ui_Dialog()
+            self.ui.setupUi(self)
+            if result == 1:
+                self.ui.label_3.setText('установлено')
+            else:
+                self.ui.label_3.setText('ошибка соединения!')
+            self.ui.label_7.setText(software_version)
+            self.ui.pushButton.clicked.connect(self.logincheck)
+            self.ui.pushButton_2.clicked.connect(self.close)
 
 
 class ClientForm(QDialog):
@@ -368,7 +378,6 @@ class SaleForm(QDialog):
         self.ui.setupUi(self)
         self.ui.pushButton_3.clicked.connect(self.close)
         self.ui.pushButton_4.clicked.connect(self.close)
-        #self.ui.pushButton_5.clicked.connect(self.openPay)
         self.ui.pushButton_5.clicked.connect(lambda: self.openPay(self.ui.label_8.text()))
         self.ui.pushButton_5.clicked.connect(self.close)
         #self.ui.pushButton_5.clicked.connect(self.check_ticket_generate)
@@ -377,9 +386,10 @@ class SaleForm(QDialog):
         self.ui.dateEdit.setDate(cur_today)
         self.ui.comboBox.currentTextChanged.connect(self.edit_sale)
         self.ui.checkBox_2.stateChanged.connect(self.check_sale_enabled)
+        self.ui.comboBox_2.currentTextChanged.connect(self.edit_sale)
 
 
-    @logger_wraps()
+    #@logger_wraps()
     def check_sale_enabled(self):
         logger.info("Inside the function def check_sale_enabled")
         if self.ui.checkBox_2.isChecked():
@@ -463,11 +473,13 @@ class SaleForm(QDialog):
         if self.ui.tableWidget_2.rowCount() > 0:
             currentrow = self.ui.tableWidget_2.currentRow()
             self.ui.tableWidget_2.removeRow(currentrow)
+            self.edit_sale()
 
 
-    @logger_wraps()
+    #@logger_wraps() ломает работу функции
     def edit_sale(self):
         """Обновляем таблицу заказа"""
+        logger.debug("combobox changed!")
         logger.info("Inside the function def edit_sale")
         kol_adult = 0
         kol_child = 0
@@ -518,12 +530,12 @@ class SaleForm(QDialog):
         return sale_tuple, tickets
 
 
-    @logger_wraps()
-    def check_ticket_generate(self):
+    @logger.catch()
+    def check_ticket_generate(self, payment_type):
         """Сохраняем данные данные заказа"""
         logger.info("Inside the function def check_ticket_generate")
         sale_tuple, tickets = self.edit_sale()
-        state_check = kkt.check_open_2(sale_tuple)
+        state_check = kkt.check_open(sale_tuple, payment_type)
         #state_check = 1
         price = 0
         """Если прошла оплата"""
@@ -537,12 +549,14 @@ class SaleForm(QDialog):
             session.commit()
             session.close()
             self.close()
+            #проверка сохранения данных  в БД
+            """Удаляем предыдущий файл с билетами"""
+            if os.path.exists('./ticket.pdf'):
+                os.remove('./ticket.pdf')
             """Устанавливаем параметры макета билета"""
             pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf'))
             c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
             c.setFont('DejaVuSerif', 12)
-            """Удаляем предыдущий файл с билетами"""
-            os.remove("ticket.pdf")
             """Сохраняем билеты"""
             session = Session()
             sale_index = session.query(Sale).count()
@@ -580,14 +594,17 @@ class SaleForm(QDialog):
             self.close()
             c.save()
             """Печатаем билеты"""
+            t.sleep(5)
             os.startfile("ticket.pdf", "print")
-            time.sleep(5)
+            t.sleep(5)
             os.system("TASKKILL /F /IM AcroRD32.exe")
+            os.system("TASKKILL /F /IM Acrobat.exe")
         else:
             logger.info('Оплата не прошла')
+            windows.info_window("Оплата не прошла", '')
 
 
-    @logger_wraps()
+    #@logger_wraps()
     def openPay(self, txt):
         """Открываем форму оплаты"""
         logger.info("Inside the function def openPay")
@@ -607,12 +624,15 @@ class SaleForm(QDialog):
         if res == PaymentType.ByCard:
         # Оплачено картой
             logger.info('CARD')
-
+            payment_type = PaymentType.ByCard
+            #запустить оплату по терминалу
+            self.check_ticket_generate(payment_type)
         elif res == PaymentType.ByCash:
             logger.info('CASH')
-
+            payment_type = PaymentType.ByCash
+            self.check_ticket_generate(payment_type)
         # Генерируем чек
-        self.check_ticket_generate()
+
         # Закрываем окно продажи и возвращаем QDialog.Accepted
         self.accept()
 
