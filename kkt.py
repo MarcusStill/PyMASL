@@ -7,6 +7,7 @@ import subprocess
 fptr = IFptr('')
 
 
+@logger_wraps()
 def terminal_oplata(sum):
     """Операуия оплаты по дбанковскому терминалу"""
     sum += '00'
@@ -32,6 +33,7 @@ def terminal_oplata(sum):
     return result
 
 
+@logger_wraps()
 def terminal_vozvrat(sum):
     """Операуия возврата по дбанковскому терминалу"""
     pinpad_file = r"C:\sc552\p"
@@ -57,6 +59,7 @@ def terminal_vozvrat(sum):
     return result
 
 
+@logger_wraps()
 def terminal_check_itog():
     """Сверка итогов работы дбанковского терминала"""
     logger.info("Proverka file")
@@ -74,7 +77,63 @@ def terminal_check_itog():
         print('File not found:', not_found.filename)
         logger.info("File not found")
         result = 0
-    return result
+    return result, lines
+
+
+@logger_wraps()
+def read_slip_check():
+    logger.info("Чтение слип-чека из файла")
+    pinpad_file = r"C:\sc552\p"
+    try:
+        with open(pinpad_file, 'r', encoding='IBM866') as file:
+            while (line := file.readline().rstrip()):
+                print(line)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+                fptr.printText()
+                # Перенос строки
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+    except FileNotFoundError as not_found:
+        logger.warning("Проверка файла завершилась с ошибкой")
+        logger.warning(not_found.filename)
+
+
+@logger_wraps()
+def print_slip_check():
+    logger.info("Функция печати нефискального документа")
+    logger.info("Открываем соединение с ККМ")
+    fptr.open()
+    logger.info("Открытие нефискального документа")
+    fptr.beginNonfiscalDocument()
+    logger.info("Читаем чек из файла")
+    read_slip_check()
+    logger.info("Промотка чековой ленты на одну строку (пустую)")
+    fptr.printText()
+    logger.info("Закрытие нефискального документа")
+    fptr.endNonfiscalDocument()
+    logger.info("Печать документа")
+    fptr.report()
+    #Частичная отрезка ЧЛ
+    fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
+    logger.info("Отрезаем чек")
+    fptr.cut()
+    logger.info("Создение копии нефискального документа")
+    # Печатаем копию слип-чека
+    fptr.beginNonfiscalDocument()
+    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "Копия 1")
+    fptr.printText()
+    read_slip_check()
+    logger.info("Промотка чековой ленты на одну строку (пустую)")
+    fptr.printText()
+    logger.info("Закрытие нефискального документа")
+    fptr.endNonfiscalDocument()
+    logger.info("Печать документа")
+    fptr.report()
+    # Частичная отрезка ЧЛ
+    fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
+    logger.info("Отрезаем чек")
+    fptr.cut()
+    logger.info("Закрываем соединение с ККМ")
+    fptr.close()
 
 
 @logger_wraps()
@@ -91,8 +150,8 @@ def get_info():
 	logger.info("Наименование ККТ: %s" % (modelName))
 	logger.info("Версия ПО ККТ: %s" % (firmwareVersion))
 	fptr.close()
-	info = "Номер модели ККТ: " + str(model) + ". Наименование ККТ: " + str(
-		modelName) + ". Версия ПО ККТ: " + str(firmwareVersion)
+	info = "Номер модели ККТ: " + str(model) + ".\nНаименование ККТ: " + str(
+		modelName) + ".\nВерсия ПО ККТ: " + str(firmwareVersion)
 	windows.info_window('Смотрите подробную информацию.', info)
 
 
@@ -114,7 +173,7 @@ def get_status_obmena():
 	logger.info("OfdMessageRead: %s" % (ofdMessageRead))
 	logger.info("DateTime: %s" % (dateTime))
 	fptr.close()
-	info = "ExchangeStatus: " + str(exchangeStatus) + ". UnsentCount: " + str(unsentCount) + ". FirstUnsentNumber: " + str(firstUnsentNumber)+ ". OfdMessageRead: " + str(ofdMessageRead)+ ". DateTime: " + str(dateTime)
+	info = "ExchangeStatus: " + str(exchangeStatus) + ".\nUnsentCount: " + str(unsentCount) + ".\nFirstUnsentNumber: " + str(firstUnsentNumber)+ ".\nOfdMessageRead: " + str(ofdMessageRead)+ ".\nDateTime: " + str(dateTime)
 	windows.info_window('Смотрите подробную информацию.', info)
 
 
@@ -143,10 +202,10 @@ def smena_info():
 	number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER)
 	# Тип переменной datetime - datetime.datetime
 	dateTime = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-	logger.info("Состояние смены: %s" % (state))
+	logger.info("Состояние смены:  %s" % (state))
 	logger.info("Номер смены: %s" % (number))
 	logger.info("Дата и время истечения текущей смены: %s" % (dateTime))
-	info = "Состояние смены:" + str(state) +". Номер смены: " + str(number) +". Дата и время истечения текущей смены: " + str(dateTime)
+	info = "Состояние смены:" + str(state) +".\nНомер смены: " + str(number) +".\nДата и время истечения текущей смены: " + str(dateTime)
 	windows.info_window('Смотрите подробную информацию.', info)
 	fptr.close()
 
@@ -263,30 +322,61 @@ def check_open(sale_tuple,  payment_type):
 		# Можно сразу вызвать метод допечатывания документа, он завершится с ошибкой, если это невозможно
 		while fptr.continuePrint() < 0:
 			# Если не удалось допечатать документ - показать пользователю ошибку и попробовать еще раз.
-			windows.info_window('Не удалось напечатать документ. Устраните неполадку и повторите.', str(fptr.errorDescription()))
+			windows.info_window('Не удалось напечатать документ.\n Устраните неполадку и повторите.', str(fptr.errorDescription()))
 			logger.warning('Не удалось напечатать документ. Устраните неполадку и повторите.' % (fptr.errorDescription()))
+			continue_print()
 			continue
 	"""Оплата прошла, можно сохранять продажу"""
 	if fptr.checkDocumentClosed() == 0:
 		state = 1
 	else:
 		# Не удалось проверить состояние документа. Вывести пользователю текст ошибки, попросить устранить неполадку и повторить запрос
-		windows.info_window('Не удалось напечатать документ (Ошибка "%s"). Устраните неполадку и повторите.', str(fptr.errorDescription()))
+		windows.info_window('Не удалось напечатать документ (Ошибка "%s").\nУстраните неполадку и повторите.', str(fptr.errorDescription()))
 		logger.info('Не удалось напечатать документ (Ошибка "%s"). Устраните неполадку и повторите.', fptr.errorDescription())
 	fptr.close()
+	print_slip_check()
 	return state
 
 
 @logger_wraps()
-def smena_close(kassir):
+def smena_close():
 	"""Закрытие смены"""
 	logger.info("Inside the function def smena_close")
-	fptr.open()
-	fptr.setParam(1021, kassir[0] + kassir[1])
-	fptr.setParam(1203, kassir[2])
-	fptr.operatorLogin()
-	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
-	fptr.report()
-	fptr.checkDocumentClosed()
-	fptr.beep()
-	fptr.close()
+	result = terminal_check_itog()
+	if result == 1:
+		fptr.open()
+		fptr.setParam(1021, 'Иванов Алексей')
+		fptr.setParam(1203, '312316318320')
+		# fptr.setParam(1021, kassir[0] + kassir[1])
+		# fptr.setParam(1203, kassir[2])
+		fptr.operatorLogin()
+		fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
+		fptr.report()
+		fptr.checkDocumentClosed()
+		fptr.close()
+	else:
+		windows.info_window('Сверка итогов по банковскому терминалу завершена неудачно.', '')
+
+
+def continue_print():
+	"""Допечатать документ"""
+	logger.info("Inside the function def continue_print")
+	fptr.continuePrint()
+
+
+@logger_wraps()
+def terminal_check_itog_in_window():
+	"""Сверка итогов работы дбанковского терминала с выводом результата в QMessageBox"""
+	logger.info("Proverka file")
+	pinpad_file = r"C:\sc552\p"
+	subprocess.call('C:\\sc552\\loadparm.exe 7')
+	logger.debug('Check itog in QMessageBox')
+	"""Выводим результат сверки итогов"""
+	try:
+		with open(pinpad_file, encoding='IBM866') as file:
+			lines = file.readlines()[2:]
+			logger.info("Сверка итогов успешно завершена")
+	except FileNotFoundError as not_found:
+		lines = 'File not found!'
+		logger.info("File not found")
+	windows.info_window('Сверка итогов по банковскому терминалу успешно завершена.', str(lines))

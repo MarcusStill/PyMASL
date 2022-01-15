@@ -65,12 +65,14 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_3.clicked.connect(self.search_selected_client)
         self.ui.pushButton.clicked.connect(self.search_client)
         self.ui.pushButton_8.clicked.connect(kkt.get_info)
-        self.ui.pushButton_11.clicked.connect(kkt.last_document) #+
+        self.ui.pushButton_11.clicked.connect(kkt.last_document)
         self.ui.pushButton_9.clicked.connect(kkt.get_time)
-        self.ui.pushButton_5.clicked.connect(kkt.report_x) #+
-        self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
+        self.ui.pushButton_5.clicked.connect(kkt.report_x)
         self.ui.pushButton_6.clicked.connect(kkt.smena_close)
+        self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
+        self.ui.pushButton_15.clicked.connect(kkt.continue_print)
         self.ui.pushButton_10.clicked.connect(kkt.smena_info)
+        self.ui.pushButton_16.clicked.connect(kkt.terminal_check_itog_in_window)
         self.ui.pushButton_12.clicked.connect(self.openSale)
         self.ui.pushButton_13.clicked.connect(self.buttonAllSales)
         self.ui.pushButton_14.clicked.connect(self.buttonAllTickets)
