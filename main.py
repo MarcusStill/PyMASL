@@ -13,7 +13,7 @@ from models.client import Client
 from models.user import User
 from models.sale import Sale
 from models.ticket import Ticket
-from sqlalchemy import create_engine, and_, exc
+from sqlalchemy import create_engine, and_, exc, desc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 import kkt
@@ -76,7 +76,8 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_12.clicked.connect(self.openSale)
         self.ui.pushButton_13.clicked.connect(self.buttonAllSales)
         self.ui.pushButton_14.clicked.connect(self.buttonAllTickets)
-        self.ui.tableWidget_2.doubleClicked.connect(self.search_selected_sale)
+        self.ui.tableWidget_2.doubleClicked.connect(self.search_selected_sale) #search_selected_sale
+
 
 
     @logger_wraps()
@@ -173,18 +174,47 @@ class MainWindow(QMainWindow):
             client.exec_()
 
 
-    @logger_wraps()
     def search_selected_sale(self):
         """Поиск выделенной строки в таблице продаж и открытие формы с найденными данными"""
-        logger.info("Inside the function def search_client")
+        logger.info("Inside the function def search_selected_sale")
         for idx in self.ui.tableWidget_2.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
+            row_count = self.ui.tableWidget_2.rowCount()
+            sale_number = row_count - row_number
             session = Session()
-            search_sale = session.query(Sale).filter_by(id=(row_number+1)).first()
-            logger.info(search_sale)
+            client_in_sale = session.query(Client.first_name, Client.last_name, Client.middle_name, Ticket.id,
+                                           Ticket.id_client, Ticket.id_sale, Ticket.client_age, Ticket.datetime,
+                                           Ticket.arrival_time, Ticket.talent, Ticket.price, Ticket.description).join(
+                Ticket).join(Sale).filter(and_(Client.id == Ticket.id_client, Sale.id == sale_number)).all()
+            """Передаем в форму данные клиента"""
+            sale = SaleForm()
+            sale.ui.tableWidget_2.setRowCount(0)
+            sale.ui.dateEdit.setDate(client_in_sale[0][7])
+            sale.ui.dateEdit.setEnabled(False)
+            sale.ui.comboBox.setCurrentText(str(client_in_sale[0][4]))
+            sale.ui.comboBox.setEnabled(False)
+            sale.ui.checkBox.setEnabled(False)
+            sale.ui.checkBox_2.setEnabled(False)
+            sale.ui.pushButton_3.setEnabled(False)
+            sale.ui.pushButton_5.setEnabled(False)
+            type_ticket = ''
+            for search_client in client_in_sale:
+                row = sale.ui.tableWidget_2.rowCount()
+                if search_client[6] == 1:
+                    type_ticket = 'взрослый'
+                elif search_client[6] == 0:
+                    type_ticket = 'детский'
+                sale.ui.tableWidget_2.insertRow(row)
+                sale.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{search_client[1]}"))
+                sale.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{search_client[0]}"))
+                sale.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{search_client[2]}"))
+                sale.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(type_ticket))
+                sale.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{search_client[10]}"))
+                sale.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client[11]}"))
             session.close()
-        #search_sale = "WITH client_in_sale AS(SELECT * from client join ticket on client.id = ticket.id_client) SELECT * from client_in_sale WHERE id_sale = search_sale[0]"
+            sale.show()
+            sale.exec_()
 
 
     @logger_wraps()
@@ -235,7 +265,7 @@ class MainWindow(QMainWindow):
         logger.info("Inside the function def buttonAllSales")
         self.ui.tableWidget_2.setRowCount(0)
         session = Session()
-        sales = session.query(Sale).order_by(Sale.id)
+        sales = session.query(Sale).order_by(desc(Sale.id))
         for sale in sales:
             row = self.ui.tableWidget_2.rowCount()
             self.ui.tableWidget_2.insertRow(row)
@@ -405,7 +435,7 @@ class SaleForm(QDialog):
         """Выводим в tableWidget новой продажи список всех клиентов"""
         logger.info("Inside the function def button_all_clients_to_sale")
         session = Session()
-        clients = session.query(Client).order_by(Client.id)
+        clients = session.query(Client).join(Ticket).filter(Ticket.id_sale == 12).all()
         for client in clients:
             row = self.ui.tableWidget.rowCount()
             self.ui.tableWidget.insertRow(row)

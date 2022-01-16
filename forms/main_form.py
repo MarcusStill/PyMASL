@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'main_form_5.ui'
+## Form generated from reading UI file 'main_form_6.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.1.0
 ##
@@ -99,6 +99,7 @@ class Ui_MainWindow(object):
         self.tableWidget_2.setHorizontalHeaderItem(3, __qtablewidgetitem12)
         self.tableWidget_2.setObjectName(u"tableWidget_2")
         self.tableWidget_2.setGeometry(QRect(0, 50, 1891, 191))
+        self.tableWidget_2.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.pushButton_13 = QPushButton(self.sales)
         self.pushButton_13.setObjectName(u"pushButton_13")
         self.pushButton_13.setGeometry(QRect(100, 0, 94, 28))
