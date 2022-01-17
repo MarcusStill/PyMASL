@@ -3,7 +3,7 @@ import time as t
 import sys
 import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QDialog, QCheckBox, QWidget, QMessageBox
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, Slot
 from forms.authorization import Ui_Dialog
 from forms.main_form import Ui_MainWindow
 from forms.client import Ui_Dialog_Client
@@ -76,8 +76,7 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_12.clicked.connect(self.openSale)
         self.ui.pushButton_13.clicked.connect(self.buttonAllSales)
         self.ui.pushButton_14.clicked.connect(self.buttonAllTickets)
-        self.ui.tableWidget_2.doubleClicked.connect(self.search_selected_sale) #search_selected_sale
-
+        self.ui.tableWidget_2.doubleClicked.connect(self.search_selected_sale)
 
 
     @logger_wraps()
@@ -613,11 +612,12 @@ class SaleForm(QDialog):
                         price = sale_tuple[1]
                     elif [l[5]] == 'детский':
                         price = sale_tuple[3]
+
                     add_ticket = Ticket(id_client=int(l[6]),
                                         id_sale=int(sale_index),
-                                        client_age='1',
+                                        client_age=int(l[5]),
                                         arrival_time=self.ui.comboBox.currentText(),
-                                        talent='1',
+                                        talent='1', #исправить
                                         price=price,
                                         description=[l[5]])
                 session.add(add_ticket)
@@ -643,6 +643,7 @@ class SaleForm(QDialog):
         pay = PayForm()
         # Передаем текст в форму PayForm
         pay.setText(txt)
+
         res = pay.exec_()
         # если пользователь нажал крестик или кнопку Escape,
         # то по-умолчанию возвращается QDialog.Rejected
