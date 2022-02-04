@@ -1,7 +1,9 @@
-from libfptr10 import IFptr
-from logger import *
-import windows
+from files.libfptr10 import IFptr
+from files.logger import *
+from files import windows
 import subprocess
+import glob
+import tempfile
 
 
 fptr = IFptr('')
@@ -241,12 +243,17 @@ def report_x():
 
 
 @logger_wraps()
-def kassir_reg(kassir):
+def kassir_reg():
 	"""Регистрация кассира"""
 	logger.info("Inside the function def kassir_reg")
+	logger.info("Чтение данных кассира из файла")
+	f = open("masl_temp")
+	kassir_name = f.readline()
+	kassir_inn = f.readline()
+	f.close()
 	fptr.open()
-	fptr.setParam(1021, kassir[0] + kassir[1])
-	fptr.setParam(1203, kassir[2])
+	fptr.setParam(1021, kassir_name)
+	fptr.setParam(1203, kassir_inn)
 	fptr.operatorLogin()
 	fptr.close()
 
@@ -257,12 +264,15 @@ def check_open(sale_tuple,  payment_type):
 	sale = sale_tuple
 	logger.info("payment_type: %s" % (payment_type))
 	state = 0
+	logger.info("Чтение данных кассира из файла")
+	f = open("masl_temp")
+	kassir_name = f.readline()
+	kassir_inn = f.readline()
+	f.close()
 	"""Открытие печатного чека"""
 	fptr.open()
-	# fptr.setParam(1021, kassir[0] + kassir[1])
-	# fptr.setParam(1203, kassir[2])
-	fptr.setParam(1021, 'Иванов Алексей')
-	fptr.setParam(1203, '312316318320')
+	fptr.setParam(1021, kassir_name)
+	fptr.setParam(1203, kassir_inn)
 	fptr.operatorLogin()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
 	fptr.openReceipt()
@@ -281,6 +291,7 @@ def check_open(sale_tuple,  payment_type):
 		fptr.registration()
 	"""Оплата чека"""
 	if payment_type == 102:
+		payment = 2
 		fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
 		fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale[4])
 		fptr.payment()
@@ -290,6 +301,7 @@ def check_open(sale_tuple,  payment_type):
 		"""Закрытие полностью оплаченного чека"""
 		fptr.closeReceipt()
 	elif payment_type == 101:
+		payment = 1
 		bank = terminal_oplata(str(sale[4]))
 		logger.warning("BANK: %s" % (bank))
 		if bank == 1:
@@ -335,7 +347,7 @@ def check_open(sale_tuple,  payment_type):
 		logger.info('Не удалось напечатать документ (Ошибка "%s"). Устраните неполадку и повторите.', fptr.errorDescription())
 	fptr.close()
 	print_slip_check()
-	return state
+	return state, payment
 
 
 @logger_wraps()
@@ -344,11 +356,14 @@ def smena_close():
 	logger.info("Inside the function def smena_close")
 	result = terminal_check_itog()
 	if result == 1:
+		logger.info("Чтение данных кассира из файла")
+		f = open("masl_temp")
+		kassir_name = f.readline()
+		kassir_inn = f.readline()
+		f.close()
 		fptr.open()
-		fptr.setParam(1021, 'Иванов Алексей')
-		fptr.setParam(1203, '312316318320')
-		# fptr.setParam(1021, kassir[0] + kassir[1])
-		# fptr.setParam(1203, kassir[2])
+		fptr.setParam(1021, kassir_name)
+		fptr.setParam(1203, kassir_inn)
 		fptr.operatorLogin()
 		fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
 		fptr.report()
