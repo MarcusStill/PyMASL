@@ -1,9 +1,9 @@
+#import main
+from main import System
 from files.libfptr10 import IFptr
 from files.logger import *
 from files import windows
 import subprocess
-import glob
-import tempfile
 
 
 fptr = IFptr('')
@@ -236,10 +236,16 @@ def report_payment():
 def report_x():
 	"""X-отчет"""
 	logger.info("Inside the function def report_x")
-	fptr.open()
-	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
-	fptr.report()
-	fptr.close()
+	user = System.user.last_name
+	logger.debug("user: %s" % (user))
+	logger.debug("type_user: %s" % (type(user)))
+	logger.warning(f'{System.user.last_name}')
+
+	#System.user.return_user()
+	# fptr.open()
+	# fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
+	# fptr.report()
+	# fptr.close()
 
 
 @logger_wraps()

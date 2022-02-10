@@ -14,6 +14,8 @@ from db.models.user import User
 from db.models import Client
 from db.models import Sale
 from db.models import Ticket
+from db.models import Holiday
+from db.models import Workday
 from sqlalchemy import create_engine, and_, desc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -27,6 +29,7 @@ from files.logger import *
 import psycopg2
 from files import windows
 import socket
+import calendar
 
 
 #Чтение параметров из файла конфигурации
@@ -343,28 +346,26 @@ class AuthForm(QDialog):
     def logincheck(self):
         """Проверяем есть ли в таблице user запись с указанными полями"""
         logger.info("Inside the function def logincheck")
-        session = Session()
-        result = session.query(User).filter(and_(User.login == self.ui.lineEdit.text(), User.password == self.ui.lineEdit_2.text())).first()
-        kassir = session.query(User.last_name, User.first_name, User.inn, User.id).filter(and_(User.login == self.ui.lineEdit.text(), User.password == self.ui.lineEdit_2.text())).first()
-        session.close()
-        if result:
-            dict_kassir = kassir._asdict() #class 'sqlalchemy.engine.row.Row' in dict --> чтобы получить id кассира
-            print(dict_kassir)
-            logger.debug('Create temp file')
-            # Создаем файл
-            f = open("masl_temp", "w")
-            f.writelines(kassir[0] + ' ' + kassir[1] + '\n')
-            f.writelines(kassir[2] + '\n')
-            f.writelines(str(dict_kassir['id']))
-            f.close()
+        login = self.ui.lineEdit.text()
+        password = self.ui.lineEdit_2.text()
+        kassir = System.user.check_login(self, login, password)
+        if kassir == 1:
             """После закрытия окна авторизации открываем главную форму"""
             auth.close()
             window = MainWindow()
-            window.setWindowTitle('PyMasl ver. ' + software_version + '. Пользователь: ' + kassir[0] + ' ' + kassir[1])
+            window.setWindowTitle('PyMasl ver. ' + software_version + '. Пользователь: ' + f'{System.user.last_name} ' f'{System.user.first_name}')
             window.buttonAllClient()
+            # проверяем статус текущего дня
+            if System.Days.check_the_day(self) == 0:
+                System.Days.what_a_day = 0
+            elif System.Days.check_the_day(self) == 1:
+                System.Days.what_a_day = 1
+            else:
+                System.Days.what_a_day = 0
+            logger.debug("What a day: %s" % (System.Days.what_a_day))
+            logger.debug("user login: %s" % (System.user.return_user()))
             window.show()
             window.exec_()
-            os.remove('./masl_temp') #удалить временный файл
         else:
             info = 'Пользователь не найден'
             windows.info_window(info, 'Проверьте правильность ввода логина и пароля.')
@@ -563,12 +564,14 @@ class SaleForm(QDialog):
         """Сохраняем данные заказа"""
         logger.info("Inside the function def sale_save")
         sale_tuple, tickets = self.edit_sale()
-        logger.info("Чтение данных кассира из файла")
-        f = open("masl_temp")
-        kassir_name = f.readline() #не используется
-        kassir_inn = f.readline()  #не используется
-        kassir_id = f.readline()
-        f.close()
+        # logger.info("Чтение данных кассира из файла")
+        # f = open("masl_temp")
+        # kassir_name = f.readline() #не используется
+        # kassir_inn = f.readline()  #не используется
+        # kassir_id = f.readline()
+        # f.close()
+        kassir_id = f'{System.user.id}'
+        #logger.debug(kassir_id)
         logger.debug('sale_tuple')
         logger.debug(sale_tuple)
         price = 0
@@ -595,11 +598,14 @@ class SaleForm(QDialog):
                 """Считаем количество начисленных талантов"""
                 arrival_time = self.ui.comboBox.currentText()
                 if arrival_time == 1:
-                    talent = 25
+                    # начисляем 25 талантов
+                    talent = System.Ticket.talent(0)
                 elif arrival_time == 2:
-                    talent = 35
+                    # начисляем 35 талантов
+                    talent = System.Ticket.talent(1)
                 else:
-                    talent = 50
+                    # начисляем 50 талантов
+                    talent = System.Ticket.talent(2)
                 if [tickets[i][3]] == 'взрослый':
                     type = 0
                 elif [tickets[i][3]] == 'детский':
@@ -625,12 +631,12 @@ class SaleForm(QDialog):
         logger.info("Inside the function def check_ticket_generate")
         sale_tuple, tickets = self.edit_sale()
         state_check, payment = kkt.check_open(sale_tuple, payment_type)
-        logger.info("Чтение данных кассира из файла")
-        f = open("masl_temp")
-        kassir_name = f.readline()
-        kassir_inn = f.readline()
-        kassir_id = f.readline(2)
-        f.close()
+        #logger.info("Чтение данных кассира из файла")
+        #f = open("masl_temp")
+        #kassir_name = f.readline()
+        #kassir_inn = f.readline()
+        kassir_id = f'{System.user.id}'
+        #f.close()
         #state_check = 1
         price = 0
         """Если прошла оплата"""
@@ -759,6 +765,89 @@ class SaleForm(QDialog):
 class PaymentType:
     ByCard = 101
     ByCash = 102
+
+
+class System:
+
+    class user(User):
+        id = User.id
+        last_name = User.last_name
+        first_name = User.first_name
+        middle_name = User.middle_name
+        login = User.login
+        password = User.password
+        created_at = User.created_at
+        inn = User.inn
+
+        def check_login(self, login, password):
+            session = Session()
+            kassir = session.query(User.last_name, User.first_name, User.inn, User.id).filter(
+                and_(User.login == login, User.password == password)).first()
+            session.close
+            if kassir:
+                # сохраняем данные авторизовавшегося кассира
+                d = list((kassir._asdict()).values())
+                System.user.last_name = d[0]
+                System.user.first_name = d[1]
+                System.user.inn = d[2]
+                System.user.id = d[3]
+                return 1
+
+
+        def return_user():
+            user = ()
+            user = user + (System.user.last_name, System.user.first_name, System.user.inn, System.user.id)
+            return str(user)
+
+
+    class Ticket(Ticket):
+        #arrival_time = Ticket.arrival_time
+        talent = (25, 35, 50)
+        #price = Ticket.price
+
+
+    # class Sales(Sale):
+    #     status = Sale.status
+    #
+    #
+    #     def status_sale(self, sale_number):
+    #         session = Session()
+    #         status_sale = session.query(Sale.status).join(Ticket).join(Sale).filter(Sale.id == sale_number).all()
+    #         session.close
+    #         return status_sale
+
+
+    class Days:
+        # статус: 0 - будний, 1 - выходной
+        what_a_day = 2
+
+        def check_the_day(self):
+            status = 2
+            # запрашиваем текущую дату в формат ГГГГ-ММ-ДД
+            day = dt.datetime.now().strftime('%Y-%m-%d')
+            session = Session()
+            # текущая дата есть в списке дополнительных рабочих дней?
+            check_day = session.query(Workday.date).filter(Workday.date == day).all() #all?
+            session.close
+            if check_day:
+                status = 0
+            else:
+                # преобразуем текущую дату в список
+                day = day.split('-')
+                # вычисляем день недели
+                number_day = calendar.weekday(int(day[0]), int(day[1]), int(day[2]))
+                # день недели 5 или 6
+                if number_day >= 5:
+                    status = 1
+                else:
+                    day = '-'.join(day)
+                    session = Session()
+                    # текущая дата есть в списке праздничных дней?
+                    check_day = session.query(Holiday.date).filter(Holiday.date == day).all()  # all?
+                    session.close
+                    if check_day:
+                        status = 1
+            return status
 
 
 class PayForm(QDialog):
