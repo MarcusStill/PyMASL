@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_11.clicked.connect(kkt.last_document)
         self.ui.pushButton_9.clicked.connect(kkt.get_time)
         self.ui.pushButton_5.clicked.connect(kkt.report_x)
-        self.ui.pushButton_6.clicked.connect(kkt.smena_close)
+        self.ui.pushButton_6.clicked.connect(kkt.smena_close(System.user))
         self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
         self.ui.pushButton_15.clicked.connect(kkt.continue_print)
         self.ui.pushButton_10.clicked.connect(kkt.smena_info)
@@ -348,22 +348,21 @@ class AuthForm(QDialog):
         logger.info("Inside the function def logincheck")
         login = self.ui.lineEdit.text()
         password = self.ui.lineEdit_2.text()
-        kassir = System.user.check_login(self, login, password)
+        kassir = System.check_login(self, login, password)
         if kassir == 1:
             """После закрытия окна авторизации открываем главную форму"""
             auth.close()
             window = MainWindow()
-            window.setWindowTitle('PyMasl ver. ' + software_version + '. Пользователь: ' + f'{System.user.last_name} ' f'{System.user.first_name}')
+            window.setWindowTitle('PyMasl ver. ' + software_version + '. Пользователь: ' + System.user[0] + ' ' + System.user[1])
             window.buttonAllClient()
             # проверяем статус текущего дня
-            if System.Days.check_the_day(self) == 0:
-                System.Days.what_a_day = 0
-            elif System.Days.check_the_day(self) == 1:
-                System.Days.what_a_day = 1
+            day_today = System.check_day(self)
+            if day_today == 0:
+                System.what_a_day = 0
+            elif day_today == 1:
+                System.what_a_day = 1
             else:
-                System.Days.what_a_day = 0
-            logger.debug("What a day: %s" % (System.Days.what_a_day))
-            logger.debug("user login: %s" % (System.user.return_user()))
+                System.what_a_day = 0
             window.show()
             window.exec_()
         else:
@@ -411,9 +410,26 @@ class SaleForm(QDialog):
         self.ui.tableWidget.doubleClicked.connect(self.add_client_to_sale)
         cur_today = date.today()
         self.ui.dateEdit.setDate(cur_today)
+        self.ui.dateEdit.dateChanged.connect(self.calendar_color_change)
         self.ui.comboBox.currentTextChanged.connect(self.edit_sale)
         self.ui.checkBox_2.stateChanged.connect(self.check_sale_enabled)
         self.ui.comboBox_2.currentTextChanged.connect(self.edit_sale)
+
+
+    def calendar_color_change(self):
+        logger.info("Inside the function def calendar_color_change")
+        logger.warning(self.ui.dateEdit.date())
+        date = str(self.ui.dateEdit.date())
+        date_slice = date[21:(len(date)-1)]
+        logger.debug(date_slice)
+        date = date_slice.replace(', ', '-')
+        logger.debug(date)
+        if System.check_day(self, date) == 1:
+            self.ui.dateEdit.setStyleSheet('background-color: red;')
+            logger.debug(self.ui.dateEdit.date)
+        else:
+            self.ui.dateEdit.setStyleSheet('background-color: white;')
+            logger.debug(self.ui.dateEdit.date)
 
 
     def check_sale_enabled(self):
@@ -428,6 +444,8 @@ class SaleForm(QDialog):
     def button_all_clients_to_sale(self):
         """Выводим в tableWidget новой продажи список всех клиентов"""
         logger.info("Inside the function def button_all_clients_to_sale")
+        if System.what_a_day == 1:
+            self.ui.dateEdit.setStyleSheet('background-color: red;')
         session = Session()
         clients = session.query(Client).order_by(Client.id)
         for client in clients:
@@ -564,13 +582,7 @@ class SaleForm(QDialog):
         """Сохраняем данные заказа"""
         logger.info("Inside the function def sale_save")
         sale_tuple, tickets = self.edit_sale()
-        # logger.info("Чтение данных кассира из файла")
-        # f = open("masl_temp")
-        # kassir_name = f.readline() #не используется
-        # kassir_inn = f.readline()  #не используется
-        # kassir_id = f.readline()
-        # f.close()
-        kassir_id = f'{System.user.id}'
+        kassir_id = System.user[3]
         #logger.debug(kassir_id)
         logger.debug('sale_tuple')
         logger.debug(sale_tuple)
@@ -630,14 +642,8 @@ class SaleForm(QDialog):
         """Сохраняем данные заказа"""
         logger.info("Inside the function def check_ticket_generate")
         sale_tuple, tickets = self.edit_sale()
-        state_check, payment = kkt.check_open(sale_tuple, payment_type)
-        #logger.info("Чтение данных кассира из файла")
-        #f = open("masl_temp")
-        #kassir_name = f.readline()
-        #kassir_inn = f.readline()
-        kassir_id = f'{System.user.id}'
-        #f.close()
-        #state_check = 1
+        state_check, payment = kkt.check_open(sale_tuple, payment_type, System.user)
+        kassir_id = System.user[3]
         price = 0
         """Если прошла оплата"""
         if state_check == 1:
@@ -768,86 +774,55 @@ class PaymentType:
 
 
 class System:
+    user = None
 
-    class user(User):
-        id = User.id
-        last_name = User.last_name
-        first_name = User.first_name
-        middle_name = User.middle_name
-        login = User.login
-        password = User.password
-        created_at = User.created_at
-        inn = User.inn
+    # статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
+    sale_status = None
 
-        def check_login(self, login, password):
-            session = Session()
-            kassir = session.query(User.last_name, User.first_name, User.inn, User.id).filter(
-                and_(User.login == login, User.password == password)).first()
-            session.close
-            if kassir:
-                # сохраняем данные авторизовавшегося кассира
-                d = list((kassir._asdict()).values())
-                System.user.last_name = d[0]
-                System.user.first_name = d[1]
-                System.user.inn = d[2]
-                System.user.id = d[3]
-                return 1
+    # какой сегодня день: 0 - будний, 1 - выходной
+    what_a_day = None
 
 
-        def return_user():
-            user = ()
-            user = user + (System.user.last_name, System.user.first_name, System.user.inn, System.user.id)
-            return str(user)
+    def check_login(self, login, password):
+        session = Session()
+        kassir = session.query(User.last_name, User.first_name, User.inn, User.id).filter(
+            and_(User.login == login, User.password == password)).first()
+        session.close
+        if kassir:
+            # сохраняем данные авторизовавшегося кассира
+            System.user = kassir
+            return 1
 
 
-    class Ticket(Ticket):
-        #arrival_time = Ticket.arrival_time
-        talent = (25, 35, 50)
-        #price = Ticket.price
-
-
-    # class Sales(Sale):
-    #     status = Sale.status
-    #
-    #
-    #     def status_sale(self, sale_number):
-    #         session = Session()
-    #         status_sale = session.query(Sale.status).join(Ticket).join(Sale).filter(Sale.id == sale_number).all()
-    #         session.close
-    #         return status_sale
-
-
-    class Days:
-        # статус: 0 - будний, 1 - выходной
-        what_a_day = 2
-
-        def check_the_day(self):
-            status = 2
-            # запрашиваем текущую дату в формат ГГГГ-ММ-ДД
-            day = dt.datetime.now().strftime('%Y-%m-%d')
-            session = Session()
-            # текущая дата есть в списке дополнительных рабочих дней?
-            check_day = session.query(Workday.date).filter(Workday.date == day).all() #all?
-            session.close
-            if check_day:
-                status = 0
+    def check_day(self, day=dt.datetime.now().strftime('%Y-%m-%d')):
+        status = None
+        session = Session()
+        # текущая дата есть в списке дополнительных рабочих дней?
+        check_day = session.query(Workday.date).filter(Workday.date == day).first() #all?
+        session.close
+        if check_day:
+            status = 0
+        else:
+            # преобразуем текущую дату в список
+            day = day.split('-')
+            # вычисляем день недели
+            number_day = calendar.weekday(int(day[0]), int(day[1]), int(day[2]))
+            # день недели 5 или 6
+            if number_day >= 5:
+                status = 1
+                System.what_a_day = 1
             else:
-                # преобразуем текущую дату в список
-                day = day.split('-')
-                # вычисляем день недели
-                number_day = calendar.weekday(int(day[0]), int(day[1]), int(day[2]))
-                # день недели 5 или 6
-                if number_day >= 5:
+                day = '-'.join(day)
+                session = Session()
+                # текущая дата есть в списке праздничных дней?
+                check_day = session.query(Holiday.date).filter(Holiday.date == day).all()  # all?
+                session.close
+                if check_day:
                     status = 1
+                    System.what_a_day = 1
                 else:
-                    day = '-'.join(day)
-                    session = Session()
-                    # текущая дата есть в списке праздничных дней?
-                    check_day = session.query(Holiday.date).filter(Holiday.date == day).all()  # all?
-                    session.close
-                    if check_day:
-                        status = 1
-            return status
+                    status = 0
+        return status
 
 
 class PayForm(QDialog):

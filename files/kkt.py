@@ -1,4 +1,3 @@
-#import main
 from main import System
 from files.libfptr10 import IFptr
 from files.logger import *
@@ -68,6 +67,7 @@ def terminal_check_itog():
     pinpad_file = r"C:\sc552\p"
     subprocess.call('C:\\sc552\\loadparm.exe 7')
     logger.debug('Check itog')
+    lines = None
     """Выводим результат сверки итогов"""
     try:
         with open(pinpad_file, encoding='IBM866') as file:
@@ -236,49 +236,33 @@ def report_payment():
 def report_x():
 	"""X-отчет"""
 	logger.info("Inside the function def report_x")
-	user = System.user.last_name
-	logger.debug("user: %s" % (user))
-	logger.debug("type_user: %s" % (type(user)))
-	logger.warning(f'{System.user.last_name}')
-
-	#System.user.return_user()
-	# fptr.open()
-	# fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
-	# fptr.report()
-	# fptr.close()
+	fptr.open()
+	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
+	fptr.report()
+	fptr.close()
 
 
 @logger_wraps()
-def kassir_reg():
+def kassir_reg(user):
 	"""Регистрация кассира"""
 	logger.info("Inside the function def kassir_reg")
-	logger.info("Чтение данных кассира из файла")
-	f = open("masl_temp")
-	kassir_name = f.readline()
-	kassir_inn = f.readline()
-	f.close()
 	fptr.open()
-	fptr.setParam(1021, kassir_name)
-	fptr.setParam(1203, kassir_inn)
+	fptr.setParam(1021, user[0])
+	fptr.setParam(1203, user[1])
 	fptr.operatorLogin()
 	fptr.close()
 
 
 @logger_wraps()
-def check_open(sale_tuple,  payment_type):
+def check_open(sale_tuple,  payment_type, user):
 	logger.info("Inside the function def check_open")
 	sale = sale_tuple
 	logger.info("payment_type: %s" % (payment_type))
 	state = 0
-	logger.info("Чтение данных кассира из файла")
-	f = open("masl_temp")
-	kassir_name = f.readline()
-	kassir_inn = f.readline()
-	f.close()
 	"""Открытие печатного чека"""
 	fptr.open()
-	fptr.setParam(1021, kassir_name)
-	fptr.setParam(1203, kassir_inn)
+	fptr.setParam(1021, user[0])
+	fptr.setParam(1203, user[1])
 	fptr.operatorLogin()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
 	fptr.openReceipt()
@@ -357,19 +341,13 @@ def check_open(sale_tuple,  payment_type):
 
 
 @logger_wraps()
-def smena_close():
+def smena_close(user):
 	"""Закрытие смены"""
 	logger.info("Inside the function def smena_close")
 	result = terminal_check_itog()
 	if result == 1:
-		logger.info("Чтение данных кассира из файла")
-		f = open("masl_temp")
-		kassir_name = f.readline()
-		kassir_inn = f.readline()
-		f.close()
-		fptr.open()
-		fptr.setParam(1021, kassir_name)
-		fptr.setParam(1203, kassir_inn)
+		fptr.setParam(1021, user[0])
+		fptr.setParam(1203, user[1])
 		fptr.operatorLogin()
 		fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
 		fptr.report()
@@ -397,7 +375,8 @@ def terminal_check_itog_in_window():
 		with open(pinpad_file, encoding='IBM866') as file:
 			lines = file.readlines()[2:]
 			logger.info("Сверка итогов успешно завершена")
+			windows.info_window('Сверка итогов по банковскому терминалу успешно завершена.', str(lines))
 	except FileNotFoundError as not_found:
 		lines = 'File not found!'
 		logger.info("File not found")
-	windows.info_window('Сверка итогов по банковскому терминалу успешно завершена.', str(lines))
+		windows.info_window('Ошибка сверки итогов по банковскому терминалу!', str(lines))
