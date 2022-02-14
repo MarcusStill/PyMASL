@@ -343,18 +343,21 @@ def check_open(sale_tuple,  payment_type, user):
 @logger_wraps()
 def smena_close(user):
 	"""Закрытие смены"""
-	logger.info("Inside the function def smena_close")
-	result = terminal_check_itog()
-	if result == 1:
-		fptr.setParam(1021, user[0])
-		fptr.setParam(1203, user[1])
-		fptr.operatorLogin()
-		fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
-		fptr.report()
-		fptr.checkDocumentClosed()
-		fptr.close()
-	else:
-		windows.info_window('Сверка итогов по банковскому терминалу завершена неудачно.', '')
+	# logger.info("Inside the function def smena_close")
+	# result = terminal_check_itog()
+	# try:
+	# 	if result == 1:
+	# 		fptr.setParam(1021, user[0])
+	# 		fptr.setParam(1203, user[1])
+	# 		fptr.operatorLogin()
+	# 		fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
+	# 		fptr.report()
+	# 		fptr.checkDocumentClosed()
+	# 		fptr.close()
+	# except FileNotFoundError as not_found:
+	# 	lines = 'File not found!'
+	# 	logger.info("File not found")
+	# 	windows.info_window('Сверка итогов по банковскому терминалу завершена неудачно.', str(lines))
 
 
 def continue_print():

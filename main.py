@@ -16,7 +16,7 @@ from db.models import Sale
 from db.models import Ticket
 from db.models import Holiday
 from db.models import Workday
-from sqlalchemy import create_engine, and_, desc
+from sqlalchemy import create_engine, and_, desc, update
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from files import kkt
@@ -228,6 +228,11 @@ class MainWindow(QMainWindow):
             sale.ui.label_7.setText(str(kol_child))
             sale.ui.label_8.setText(str(sum))
             sale.show()
+            # передаем сведения о сохраненной продаже
+            System.sale_status = 1
+            logger.warning("System.sale_status %s" % (System.sale_status))
+            System.sale_id = sale_number
+            logger.warning("System.sale_id %s" % (System.sale_id))
             sale.exec_()
 
 
@@ -464,6 +469,9 @@ class SaleForm(QDialog):
     def add_client_to_sale(self, *args, **kwargs):
         """Поиск выделенной строки в таблице клиентов и передача ее в таблицу заказа"""
         logger.info("Inside the function def add_client_to_sale")
+        # если продажа новая - обновляем статус
+        System.sale_status = 0
+        logger.warning("status_sale %s" % (System.sale_status))
         for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
@@ -611,13 +619,13 @@ class SaleForm(QDialog):
                 arrival_time = self.ui.comboBox.currentText()
                 if arrival_time == 1:
                     # начисляем 25 талантов
-                    talent = System.Ticket.talent(0)
+                    talent = 25
                 elif arrival_time == 2:
                     # начисляем 35 талантов
-                    talent = System.Ticket.talent(1)
+                    talent = 35
                 else:
                     # начисляем 50 талантов
-                    talent = System.Ticket.talent(2)
+                    talent = 50
                 if [tickets[i][3]] == 'взрослый':
                     type = 0
                 elif [tickets[i][3]] == 'детский':
@@ -645,6 +653,7 @@ class SaleForm(QDialog):
         state_check, payment = kkt.check_open(sale_tuple, payment_type, System.user)
         kassir_id = System.user[3]
         price = 0
+        line = None
         """Если прошла оплата"""
         if state_check == 1:
             if payment == 1: #если оплата банковской картой
@@ -653,23 +662,35 @@ class SaleForm(QDialog):
                 with open(pinpad_file, 'r', encoding='IBM866') as file:
                     while (line := file.readline().rstrip()):
                         print(line)
-            """Сохраняем данные о продаже"""
-            pc_name = socket.gethostname()
-            session = Session()
-            add_sale = Sale(price=int(self.ui.label_8.text()),
-                            id_user=kassir_id,
-                            id_client=sale_tuple[5],
-                            status=1,
-                            pc_name=pc_name,
-                            discount=int(self.ui.comboBox_2.currentText()),
-                            payment_type=payment,
-                            bank_pay=line,
-                            datetime=dt.datetime.now())
-            session.add(add_sale)
-            session.commit()
-            session.close()
+            # если продажа новая
+            if System.status_sale == 0:
+                """Сохраняем данные о продаже"""
+                pc_name = socket.gethostname()
+                session = Session()
+                add_sale = Sale(price=int(self.ui.label_8.text()),
+                                id_user=kassir_id,
+                                id_client=sale_tuple[5],
+                                status=1,
+                                pc_name=pc_name,
+                                discount=int(self.ui.comboBox_2.currentText()),
+                                payment_type=payment,
+                                bank_pay=line,
+                                datetime=dt.datetime.now())
+                session.add(add_sale)
+                session.commit()
+                session.close()
+            elif System.status_sale == 1:
+                # если продажа была сохранена ранее
+                pc_name = socket.gethostname()
+                session = Session()
+                session.execute(update(Sale).where(Sale.id == System.sale_id).values(status=1,
+                                                                                     pc_name=pc_name,
+                                                                                     payment_type=payment,
+                                                                                     bank_pay=line,
+                                                                                     datetime=dt.datetime.now()))
             self.close()
-            #проверка сохранения данных  в БД
+            # проверка сохранения данных  в БД
+            System.sale_status = 0
             """Удаляем предыдущий файл с билетами"""
             if os.path.exists('./ticket.pdf'):  # os.path.isfile ()???
                 os.remove('./ticket.pdf')
@@ -778,6 +799,7 @@ class System:
 
     # статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
     sale_status = None
+    sale_id = None
 
     # какой сегодня день: 0 - будний, 1 - выходной
     what_a_day = None
