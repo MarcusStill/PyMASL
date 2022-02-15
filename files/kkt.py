@@ -1,4 +1,3 @@
-from main import System
 from files.libfptr10 import IFptr
 from files.logger import *
 from files import windows
@@ -247,8 +246,8 @@ def kassir_reg(user):
 	"""Регистрация кассира"""
 	logger.info("Inside the function def kassir_reg")
 	fptr.open()
-	fptr.setParam(1021, user[0])
-	fptr.setParam(1203, user[1])
+	fptr.setParam(1021, f'{user[0]} {user[1]}')
+	fptr.setParam(1203, user[2])
 	fptr.operatorLogin()
 	fptr.close()
 
@@ -261,8 +260,8 @@ def check_open(sale_tuple,  payment_type, user):
 	state = 0
 	"""Открытие печатного чека"""
 	fptr.open()
-	fptr.setParam(1021, user[0])
-	fptr.setParam(1203, user[1])
+	fptr.setParam(1021, f'{user[0]} {user[1]}')
+	fptr.setParam(1203, user[2])
 	fptr.operatorLogin()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
 	fptr.openReceipt()
@@ -343,21 +342,22 @@ def check_open(sale_tuple,  payment_type, user):
 @logger_wraps()
 def smena_close(user):
 	"""Закрытие смены"""
-	# logger.info("Inside the function def smena_close")
-	# result = terminal_check_itog()
-	# try:
-	# 	if result == 1:
-	# 		fptr.setParam(1021, user[0])
-	# 		fptr.setParam(1203, user[1])
-	# 		fptr.operatorLogin()
-	# 		fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
-	# 		fptr.report()
-	# 		fptr.checkDocumentClosed()
-	# 		fptr.close()
-	# except FileNotFoundError as not_found:
-	# 	lines = 'File not found!'
-	# 	logger.info("File not found")
-	# 	windows.info_window('Сверка итогов по банковскому терминалу завершена неудачно.', str(lines))
+	logger.info("Inside the function def smena_close")
+	result = terminal_check_itog()
+	try:
+		if result == 1:
+			fptr.open()
+			fptr.setParam(1021, f'{user[0]} {user[1]}')
+			fptr.setParam(1203, user[2])
+			fptr.operatorLogin()
+			fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
+			fptr.report()
+			fptr.checkDocumentClosed()
+			fptr.close()
+	except FileNotFoundError as not_found:
+		lines = 'File not found!'
+		logger.info("File not found")
+		windows.info_window('Сверка итогов по банковскому терминалу завершена неудачно.', str(lines))
 
 
 def continue_print():

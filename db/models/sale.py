@@ -23,7 +23,6 @@ class Sale(Base):
         nullable=False,
         unique=True,
         primary_key=True,
-        autoincrement=True
     )
     id_client = Column(Integer, ForeignKey('client.id'), comment='Id клиента')
     id_user = Column(Integer, ForeignKey('user.id'), comment='Id пользователя')
@@ -42,7 +41,7 @@ class Sale(Base):
     payment_type = Column(SmallInteger, comment='Валюта оплаты')
     bank_pay = Column(Text, comment='Банковский чек оплаты')
     user_return = Column(Integer, comment='Id user return')
-    #datetime_return = Column(DateTime, default=datetime.utcnow, comment='Дата и время возврата продажи')
+    datetime_return = Column(DateTime, comment='Дата и время возврата продажи')
     bank_return = Column(Text, comment='Банковский чек возврата')
     client = relationship('Client', backref='sale_client', lazy='subquery')
     #currency_type = relationship('currency_type', backref='sale_currency_type', lazy='subquery')

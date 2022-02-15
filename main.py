@@ -45,14 +45,11 @@ log_file = config.get("OTHER", "log_file")
 
 
 engine = create_engine("postgresql://postgres:" + password + "@" + host + ":" + port + "/" + database, echo=True)
-
-
-Base = declarative_base(bind=engine)
-session_factory = sessionmaker(bind=engine)
-Session = scoped_session(session_factory)
-
-
+Session = sessionmaker(engine)
 logger.add(log_file)
+#Base = declarative_base(bind=engine)
+#session_factory = sessionmaker(bind=engine)
+#Session = scoped_session(session_factory)
 
 
 class MainWindow(QMainWindow):
@@ -153,6 +150,9 @@ class MainWindow(QMainWindow):
             row_number = idx.row()
             session = Session()
             search_client = session.query(Client).filter_by(id=(row_number+1)).first()
+            session.close()
+            # сохраняем id клиента
+            System.client_id = search_client.id
             """Передаем в форму данные клиента"""
             client = ClientForm()
             client.ui.lineEdit.setText(search_client.last_name)
@@ -170,9 +170,13 @@ class MainWindow(QMainWindow):
             if index_privilege >= 0:
                 client.ui.comboBox_2.setCurrentIndex(index_privilege)
             """bug Запись сохраняется с новым id"""
-            client.ui.pushButton.clicked.connect(client.buttonSave)
-            session.close()
+            #client.ui.pushButton.clicked.connect(client.ClientSave)
+            #session.close()
             client.show()
+            # сохраняем параметры данных об уже существующем клиенте
+            System.client_update = 1
+            logger.info('System.client_update %s' % (System.client_update))
+            logger.info('System.client_id %s' % (System.client_id))
             client.exec_()
 
 
@@ -362,6 +366,7 @@ class AuthForm(QDialog):
             window.buttonAllClient()
             # проверяем статус текущего дня
             day_today = System.check_day(self)
+            logger.info('day_today %s' % (day_today))
             if day_today == 0:
                 System.what_a_day = 0
             elif day_today == 1:
@@ -381,26 +386,48 @@ class ClientForm(QDialog):
         super().__init__()
         self.ui = Ui_Dialog_Client()
         self.ui.setupUi(self)
-        self.ui.pushButton.clicked.connect(self.buttonSave)
+        self.ui.pushButton.clicked.connect(self.client_save)
         self.ui.pushButton_2.clicked.connect(self.close)
 
 
-    def buttonSave(self):
+    def client_save(self):
         """Сохраняем информацию о новом клиенте"""
-        logger.info("Inside the function def buttonSave")
-        session = Session()
-        add_client = Client(last_name=str(self.ui.lineEdit.text()),
-                            first_name=str(self.ui.lineEdit_2.text()),
-                            middle_name=str(self.ui.lineEdit_3.text()),
-                            birth_date=self.ui.dateEdit.date().toString("yyyy-MM-dd"),
-                            gender=str(self.ui.comboBox.currentText()),
-                            phone=self.ui.lineEdit_4.text(),
-                            email=self.ui.lineEdit_5.text(),
-                            privilege=str(self.ui.comboBox_2.currentText()))
-        session.add(add_client)
-        session.commit()
-        session.close()
-        self.close()
+        logger.info("Inside the function def client_save")
+        if System.client_update != 1:
+            # добавляем нового клиента
+            with Session.begin() as session:
+                logger.info('добавляем нового клиента')
+                client_index = session.query(Client).count()
+                add_client = Client(id=client_index + 1,
+                                    last_name=str(self.ui.lineEdit.text()),
+                                    first_name=str(self.ui.lineEdit_2.text()),
+                                    middle_name=str(self.ui.lineEdit_3.text()),
+                                    birth_date=self.ui.dateEdit.date().toString("yyyy-MM-dd"),
+                                    gender=str(self.ui.comboBox.currentText()),
+                                    phone=self.ui.lineEdit_4.text(),
+                                    email=self.ui.lineEdit_5.text(),
+                                    privilege=str(self.ui.comboBox_2.currentText()))
+                session.add(add_client)
+            self.close()
+        elif System.client_update == 1:
+            # обновляем информацию о клиенте
+            with Session.begin() as session:
+                logger.info('обновляем информацию о клиенте')
+                session.execute(update(Client).where(Client.id == System.client_id).values(
+                                id=System.client_id,
+                                last_name=str(self.ui.lineEdit.text()),
+                                first_name=str(self.ui.lineEdit_2.text()),
+                                middle_name=str(self.ui.lineEdit_3.text()),
+                                birth_date=self.ui.dateEdit.date().toString("yyyy-MM-dd"),
+                                gender=str(self.ui.comboBox.currentText()),
+                                phone=self.ui.lineEdit_4.text(),
+                                email=self.ui.lineEdit_5.text(),
+                                privilege=str(self.ui.comboBox_2.currentText())))
+
+                # nextval('client_id_seq'::regclass
+            System.client_update = None
+            System.client_id = None
+            self.close()
 
 
 class SaleForm(QDialog):
@@ -576,7 +603,7 @@ class SaleForm(QDialog):
             new_price = int(new_price)
             self.ui.label_8.setText(str(new_price))
         """Сохраняем данные продажи"""
-        sale_tuple = (kol_adult, int(price_adult), kol_child, int(price_child), int(new_price), id_adult)
+        sale_tuple = (kol_adult, int(price_adult), kol_child, int(price_child), int(new_price), id_adult, discount)
         """Генерируем список с билетами"""
         for row in range(rows):
             tickets.append((self.ui.tableWidget_2.item(row, 0).text(), self.ui.tableWidget_2.item(row, 1).text(),
@@ -590,58 +617,62 @@ class SaleForm(QDialog):
         """Сохраняем данные заказа"""
         logger.info("Inside the function def sale_save")
         sale_tuple, tickets = self.edit_sale()
+        logger.info('sale_tuple')
+        logger.info(sale_tuple)
         kassir_id = System.user[3]
-        #logger.debug(kassir_id)
-        logger.debug('sale_tuple')
-        logger.debug(sale_tuple)
         price = 0
         pc_name = socket.gethostname()
-        session = Session()
-        add_sale = Sale(price=int(self.ui.label_8.text()),
+        """Генерируем продажу"""
+        logger.info("Генерируем продажу")
+        with Session.begin() as session:
+            logger.info('Определяем id новой продажи')
+            sale_index = session.query(Sale).count()
+        # nextval('sale_id_seq'::regclass)
+        add_sale = Sale(id=sale_index+1,
+                        price=int(self.ui.label_8.text()),
                         id_user=kassir_id,
                         id_client=sale_tuple[5],
                         status=0,
+                        discount=int(self.ui.comboBox_2.currentText()),
                         pc_name=pc_name,
                         datetime_save=dt.datetime.now())
-        session.add(add_sale)
-        session.commit()
-        session.close()
-        """Сохраняем билеты"""
-        logger.info("Сохраняем билеты")
-        session = Session()
-        sale_index = session.query(Sale).count()
-        logger.debug('tickets')
-        logger.debug(tickets)
-        for i in range(len(tickets)):
-            type = 0
-            for j in range(len(tickets[i])):
-                """Считаем количество начисленных талантов"""
-                arrival_time = self.ui.comboBox.currentText()
-                if arrival_time == 1:
-                    # начисляем 25 талантов
-                    talent = 25
-                elif arrival_time == 2:
-                    # начисляем 35 талантов
-                    talent = 35
-                else:
-                    # начисляем 50 талантов
-                    talent = 50
-                if [tickets[i][3]] == 'взрослый':
-                    type = 0
-                elif [tickets[i][3]] == 'детский':
-                    type = 1
-                add_ticket = Ticket(id_client=tickets[i][6],
-                                    id_sale=int(sale_index),
-                                    arrival_time=self.ui.comboBox.currentText(),
-                                    talent=talent,
-                                    price=tickets[i][4],
-                                    description=tickets[i][5],
-                                    ticket_type=type,
-                                    print=1  # если печатаем билет исправить на checkbox
-                                    )
-            session.add(add_ticket)
-            session.commit()
-        session.close()
+        logger.debug('add_sale %s' % (add_sale))
+        """Сохраняем продажу"""
+        logger.info("Сохраняем продажу")
+        with Session.begin() as session:
+            session.add(add_sale)
+            """Генерируем билеты"""
+            logger.info("Генерируем билеты")
+            logger.debug(tickets)
+            for i in range(len(tickets)):
+                type = 0
+                for j in range(len(tickets[i])):
+                    """Считаем количество начисленных талантов"""
+                    arrival_time = self.ui.comboBox.currentText()
+                    if arrival_time == 1:
+                        # начисляем 25 талантов
+                        talent = 25
+                    elif arrival_time == 2:
+                        # начисляем 35 талантов
+                        talent = 35
+                    else:
+                        # начисляем 50 талантов
+                        talent = 50
+                    if [tickets[i][3]] == 'взрослый':
+                        type = 0
+                    elif [tickets[i][3]] == 'детский':
+                        type = 1
+                    add_ticket = Ticket(id_client=tickets[i][6],
+                                        id_sale=int(sale_index+1),
+                                        arrival_time=self.ui.comboBox.currentText(),
+                                        talent=talent,
+                                        price=tickets[i][4],
+                                        description=tickets[i][5],
+                                        ticket_type=type,
+                                        print=1  # если печатаем билет исправить на checkbox
+                                        )
+                logger.info("Сохраняем билет")
+                session.add(add_ticket)
         self.close()
 
 
@@ -663,7 +694,7 @@ class SaleForm(QDialog):
                     while (line := file.readline().rstrip()):
                         print(line)
             # если продажа новая
-            if System.status_sale == 0:
+            if System.sale_status == 0:
                 """Сохраняем данные о продаже"""
                 pc_name = socket.gethostname()
                 session = Session()
@@ -679,7 +710,7 @@ class SaleForm(QDialog):
                 session.add(add_sale)
                 session.commit()
                 session.close()
-            elif System.status_sale == 1:
+            elif System.sale_status == 1:
                 # если продажа была сохранена ранее
                 pc_name = socket.gethostname()
                 session = Session()
@@ -796,11 +827,13 @@ class PaymentType:
 
 class System:
     user = None
-
+    # флаг для обновления клиента
+    client_id = None
+    client_update = None
     # статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
     sale_status = None
     sale_id = None
-
+    sale_discount = None
     # какой сегодня день: 0 - будний, 1 - выходной
     what_a_day = None
 
@@ -851,14 +884,14 @@ class PayForm(QDialog):
     """Форма оплаты"""
     startGenerate = Signal()
     def __init__(self):
-            super().__init__()
-            self.ui = Ui_Dialog_Pay()
-            self.ui.setupUi(self)
-            # Посылаем сигнал генерации чека
-            # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
-            # при вызове done() окно должно закрыться и exec_ вернет переданный аргумент из done()
-            self.ui.pushButton.clicked.connect(lambda: self.done(PaymentType.ByCash))
-            self.ui.pushButton_2.clicked.connect(lambda: self.done(PaymentType.ByCard))
+        super().__init__()
+        self.ui = Ui_Dialog_Pay()
+        self.ui.setupUi(self)
+        # Посылаем сигнал генерации чека
+        # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
+        # при вызове done() окно должно закрыться и exec_ вернет переданный аргумент из done()
+        self.ui.pushButton.clicked.connect(lambda: self.done(PaymentType.ByCash))
+        self.ui.pushButton_2.clicked.connect(lambda: self.done(PaymentType.ByCard))
 
 
         # Устанавливаем текстовое значение в метку
