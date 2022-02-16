@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'sale_9.ui'
+## Form generated from reading UI file 'sale_10.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.2.2
 ##
@@ -16,10 +16,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateEdit,
-    QDialog, QFrame, QGridLayout, QGroupBox,
+    QDialog, QFrame, QGridLayout, QGroupBox, QAbstractItemView,
     QHeaderView, QLabel, QLineEdit, QPushButton,
     QRadioButton, QSizePolicy, QTableWidget, QTableWidgetItem,
-    QWidget, QAbstractItemView)
+    QWidget)
 
 class Ui_Dialog_Sale(object):
     def setupUi(self, Dialog_Sale):
@@ -94,8 +94,8 @@ class Ui_Dialog_Sale(object):
         self.line_2.setFrameShape(QFrame.HLine)
         self.line_2.setFrameShadow(QFrame.Sunken)
         self.tableWidget_2 = QTableWidget(Dialog_Sale)
-        if (self.tableWidget_2.columnCount() < 8):
-            self.tableWidget_2.setColumnCount(8)
+        if (self.tableWidget_2.columnCount() < 9):
+            self.tableWidget_2.setColumnCount(9)
         __qtablewidgetitem6 = QTableWidgetItem()
         self.tableWidget_2.setHorizontalHeaderItem(0, __qtablewidgetitem6)
         __qtablewidgetitem7 = QTableWidgetItem()
@@ -112,6 +112,8 @@ class Ui_Dialog_Sale(object):
         self.tableWidget_2.setHorizontalHeaderItem(6, __qtablewidgetitem12)
         __qtablewidgetitem13 = QTableWidgetItem()
         self.tableWidget_2.setHorizontalHeaderItem(7, __qtablewidgetitem13)
+        __qtablewidgetitem14 = QTableWidgetItem()
+        self.tableWidget_2.setHorizontalHeaderItem(8, __qtablewidgetitem14)
         self.tableWidget_2.setObjectName(u"tableWidget_2")
         self.tableWidget_2.setGeometry(QRect(0, 410, 681, 371))
         self.tableWidget_2.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -301,6 +303,8 @@ class Ui_Dialog_Sale(object):
         ___qtablewidgetitem12.setText(QCoreApplication.translate("Dialog_Sale", u"id", None));
         ___qtablewidgetitem13 = self.tableWidget_2.horizontalHeaderItem(7)
         ___qtablewidgetitem13.setText(QCoreApplication.translate("Dialog_Sale", u"\u041f\u0435\u0447\u0430\u0442\u044c", None));
+        ___qtablewidgetitem14 = self.tableWidget_2.horizontalHeaderItem(8)
+        ___qtablewidgetitem14.setText(QCoreApplication.translate("Dialog_Sale", u"\u0412\u043e\u0437\u0440\u0430\u0441\u0442", None));
         self.label_2.setText(QCoreApplication.translate("Dialog_Sale", u"\u0418\u0442\u043e\u0433\u043e", None))
         self.label_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u041e\u043f\u043b\u0430\u0442\u0430", None))
         self.pushButton_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c", None))

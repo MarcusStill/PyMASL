@@ -23,6 +23,7 @@ class Sale(Base):
         nullable=False,
         unique=True,
         primary_key=True,
+        autoincrement=True
     )
     id_client = Column(Integer, ForeignKey('client.id'), comment='Id клиента')
     id_user = Column(Integer, ForeignKey('user.id'), comment='Id пользователя')
