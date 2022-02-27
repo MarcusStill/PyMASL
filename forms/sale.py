@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'sale_10.ui'
+## Form generated from reading UI file 'sale_11.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.2.2
 ##
@@ -16,17 +16,17 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateEdit,
-    QDialog, QFrame, QGridLayout, QGroupBox, QAbstractItemView,
+    QDialog, QFrame, QGridLayout, QGroupBox,
     QHeaderView, QLabel, QLineEdit, QPushButton,
     QRadioButton, QSizePolicy, QTableWidget, QTableWidgetItem,
-    QWidget)
+    QWidget, QAbstractItemView)
 
 class Ui_Dialog_Sale(object):
     def setupUi(self, Dialog_Sale):
         if not Dialog_Sale.objectName():
             Dialog_Sale.setObjectName(u"Dialog_Sale")
         Dialog_Sale.setWindowModality(Qt.ApplicationModal)
-        Dialog_Sale.resize(834, 791)
+        Dialog_Sale.resize(843, 791)
         self.groupBox = QGroupBox(Dialog_Sale)
         self.groupBox.setObjectName(u"groupBox")
         self.groupBox.setGeometry(QRect(0, 0, 681, 351))
@@ -90,7 +90,7 @@ class Ui_Dialog_Sale(object):
         self.line.setFrameShadow(QFrame.Sunken)
         self.line_2 = QFrame(Dialog_Sale)
         self.line_2.setObjectName(u"line_2")
-        self.line_2.setGeometry(QRect(0, 400, 831, 20))
+        self.line_2.setGeometry(QRect(0, 400, 841, 20))
         self.line_2.setFrameShape(QFrame.HLine)
         self.line_2.setFrameShadow(QFrame.Sunken)
         self.tableWidget_2 = QTableWidget(Dialog_Sale)
@@ -245,7 +245,7 @@ class Ui_Dialog_Sale(object):
         self.comboBox_2.setGeometry(QRect(690, 500, 78, 30))
         self.line_5 = QFrame(Dialog_Sale)
         self.line_5.setObjectName(u"line_5")
-        self.line_5.setGeometry(QRect(680, 220, 151, 21))
+        self.line_5.setGeometry(QRect(680, 220, 161, 21))
         self.line_5.setFrameShape(QFrame.HLine)
         self.line_5.setFrameShadow(QFrame.Sunken)
         self.label_15 = QLabel(Dialog_Sale)
@@ -253,7 +253,7 @@ class Ui_Dialog_Sale(object):
         self.label_15.setGeometry(QRect(260, 350, 101, 20))
         self.line_6 = QFrame(Dialog_Sale)
         self.line_6.setObjectName(u"line_6")
-        self.line_6.setGeometry(QRect(680, 710, 131, 21))
+        self.line_6.setGeometry(QRect(680, 710, 161, 21))
         self.line_6.setFrameShape(QFrame.HLine)
         self.line_6.setFrameShadow(QFrame.Sunken)
         self.label_16 = QLabel(Dialog_Sale)

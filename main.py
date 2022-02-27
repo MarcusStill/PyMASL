@@ -30,6 +30,7 @@ import psycopg2
 from files import windows
 import socket
 import calendar
+import subprocess
 
 
 #Чтение параметров из файла конфигурации
@@ -46,10 +47,7 @@ log_file = config.get("OTHER", "log_file")
 
 engine = create_engine("postgresql://postgres:" + password + "@" + host + ":" + port + "/" + database, echo=True)
 Session = sessionmaker(engine)
-logger.add(log_file)
-#Base = declarative_base(bind=engine)
-#session_factory = sessionmaker(bind=engine)
-#Session = scoped_session(session_factory)
+logger.add(log_file, rotation="5 MB")
 
 
 class MainWindow(QMainWindow):
@@ -89,8 +87,8 @@ class MainWindow(QMainWindow):
         if combo_active_item == 'телефон':
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
-            with Session.begin() as session:
-                search = session.query(Client).filter(Client.phone.like('%'+self.ui.lineEdit.text()+'%')).all()
+            session = Session()
+            search = session.query(Client).filter(Client.phone.like('%'+self.ui.lineEdit.text()+'%')).all()
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
@@ -103,11 +101,12 @@ class MainWindow(QMainWindow):
                 self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
                 self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
                 self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
+            session.close()
         elif combo_active_item == 'фамилия':
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
-            with Session.begin() as session:
-                search = session.query(Client).filter(Client.last_name.ilike('%'+self.ui.lineEdit.text()+'%')).all()
+            session = Session()
+            search = session.query(Client).filter(Client.last_name.ilike('%'+self.ui.lineEdit.text()+'%')).all()
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
@@ -120,11 +119,12 @@ class MainWindow(QMainWindow):
                 self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
                 self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
                 self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
+            session.close()
         elif combo_active_item == 'имя':
             """Очищаем tableWidget"""
             self.ui.tableWidget.setRowCount(0)
-            with Session.begin() as session:
-                search = session.query(Client).filter(Client.first_name.ilike('%'+self.ui.lineEdit.text()+'%')).all()
+            session = Session()
+            search = session.query(Client).filter(Client.first_name.ilike('%'+self.ui.lineEdit.text()+'%')).all()
             for client in search:
                 row = self.ui.tableWidget.rowCount()
                 self.ui.tableWidget.insertRow(row)
@@ -137,6 +137,7 @@ class MainWindow(QMainWindow):
                 self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
                 self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
                 self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
+            session.close()
 
 
     def search_selected_client(self):
@@ -145,8 +146,9 @@ class MainWindow(QMainWindow):
         for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
-            with Session.begin() as session:
-                search_client = session.query(Client).filter_by(id=(row_number+1)).first()
+            session = Session()
+            search_client = session.query(Client).filter_by(id=(row_number+1)).first()
+            session.close()
             # сохраняем id клиента
             System.client_id = search_client.id
             """Передаем в форму данные клиента"""
@@ -185,61 +187,81 @@ class MainWindow(QMainWindow):
             row_number = idx.row()
             row_count = self.ui.tableWidget_2.rowCount()
             sale_number = row_count - row_number
-            with Session.begin() as session:
-                client_in_sale = session.query(Client.first_name, Client.last_name, Client.middle_name,
-                                               Ticket.id,
-                                               Ticket.id_client,
-                                               Ticket.id_sale,
-                                               Ticket.client_age,
-                                               Ticket.datetime,
-                                               Ticket.arrival_time,
-                                               Ticket.talent, Ticket.price,
-                                               Ticket.description,
-                                               Ticket.print,
-                                               Ticket.ticket_type).join(
-                    Ticket).join(Sale).filter(and_(Client.id == Ticket.id_client, Sale.id == sale_number)).all()
-                # обновить запрос
+            session = Session()
+            client_in_sale = session.query(Client.first_name,
+                                           Client.last_name,
+                                           Client.middle_name,
+                                           Ticket.ticket_type,
+                                           Ticket.price,
+                                           Ticket.description,
+                                           Client.id,
+                                           Ticket.print,
+                                           Ticket.client_age,
+                                           Ticket.arrival_time,
+                                           Ticket.talent,
+                                           Ticket.datetime).join(
+                Ticket).filter(and_(Client.id == Ticket.id_client, Ticket.id_sale == sale_number)).all()
+            # запрашиваем статус продажи
+            sale_status = (session.query(Sale.status).filter(Sale.id == sale_number).one())._asdict()
             """Передаем в форму данные клиента"""
             sale = SaleForm()
             sale.ui.tableWidget_2.setRowCount(0)
-            sale.ui.dateEdit.setDate(client_in_sale[0][7])
+            sale.ui.dateEdit.setDate(client_in_sale[0][11])
             sale.ui.dateEdit.setEnabled(False)
-            sale.ui.comboBox.setCurrentText(str(client_in_sale[0][4]))
+            sale.ui.comboBox.setCurrentText(str(client_in_sale[0][9]))
             sale.ui.comboBox.setEnabled(False)
             sale.ui.checkBox.setEnabled(False)
-            sale.ui.checkBox_2.setEnabled(False)
-            sale.ui.pushButton_3.setEnabled(False)
-            sale.ui.pushButton_6.setEnabled(False)
-            type_ticket = ''
+            if sale_status.get('status') == 1:
+                sale.ui.pushButton_3.setEnabled(False)
+                sale.ui.pushButton_5.setEnabled(False)
             for search_client in client_in_sale:
                 logger.debug(search_client)
                 row = sale.ui.tableWidget_2.rowCount()
-                if search_client[13] == 0:
+                if search_client[8] >= 14:
                     type_ticket = 'взрослый'
                     kol_adult += 1
-                elif search_client[13] == 1:
+                else:
                     type_ticket = 'детский'
                     kol_child += 1
                 sale.ui.tableWidget_2.insertRow(row)
+                # имя
                 sale.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{search_client[1]}"))
+                # фамилия
                 sale.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{search_client[0]}"))
+                # отчество
                 sale.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{search_client[2]}"))
+                # тип билета
                 sale.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(type_ticket))
-                sale.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{search_client[10]}"))
-                sale.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client[11]}"))
-                sale.ui.tableWidget_2.setColumnHidden(6, True)
-                sale.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(f"{search_client[12]}"))
-                sale.ui.tableWidget_2.setColumnHidden(8, True)
-                sum += int(search_client[10])
+                # цена
+                sale.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{search_client[4]}"))
+                # примечание
+                sale.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client[5]}"))
+                # id клиента
+                sale.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client[6]}"))
+                #sale.ui.tableWidget_2.setColumnHidden(6, True)
+                # печать - время пребывания
+                sale.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(f"{search_client[7]}"))
+                # возраст
+                sale.ui.tableWidget_2.setItem(row, 8, QTableWidgetItem(f"{search_client[8]}"))
+                #sale.ui.tableWidget_2.setColumnHidden(8, True)
+                sum += int(search_client[4])
+            session.close()
+            #res.append(client_in_sale)
             sale.ui.label_5.setText(str(kol_adult))
             sale.ui.label_7.setText(str(kol_child))
             sale.ui.label_8.setText(str(sum))
+            #SaleForm.edit_sale(self)
             sale.show()
             # передаем сведения о сохраненной продаже
             System.sale_status = 1
             logger.warning("System.sale_status %s" % (System.sale_status))
             System.sale_id = sale_number
-            logger.warning("System.sale_id %s" % (System.sale_id))
+            #System.sale_tickets = res[0]
+            System.sale_tickets = client_in_sale
+            #logger.info(res[0][0])
+            #logger.warning("System.sale_id %s" % (System.sale_id))
+            logger.warning('selected sale')
+            logger.debug(System.sale_tickets)
             sale.exec_()
 
 
@@ -267,21 +289,21 @@ class MainWindow(QMainWindow):
         """Очищаем tableWidget"""
         logger.info("Inside the function def buttonAllClient")
         self.ui.tableWidget.setRowCount(0)
-        with Session.begin() as session:
-            clients = session.query(Client).order_by(Client.id)
-            for client in clients:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                # !убрать id из таблицы
-                self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.first_name}"))
-                self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
-                self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
-                self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
-                self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
+        session = Session()
+        clients = session.query(Client).order_by(Client.id)
+        for client in clients:
+            row = self.ui.tableWidget.rowCount()
+            self.ui.tableWidget.insertRow(row)
+            self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.id}"))
+            self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.last_name}"))
+            self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{client.first_name}"))
+            self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.middle_name}"))
+            self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.gender}"))
+            self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.birth_date}"))
+            self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(f"{client.privilege}"))
+            self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(f"{client.phone}"))
+            self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(f"{client.email}"))
+        session.close()
 
 
     @logger_wraps()
@@ -289,43 +311,44 @@ class MainWindow(QMainWindow):
         """Очищаем tableWidget"""
         logger.info("Inside the function def buttonAllSales")
         self.ui.tableWidget_2.setRowCount(0)
-        with Session.begin() as session:
-            sales = session.query(Sale).order_by(desc(Sale.id))
-            for sale in sales:
-                row = self.ui.tableWidget_2.rowCount()
-                self.ui.tableWidget_2.insertRow(row)
-                self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{sale.id}"))
-                self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{sale.id_client}"))
-                self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{sale.price}"))
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.status}"))
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.discount}"))
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.payment_type}"))
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.id_user}"))
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.pc_name}"))
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.datetime}"))
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.datetime_save}"))
+        session = Session()
+        sales = session.query(Sale).order_by(desc(Sale.id))
+        for sale in sales:
+            row = self.ui.tableWidget_2.rowCount()
+            self.ui.tableWidget_2.insertRow(row)
+            self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{sale.id}"))
+            self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{sale.id_client}"))
+            self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{sale.price}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.status}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.discount}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.payment_type}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.id_user}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.pc_name}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.datetime}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.datetime_save}"))
+        session.close()
 
 
-    # !нужно ли?
     @logger_wraps()
     def buttonAllTickets(self):
         """Очищаем tableWidget"""
         logger.info("Inside the function def buttonAllTickets")
         self.ui.tableWidget_3.setRowCount(0)
-        with Session.begin() as session:
-            tickets = session.query(Ticket).order_by(Ticket.id)
-            for ticket in tickets:
-                row = self.ui.tableWidget_3.rowCount()
-                self.ui.tableWidget_3.insertRow(row)
-                self.ui.tableWidget_3.setItem(row, 0, QTableWidgetItem(f"{ticket.id}"))
-                self.ui.tableWidget_3.setItem(row, 1, QTableWidgetItem(f"{ticket.id_client}"))
-                self.ui.tableWidget_3.setItem(row, 2, QTableWidgetItem(f"{ticket.id_sale}"))
-                self.ui.tableWidget_3.setItem(row, 3, QTableWidgetItem(f"{ticket.client_age}"))
-                self.ui.tableWidget_3.setItem(row, 4, QTableWidgetItem(f"{ticket.datetime}"))
-                self.ui.tableWidget_3.setItem(row, 5, QTableWidgetItem(f"{ticket.arrival_time}"))
-                self.ui.tableWidget_3.setItem(row, 6, QTableWidgetItem(f"{ticket.talent}"))
-                self.ui.tableWidget_3.setItem(row, 7, QTableWidgetItem(f"{ticket.price}"))
-                self.ui.tableWidget_3.setItem(row, 8, QTableWidgetItem(f"{ticket.description}"))
+        session = Session()
+        tickets = session.query(Ticket).order_by(Ticket.id)
+        for ticket in tickets:
+            row = self.ui.tableWidget_3.rowCount()
+            self.ui.tableWidget_3.insertRow(row)
+            self.ui.tableWidget_3.setItem(row, 0, QTableWidgetItem(f"{ticket.id}"))
+            self.ui.tableWidget_3.setItem(row, 1, QTableWidgetItem(f"{ticket.id_client}"))
+            self.ui.tableWidget_3.setItem(row, 2, QTableWidgetItem(f"{ticket.id_sale}"))
+            self.ui.tableWidget_3.setItem(row, 3, QTableWidgetItem(f"{ticket.client_age}"))
+            self.ui.tableWidget_3.setItem(row, 4, QTableWidgetItem(f"{ticket.datetime}"))
+            self.ui.tableWidget_3.setItem(row, 5, QTableWidgetItem(f"{ticket.arrival_time}"))
+            self.ui.tableWidget_3.setItem(row, 6, QTableWidgetItem(f"{ticket.talent}"))
+            self.ui.tableWidget_3.setItem(row, 7, QTableWidgetItem(f"{ticket.price}"))
+            self.ui.tableWidget_3.setItem(row, 8, QTableWidgetItem(f"{ticket.description}"))
+        session.close()
 
 
 class AuthForm(QDialog):
@@ -350,7 +373,7 @@ class AuthForm(QDialog):
             self.ui.label_7.setText(software_version)
             self.ui.pushButton.clicked.connect(self.logincheck)
             self.ui.pushButton_2.clicked.connect(self.close)
-        # добавить периодическое обновление статуса соединения
+
 
     def logincheck(self):
         """Проверяем есть ли в таблице user запись с указанными полями"""
@@ -376,8 +399,7 @@ class AuthForm(QDialog):
             window.show()
             window.exec_()
         else:
-            info = 'Пользователь не найден'
-            windows.info_window(info, 'Проверьте правильность ввода логина и пароля.')
+            windows.info_window('Пользователь не найден', 'Проверьте правильность ввода логина и пароля.', '')
 
 
 class ClientForm(QDialog):
@@ -398,7 +420,8 @@ class ClientForm(QDialog):
             with Session.begin() as session:
                 logger.info('добавляем нового клиента')
                 client_index = session.query(Client).count()
-                add_client = Client(last_name=str(self.ui.lineEdit.text()),
+                add_client = Client(id=client_index + 1,
+                                    last_name=str(self.ui.lineEdit.text()),
                                     first_name=str(self.ui.lineEdit_2.text()),
                                     middle_name=str(self.ui.lineEdit_3.text()),
                                     birth_date=self.ui.dateEdit.date().toString("yyyy-MM-dd"),
@@ -422,7 +445,6 @@ class ClientForm(QDialog):
                                 phone=self.ui.lineEdit_4.text(),
                                 email=self.ui.lineEdit_5.text(),
                                 privilege=str(self.ui.comboBox_2.currentText())))
-
             System.client_update = None
             System.client_id = None
             self.close()
@@ -437,6 +459,7 @@ class SaleForm(QDialog):
         self.ui.pushButton_4.clicked.connect(self.close)
         self.ui.pushButton_3.clicked.connect(self.sale_save)
         self.ui.pushButton_5.clicked.connect(lambda: self.openPay(self.ui.label_8.text()))
+        self.ui.pushButton_6.clicked.connect(self.sale_return)
         self.ui.pushButton_7.clicked.connect(self.generate_saved_tickets)
         self.ui.tableWidget.doubleClicked.connect(self.add_client_to_sale)
         cur_today = date.today()
@@ -477,8 +500,8 @@ class SaleForm(QDialog):
         logger.info("Inside the function def button_all_clients_to_sale")
         if System.what_a_day == 1:
             self.ui.dateEdit.setStyleSheet('background-color: red;')
-        with Session.begin() as session:
-            clients = session.query(Client).order_by(Client.id)
+        session = Session()
+        clients = session.query(Client).order_by(Client.id)
         for client in clients:
             row = self.ui.tableWidget.rowCount()
             self.ui.tableWidget.insertRow(row)
@@ -488,6 +511,7 @@ class SaleForm(QDialog):
             self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.birth_date}"))
             self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.privilege}"))
             self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.phone}"))
+        session.close()
 
 
     @logger_wraps()
@@ -500,12 +524,12 @@ class SaleForm(QDialog):
         for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
-            with Session.begin() as session:
-                search_client = session.query(Client).filter_by(id=(row_number+1)).first()
+            session = Session()
+            search_client = session.query(Client).filter_by(id=(row_number+1)).first()
+            session.close()
             """Вычисляем возраст клиента"""
             today = date.today()
             age = today.year - search_client.birth_date.year - ((today.month, today.day) < (search_client.birth_date.month, search_client.birth_date.day))
-            logger.info('age %s' % (age))
             """Определяем тип билета и цену"""
             if 5 <= age < 14:
                 type_ticket = 'детский'
@@ -529,11 +553,11 @@ class SaleForm(QDialog):
             self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{price}"))
             self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client.privilege}"))
             self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client.id}"))
-            self.ui.tableWidget_2.setColumnHidden(6, True)
+            #self.ui.tableWidget_2.setColumnHidden(6, True)
             #self.ui.tableWidget_2.setItem(row, 7, QCheckBox.setCheckState(Qt.Checked)) не работает
             self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem('123'))
             self.ui.tableWidget_2.setItem(row, 8, QTableWidgetItem(f"{age}"))
-            self.ui.tableWidget_2.setColumnHidden(8, True)
+            # self.ui.tableWidget_2.setColumnHidden(8, True)
             """Заполняем таблицу с итоговой информацией"""
             self.edit_sale()
 
@@ -558,8 +582,7 @@ class SaleForm(QDialog):
 
 
     def edit_sale(self):
-        """Обновляем таблицу заказа"""
-        logger.debug("combobox changed!")
+        """Обновляем таблицу заказа и генерируем информацию о продаже и список билетов"""
         logger.info("Inside the function def edit_sale")
         kol_adult = 0
         kol_child = 0
@@ -571,10 +594,14 @@ class SaleForm(QDialog):
         tickets = []
         if (int(time_ticket)) == 1:
             price = 200
+            talent = 25
         elif (int(time_ticket)) == 2:
             price = 400
-        else:
+            talent = 35
+        elif (int(time_ticket)) == 3:
             price = 600
+            talent = 50
+        date_time = self.ui.dateEdit.date().toString("yyyy-MM-dd")
         """считаем общую сумму"""
         rows = self.ui.tableWidget_2.rowCount()
         for row in range(rows):
@@ -587,6 +614,7 @@ class SaleForm(QDialog):
                 """Привязываем продажу ко взрослому"""
                 if id_adult == 0:
                     id_adult = self.ui.tableWidget_2.item(row, 6).text()
+                    logger.warning('id_adult %s' % (id_adult))
                 kol_adult += 1
                 price_adult = self.ui.tableWidget_2.item(row, 4).text()
             else:
@@ -597,122 +625,207 @@ class SaleForm(QDialog):
         """проверить есть ли взрослый"""
         #!
         """применяем скидку"""
-        discount = int(self.ui.comboBox_2.currentText())
+        System.sale_discount = sale/100 * int(self.ui.comboBox_2.currentText())
         if sale >= 0:
-            new_price = sale - (sale/100 * discount)
+            #new_price = sale - (sale/100 * System.sale_discount)
+            new_price = sale - System.sale_discount
             new_price = int(new_price)
             self.ui.label_8.setText(str(new_price))
         """Сохраняем данные продажи"""
-        sale_tuple = (kol_adult, int(price_adult), kol_child, int(price_child), int(new_price), id_adult, discount)
+        sale_tuple = (kol_adult, int(price_adult), kol_child, int(price_child), int(new_price), id_adult,
+                      System.sale_discount)
+        logger.warning('sale_tuple')
+        logger.warning(sale_tuple)
         """Генерируем список с билетами"""
         for row in range(rows):
             tickets.append((self.ui.tableWidget_2.item(row, 0).text(), self.ui.tableWidget_2.item(row, 1).text(),
-                            time_ticket, self.ui.tableWidget_2.item(row, 3).text(),
+                            self.ui.tableWidget_2.item(row, 2).text(), self.ui.tableWidget_2.item(row, 3).text(),
                             self.ui.tableWidget_2.item(row, 4).text(), self.ui.tableWidget_2.item(row, 5).text(),
                             self.ui.tableWidget_2.item(row, 6).text(), self.ui.tableWidget_2.item(row, 7).text(),
-                            self.ui.tableWidget_2.item(row, 8).text()))
+                            self.ui.tableWidget_2.item(row, 8).text(), time_ticket, talent, date_time))
+        System.sale_tuple = sale_tuple
+        System.sale_tickets = tickets
         return sale_tuple, tickets
 
 
     def sale_save(self):
         """Сохраняем данные заказа"""
         logger.info("Inside the function def sale_save")
-        sale_tuple, tickets = self.edit_sale()
+        #sale_tuple, tickets = self.edit_sale()
         logger.info('sale_tuple')
-        logger.info(sale_tuple)
-        kassir_id = System.user[3]
-        price = 0
-        pc_name = socket.gethostname()
-        """Генерируем продажу"""
-        logger.info("Генерируем продажу")
-        with Session.begin() as session:
-            logger.info('Определяем id новой продажи')
-            sale_index = session.query(Sale).count()
-        # nextval('sale_id_seq'::regclass)
-        add_sale = Sale(price=int(self.ui.label_8.text()),
-                        id_user=kassir_id,
-                        id_client=sale_tuple[5],
-                        status=0,
-                        discount=int(self.ui.comboBox_2.currentText()),
-                        pc_name=pc_name,
-                        datetime_save=dt.datetime.now())
-        logger.debug('add_sale %s' % (add_sale))
-        """Сохраняем продажу"""
-        logger.info("Сохраняем продажу")
-        with Session.begin() as session:
-            #session.add(add_sale)
-            # запрашиваем индекс продажи
-            sale_index = session.query(Sale).count()
-            """Генерируем билеты"""
-            logger.info("Генерируем билеты")
-            logger.debug(tickets)
-            for i in range(len(tickets)):
-                type = 0
-                for j in range(len(tickets[i])):
+        logger.info(System.sale_tuple)
+        if System.sale_status == 0:
+            if System.sale_tuple[0] == 1:
+                add_sale = Sale(price=int(self.ui.label_8.text()),
+                                id_user=System.user[3],
+                                id_client=System.sale_tuple[5],
+                                status=0,
+                                discount=int(self.ui.comboBox_2.currentText()),
+                                pc_name=System.pc_name,
+                                datetime_save=dt.datetime.now())
+                logger.debug('add_sale %s' % (add_sale))
+                """Сохраняем продажу"""
+                logger.info("Сохраняем продажу")
+                session = Session()
+                session.add(add_sale)
+                session.commit()
+                System.sale_id = session.query(Sale).count()
+                session.close()
+                """Генерируем билеты"""
+                logger.info("Генерируем билеты")
+                logger.debug(System.sale_tickets)
+                session = Session()
+                for i in range(len(System.sale_tickets)):
+                    type = 0
                     """Считаем количество начисленных талантов"""
-                    arrival_time = self.ui.comboBox.currentText()
-                    if arrival_time == 1:
-                        # начисляем 25 талантов
-                        talent = 25
-                    elif arrival_time == 2:
-                        # начисляем 35 талантов
-                        talent = 35
-                    else:
-                        # начисляем 50 талантов
-                        talent = 50
-                    if [tickets[i][3]] == 'взрослый':
+                    if System.sale_tickets[i][3] == 'взрослый':
                         type = 0
-                    elif [tickets[i][3]] == 'детский':
+                    elif System.sale_tickets[i][3] == 'детский':
                         type = 1
-                    add_ticket = Ticket(id_client=tickets[i][6],
-                                        id_sale=int(sale_index),
-                                        arrival_time=self.ui.comboBox.currentText(),
-                                        talent=talent,
-                                        price=tickets[i][4],
-                                        description=tickets[i][5],
+                    logger.info('тип билета %s' % (type))
+                    add_ticket = Ticket(id_client=System.sale_tickets[i][6],
+                                        id_sale=int(System.sale_id),
+                                        arrival_time=System.sale_tickets[i][9],
+                                        talent=System.sale_tickets[i][10],
+                                        price=System.sale_tickets[i][4],
+                                        description=System.sale_tickets[i][5],
                                         ticket_type=type,
-                                        print=1,  # если печатаем билет исправить на checkbox
-                                        client_age=tickets[i][8],
-                                        )
-                logger.info("Сохраняем билет")
-                #session.add(add_ticket)
-                logger.info(add_ticket)
-        self.close()
+                                        print=System.sale_tickets[i][7],  # если печатаем билет исправить на checkbox
+                                        client_age=System.sale_tickets[i][8])
+                    logger.info("Сохраняем билет")
+                    logger.info(add_ticket)
+                    session.add(add_ticket)
+                    session.commit()
+                session.close()
+                self.close()
+            else:
+                windows.info_window('Внимание! В продаже отсутствует взрослый',
+                                    'Для оформления новой продажи добавьте, пожалуйста, в нее взрослого.', '')
+
+
+    @logger.catch()
+    def sale_transaction(self, payment_type):
+        """Проводим операцию продажи"""
+        logger.info("Inside the function def sale_transaction")
+        # state_check = 1
+        # payment = 2
+        state_check, payment = kkt.check_open(System.sale_tuple, payment_type, System.user, 1)
+        check = None
+        """Если прошла оплата"""
+        if state_check == 1:
+            if payment == 1:  # если оплата банковской картой
+                logger.info("Читаем слип-чек из файла")
+                pinpad_file = r"C:\sc552\p"
+                with open(pinpad_file, 'r', encoding='IBM866') as file:
+                    while (line := file.readline().rstrip()):
+                        logger.debug(line)
+                check = kkt.read_slip_check()
+            if System.sale_status == 0:
+                """Сохраняем данные о новой продаже"""
+                self.sale_save()
+            # обновляем информацию о продаже в БД
+            session = Session()
+            session.execute(update(Sale).where(Sale.id == System.sale_id).values(status=1, id_user=System.user[3],
+                                                                                 pc_name=System.pc_name,
+                                                                                 payment_type=payment,
+                                                                                 bank_pay=check,
+                                                                                 datetime=dt.datetime.now()))
+            session.commit()
+            session.close()
+            self.generate_saved_tickets()
+
+            System.sale_status = 0
+            # предлагаем очистить окно для проведения новой продажи
+            res = windows.info_dialog_window('Внимание', 'Открыть окно с новой продажей?')
+            if res == 1:
+                self.ui.dateEdit.setEnabled(True)
+                self.ui.dateEdit.setDate(date.today())
+                self.ui.label_5.setText(str(0))
+                self.ui.label_8.setText(str(7))
+                self.ui.label_8.setText(str(0))
+                self.ui.dateEdit.setDate(date.today())
+                self.ui.comboBox.setEnabled(True)
+                self.ui.checkBox.setEnabled(True)
+                self.ui.pushButton_3.setEnabled(True)
+                self.ui.pushButton_6.setEnabled(True)
+                while (self.ui.tableWidget_2.rowCount() > 0):
+                    self.ui.tableWidget_2.removeRow(0)
+            else:
+                self.close()
+        else:
+            logger.info('Оплата не прошла')
+            windows.info_window("Внимание", 'Закройте это окно, откройте сохраненную продажу и проведите'
+                                                    'оплату еще раз.', '')
+
+    @logger.catch()
+    def sale_return(self):
+        """Проводим операцию возврата"""
+        logger.info("Inside the function def sale_return")
+        payment_type = None
+        logger.info('Обновляем данные продажи')
+        self.edit_sale()
+        logger.info('Запрашиваем метод оплаты в БД')
+        session = Session()
+        payment_type_sale = session.query(Sale.payment_type).filter(Sale.id == System.sale_id).one()._asdict()
+        session.close
+        logger.info(payment_type_sale)
+        # 1 - безнал, 2 - наличные
+        if payment_type_sale.get('payment_type') == 1:
+            payment_type = 101
+        else:
+            payment_type = 102
+        logger.info(payment_type)
+        state_check, payment = kkt.check_open(System.sale_tuple, payment_type, System.user, 2)
+        check = None
+        """Если возврат прошел"""
+        if state_check == 1:
+            if payment == 1:  # если оплата банковской картой
+                logger.info("Читаем слип-чек из файла")
+                pinpad_file = r"C:\sc552\p"
+                with open(pinpad_file, 'r', encoding='IBM866') as file:
+                    while (line := file.readline().rstrip()):
+                        logger.debug(line)
+                check = kkt.read_slip_check()
+            # записываем информацию о возврате в БД
+            session = Session()
+            session.execute(update(Sale).where(Sale.id == System.sale_id).values(status=2, user_return=System.user[3],
+                                                                                 pc_name=System.pc_name,
+                                                                                 payment_type=payment,
+                                                                                 bank_return=check,
+                                                                                 datetime_return=dt.datetime.now()))
+            session.commit()
+            session.close()
+            self.close()
+        else:
+            logger.info('Операция возврата завершилась с ошибкой')
+            windows.info_window("Внимание", 'Закройте это окно, откройте сохраненную продажу и проведите'
+                                                    'операцию возврата еще раз.', '')
 
 
     @logger.catch()
     def generate_saved_tickets(self):
-        """Генерируем список с билетами"""
-        logger.info('Генерируем список с билетами')
-        result = []
-        type = None
-        with Session.begin() as session:
-            client_in_sale = session.query(Client.first_name, Client.last_name,
-                                           #Client.middle_name,
-                                           #Ticket.id,
-                                           #Ticket.id_client,
-                                           #Ticket.id_sale,
-                                           Ticket.client_age, Ticket.datetime,
-                                           Ticket.arrival_time, Ticket.talent, Ticket.price, Ticket.description,
-                                           #Ticket.print,
-                                           Ticket.ticket_type).join(
-                Ticket).join(Sale).filter(and_(Client.id == Ticket.id_client, Sale.id == System.sale_id)).all()
-            result.append(client_in_sale)
+        """Генерируем список с ранее сохраненными билетами"""
+        logger.info('Генерируем список с ранее сохраненными билетами')
+        logger.info('sate_tickets')
+        logger.info(System.sale_tickets)
+        client_in_sale = System.sale_tickets
         """Удаляем предыдущий файл с билетами"""
-        if os.path.exists('./ticket.pdf'):  # os.path.isfile ()???
+        os.system("TASKKILL /F /IM SumatraPDF.exe")
+        if os.path.exists('./ticket.pdf'):  # os.path.isfile ()?
             os.remove('./ticket.pdf')
         """Устанавливаем параметры макета билета"""
         pdfmetrics.registerFont(TTFont('DejaVuSerif', 'files/DejaVuSerif.ttf'))
         c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
         c.setFont('DejaVuSerif', 12)
         """Сохраняем билеты"""
+        logger.info(len(client_in_sale))
         for i in range(len(client_in_sale)):
-            logger.debug(client_in_sale[i][8])
-            if client_in_sale[i][8] == 0:
+            logger.info(client_in_sale[i])
+            if int(client_in_sale[i][4]) >= 14:
                 type = 'взрослый'
-            elif client_in_sale[i][8] == 1:
+            else:
                 type = 'детский'
-            logger.debug(type)
+            date_time = str(client_in_sale[i][11])
             """Сохраняем макет билета"""
             c.setFont('DejaVuSerif', 12)
             # имя
@@ -720,152 +833,28 @@ class SaleForm(QDialog):
             # фамилия
             c.drawString(20 * mm, 47 * mm, str(client_in_sale[i][1]).replace("'", "").replace("[", "").replace("]", ""))
             # возраст
-            c.drawString(95 * mm, 53 * mm, str(client_in_sale[i][2]).replace("'", "").replace("[", "").replace("]", ""))
+            c.drawString(95 * mm, 53 * mm, str(client_in_sale[i][8]).replace("'", "").replace("[", "").replace("]", ""))
             # продолжительность
-            c.drawString(20 * mm, 41 * mm, str(client_in_sale[i][4]).replace("'", "").replace("[", "").replace("]", ""))
+            c.drawString(20 * mm, 41 * mm, str(client_in_sale[i][9]).replace("'", "").replace("[", "").replace("]", ""))
             # дата и время билета
-            c.drawString(95 * mm, 41 * mm, str(client_in_sale[i][3].strftime("%m-%d-%Y %H:%M")))
-            c.drawString(70 * mm, 30 * mm, "МАСТЕРСЛАВЛЬ")
-            c.drawString(70 * mm, 23 * mm, "БЕЛГОРОД")
+            c.drawString(95 * mm, 41 * mm, str(date_time[0:10]).replace("'", "").replace("[", "").replace("]", ""))
+            c.drawString(70 * mm, 30 * mm, "БЕЛГОРОД")
+            c.drawString(70 * mm, 23 * mm, "МАСТЕРСЛАВЛЬ")
             # цена
-            c.drawString(121 * mm, 30 * mm, str(client_in_sale[i][6]).replace("'", "").replace("[", "").replace("]", ""))
+            c.drawString(121 * mm, 30 * mm,
+                         str(client_in_sale[i][4]).replace("'", "").replace("[", "").replace("]", ""))
             # тип билета
             c.drawString(31 * mm, 13 * mm, str(type).replace("'", "").replace("[", "").replace("]", ""))
             # доп.отметки
-            c.drawString(90 * mm, 13 * mm, str(client_in_sale[i][7]).replace("'", "").replace("[", "").replace("]", ""))
+            c.drawString(90 * mm, 13 * mm, str(client_in_sale[i][5]))
+            #c.drawString(90 * mm, 13 * mm, str(client_in_sale[i][5]))
             # таланты
-            c.drawString(153 * mm, 40 * mm, str(client_in_sale[i][5]).replace("'", "").replace("[", "").replace("]", ""))
+            c.drawString(153 * mm, 40 * mm,
+                         str(client_in_sale[i][10]).replace("'", "").replace("[", "").replace("]", ""))
             c.showPage()
         c.save()
-        # """Печатаем билеты"""
-        # t.sleep(5)
-        os.startfile("ticket.pdf", "print")
-        # t.sleep(5)
-        # os.system("TASKKILL /F /IM AcroRD32.exe")
-        # os.system("TASKKILL /F /IM Acrobat.exe")
-
-
-    @logger.catch()
-    def check_ticket_generate(self, payment_type):
-        """Сохраняем данные заказа"""
-        logger.info("Inside the function def check_ticket_generate")
-        sale_tuple, tickets = self.edit_sale()
-        state_check, payment = kkt.check_open(sale_tuple, payment_type, System.user)
-        logger.warning(sale_tuple)
-        logger.warning(tickets)
-        kassir_id = System.user[3]
-        price = 0
-        status_save_sale = None
-        line = None
-        type = None
-        """Если прошла оплата"""
-        if state_check == 1:
-            if payment == 1: #если оплата банковской картой
-                logger.info("Читаем слип-чек из файла")
-                pinpad_file = r"C:\sc552\p"
-                with open(pinpad_file, 'r', encoding='IBM866') as file:
-                    while (line := file.readline().rstrip()):
-                        print(line)
-            # если продажа новая
-            date_time_sale = dt.datetime.now()
-            if System.sale_status == 0:
-                """Сохраняем данные о продаже"""
-                pc_name = socket.gethostname()
-                add_sale = Sale(price=int(self.ui.label_8.text()),
-                                id_user=kassir_id,
-                                id_client=sale_tuple[5],
-                                status=1,
-                                pc_name=pc_name,
-                                discount=int(self.ui.comboBox_2.currentText()),
-                                payment_type=payment,
-                                bank_pay=line,
-                                datetime=date_time_sale)
-                with Session.begin() as session:
-                    session.add(add_sale)
-                    status_save_sale = 1
-                logger.info(add_sale)
-            elif System.sale_status == 1:
-                # если продажа была сохранена ранее
-                pc_name = socket.gethostname()
-                session = Session()
-                session.execute(update(Sale).where(Sale.id == System.sale_id).values(status=1,
-                                                                                     id_user=kassir_id,
-                                                                                     pc_name=pc_name,
-                                                                                     payment_type=payment,
-                                                                                     bank_pay=line,
-                                                                                     datetime=date_time_sale))
-            self.close()
-            System.sale_status = 0
-            """Удаляем предыдущий файл с билетами"""
-            if os.path.exists('./ticket.pdf'):  # os.path.isfile ()???
-                os.remove('./ticket.pdf')
-            """Устанавливаем параметры макета билета"""
-            pdfmetrics.registerFont(TTFont('DejaVuSerif', 'files/DejaVuSerif.ttf'))
-            c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
-            c.setFont('DejaVuSerif', 12)
-            """Сохраняем билеты"""
-            if status_save_sale == 1:
-                with Session.begin() as session:
-                    sale_index = session.query(Sale).count()
-                    for i in range(len(tickets)):
-                        """Считаем количество начисленных талантов"""
-                        arrival_time = self.ui.comboBox.currentText()
-                        if arrival_time == 1:
-                            talent = 25
-                        elif arrival_time == 2:
-                            talent = 35
-                        else:
-                            talent = 50
-                        """Сохраняем макет билета"""
-                        c.setFont('DejaVuSerif', 12)
-                        # имя+
-                        c.drawString(20 * mm, 53 * mm, str(tickets[i][0]).replace("'", "").replace("[", "").replace("]", ""))
-                        # фамилия+
-                        c.drawString(20 * mm, 47 * mm, str(tickets[i][1]).replace("'", "").replace("[", "").replace("]", ""))
-                        # продолжительность+
-                        c.drawString(20 * mm, 41 * mm, str(tickets[i][2]).replace("'", "").replace("[", "").replace("]", ""))
-                        # возраст
-                        c.drawString(95 * mm, 53 * mm, str(tickets[i][8]).replace("'", "").replace("[", "").replace("]", ""))
-                        # дата и время билета+
-                        c.drawString(95 * mm, 41 * mm, str(date_time_sale.strftime("%m-%d-%Y %H:%M")))
-                        c.drawString(70 * mm, 30 * mm, "БЕЛГОРОД")
-                        c.drawString(70 * mm, 23 * mm, "МАСТЕРСЛАВЛЬ")
-                        # цена+
-                        c.drawString(121 * mm, 30 * mm, str(tickets[i][4]).replace("'", "").replace("[", "").replace("]", ""))
-                        # тип билета
-                        c.drawString(31 * mm, 13 * mm, str(tickets[i][3]).replace("'", "").replace("[", "").replace("]", ""))
-                        # доп.отметки+
-                        c.drawString(90 * mm, 13 * mm, str(tickets[i][5]).replace("'", "").replace("[", "").replace("]", ""))
-                        # таланты
-                        c.drawString(153 * mm, 40 * mm, str(talent))
-                        c.showPage()
-                        if [tickets[i][3]] == 'взрослый':
-                            type = 0
-                        elif [tickets[i][3]] == 'детский':
-                            type = 1
-                    add_ticket = Ticket(id_client=tickets[i][6],
-                                        id_sale=int(sale_index),
-                                        arrival_time=self.ui.comboBox.currentText(),
-                                        talent=talent,
-                                        price=tickets[i][4],
-                                        description=tickets[i][5],
-                                        ticket_type=type,
-                                        print=1,  # если печатаем билет исправить на checkbox
-                                        client_age=tickets[i][8]
-                                        )
-                    session.add(add_ticket)
-            status_save_sale = None
-            self.close()
-            c.save()
-            """Печатаем билеты"""
-            t.sleep(5)
-            os.startfile("ticket.pdf", "print")
-            t.sleep(5)
-            os.system("TASKKILL /F /IM AcroRD32.exe")
-            os.system("TASKKILL /F /IM Acrobat.exe")
-        else:
-            logger.info('Оплата не прошла')
-            windows.info_window("Оплата не прошла", '')
+        subprocess.Popen([r'print.cmd'])
+        System.sale_tickets = []
 
 
     def openPay(self, txt):
@@ -890,11 +879,11 @@ class SaleForm(QDialog):
             logger.info('CARD')
             payment_type = PaymentType.ByCard
             #запустить оплату по терминалу
-            self.check_ticket_generate(payment_type)
+            self.sale_transaction(payment_type)
         elif res == PaymentType.ByCash:
             logger.info('CASH')
             payment_type = PaymentType.ByCash
-            self.check_ticket_generate(payment_type)
+            self.sale_transaction(payment_type)
         # Генерируем чек
 
         # Закрываем окно продажи и возвращаем QDialog.Accepted
@@ -912,20 +901,23 @@ class System:
     # флаг для обновления клиента
     client_id = None
     client_update = None
-    #  для хренения результата запроса select * from client
-    client_all = None
     # статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
     sale_status = None
     sale_id = None
     sale_discount = None
+    sale_tickets = []
+    sale_tuple = []
     # какой сегодня день: 0 - будний, 1 - выходной
     what_a_day = None
+    pc_name = socket.gethostname()
 
 
     def check_login(self, login, password):
-        with Session.begin() as session:
-            kassir = session.query(User.last_name, User.first_name, User.inn, User.id).filter(
+        """Авторизация кассира"""
+        session = Session()
+        kassir = session.query(User.last_name, User.first_name, User.inn, User.id).filter(
             and_(User.login == login, User.password == password)).first()
+        session.close
         if kassir:
             # сохраняем данные авторизовавшегося кассира
             System.user = kassir
@@ -933,10 +925,12 @@ class System:
 
 
     def check_day(self, day=dt.datetime.now().strftime('%Y-%m-%d')):
+        """Проверка статуса дня"""
         status = None
-        with Session.begin() as session:
-            # текущая дата есть в списке дополнительных рабочих дней?
-            check_day = session.query(Workday.date).filter(Workday.date == day).first() #all?
+        session = Session()
+        # текущая дата есть в списке дополнительных рабочих дней?
+        check_day = session.query(Workday.date).filter(Workday.date == day).first() #all?
+        session.close
         if check_day:
             status = 0
         else:
@@ -950,9 +944,10 @@ class System:
                 System.what_a_day = 1
             else:
                 day = '-'.join(day)
-                with Session.begin() as session:
-                    # текущая дата есть в списке праздничных дней?
-                    check_day = session.query(Holiday.date).filter(Holiday.date == day).all()  # all?
+                session = Session()
+                # текущая дата есть в списке праздничных дней?
+                check_day = session.query(Holiday.date).filter(Holiday.date == day).all()  # all?
+                session.close
                 if check_day:
                     status = 1
                     System.what_a_day = 1

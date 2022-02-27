@@ -35,7 +35,6 @@ class Sale(Base):
     datetime = Column(DateTime, comment='Дата и время продажи')
     datetime_save = Column(DateTime, comment='Дата и время сохранения продажи')
     discount = Column(SmallInteger, comment='Скидка')
-    datetime_save = Column(DateTime, comment='Дата и время сохранения продажи')
     status = Column(SmallInteger, comment='Статус продажи')
     pc_name = Column(String(16), comment='NetBIOS Name PC')
     discount = Column(SmallInteger, comment='Скидка')
@@ -64,8 +63,8 @@ class Sale(Base):
     # bank_return = Column(Text, comment='Банковский чек возврата')
 
     def __str__(self):
-        return f'{self.id} {self.price} {self.datetime} {self.id_client} {self.id_user} {self.datetime_save}' \
-                f'{self.status} {self.pc_name} {self.discount} {self.payment_type} {self.bank_pay} {self.user_return}' \
+        return f'{self.id} {self.id_client} {self.id_user} {self.price} {self.datetime} {self.datetime_save}' \
+                f'{self.discount} {self.status} {self.pc_name} {self.payment_type} {self.bank_pay} {self.user_return}' \
                 f'{self.datetime_return} {self.bank_return}'
 
     def __repr__(self):
