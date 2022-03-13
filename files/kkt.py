@@ -396,7 +396,7 @@ def continue_print():
 
 
 @logger_wraps()
-def terminal_check_itog_in_window():
+def terminal_check_itog_window():
 	"""Сверка итогов работы дбанковского терминала с выводом результата в QMessageBox"""
 	logger.info("Proverka file")
 	pinpad_file = r"C:\sc552\p"

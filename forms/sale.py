@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'sale_11.ui'
+## Form generated from reading UI file 'sale_12.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.2.2
 ##
@@ -26,22 +26,22 @@ class Ui_Dialog_Sale(object):
         if not Dialog_Sale.objectName():
             Dialog_Sale.setObjectName(u"Dialog_Sale")
         Dialog_Sale.setWindowModality(Qt.ApplicationModal)
-        Dialog_Sale.resize(843, 791)
+        Dialog_Sale.resize(842, 791)
         self.groupBox = QGroupBox(Dialog_Sale)
         self.groupBox.setObjectName(u"groupBox")
         self.groupBox.setGeometry(QRect(0, 0, 681, 351))
         self.lineEdit = QLineEdit(self.groupBox)
         self.lineEdit.setObjectName(u"lineEdit")
-        self.lineEdit.setGeometry(QRect(0, 30, 341, 30))
+        self.lineEdit.setGeometry(QRect(10, 30, 341, 30))
         self.pushButton = QPushButton(self.groupBox)
         self.pushButton.setObjectName(u"pushButton")
-        self.pushButton.setGeometry(QRect(340, 30, 94, 28))
+        self.pushButton.setGeometry(QRect(360, 30, 94, 28))
         self.pushButton_2 = QPushButton(self.groupBox)
         self.pushButton_2.setObjectName(u"pushButton_2")
-        self.pushButton_2.setGeometry(QRect(440, 30, 94, 28))
+        self.pushButton_2.setGeometry(QRect(470, 30, 151, 28))
         self.tableWidget = QTableWidget(self.groupBox)
-        if (self.tableWidget.columnCount() < 6):
-            self.tableWidget.setColumnCount(6)
+        if (self.tableWidget.columnCount() < 7):
+            self.tableWidget.setColumnCount(7)
         __qtablewidgetitem = QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(0, __qtablewidgetitem)
         __qtablewidgetitem1 = QTableWidgetItem()
@@ -54,20 +54,17 @@ class Ui_Dialog_Sale(object):
         self.tableWidget.setHorizontalHeaderItem(4, __qtablewidgetitem4)
         __qtablewidgetitem5 = QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(5, __qtablewidgetitem5)
+        __qtablewidgetitem6 = QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(6, __qtablewidgetitem6)
         self.tableWidget.setObjectName(u"tableWidget")
-        self.tableWidget.setGeometry(QRect(0, 60, 681, 291))
+        self.tableWidget.setGeometry(QRect(10, 60, 671, 291))
         self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.layoutWidget = QWidget(self.groupBox)
         self.layoutWidget.setObjectName(u"layoutWidget")
-        self.layoutWidget.setGeometry(QRect(110, 0, 305, 27))
+        self.layoutWidget.setGeometry(QRect(50, 0, 305, 27))
         self.gridLayout = QGridLayout(self.layoutWidget)
         self.gridLayout.setObjectName(u"gridLayout")
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
-        self.label = QLabel(self.layoutWidget)
-        self.label.setObjectName(u"label")
-
-        self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
-
         self.radioButton = QRadioButton(self.layoutWidget)
         self.radioButton.setObjectName(u"radioButton")
 
@@ -80,8 +77,9 @@ class Ui_Dialog_Sale(object):
 
         self.radioButton_3 = QRadioButton(self.layoutWidget)
         self.radioButton_3.setObjectName(u"radioButton_3")
+        self.radioButton_3.setChecked(True)
 
-        self.gridLayout.addWidget(self.radioButton_3, 0, 3, 1, 1)
+        self.gridLayout.addWidget(self.radioButton_3, 0, 0, 1, 1)
 
         self.line = QFrame(Dialog_Sale)
         self.line.setObjectName(u"line")
@@ -90,32 +88,32 @@ class Ui_Dialog_Sale(object):
         self.line.setFrameShadow(QFrame.Sunken)
         self.line_2 = QFrame(Dialog_Sale)
         self.line_2.setObjectName(u"line_2")
-        self.line_2.setGeometry(QRect(0, 400, 841, 20))
+        self.line_2.setGeometry(QRect(10, 400, 831, 20))
         self.line_2.setFrameShape(QFrame.HLine)
         self.line_2.setFrameShadow(QFrame.Sunken)
         self.tableWidget_2 = QTableWidget(Dialog_Sale)
         if (self.tableWidget_2.columnCount() < 9):
             self.tableWidget_2.setColumnCount(9)
-        __qtablewidgetitem6 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(0, __qtablewidgetitem6)
         __qtablewidgetitem7 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(1, __qtablewidgetitem7)
+        self.tableWidget_2.setHorizontalHeaderItem(0, __qtablewidgetitem7)
         __qtablewidgetitem8 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(2, __qtablewidgetitem8)
+        self.tableWidget_2.setHorizontalHeaderItem(1, __qtablewidgetitem8)
         __qtablewidgetitem9 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(3, __qtablewidgetitem9)
+        self.tableWidget_2.setHorizontalHeaderItem(2, __qtablewidgetitem9)
         __qtablewidgetitem10 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(4, __qtablewidgetitem10)
+        self.tableWidget_2.setHorizontalHeaderItem(3, __qtablewidgetitem10)
         __qtablewidgetitem11 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(5, __qtablewidgetitem11)
+        self.tableWidget_2.setHorizontalHeaderItem(4, __qtablewidgetitem11)
         __qtablewidgetitem12 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(6, __qtablewidgetitem12)
+        self.tableWidget_2.setHorizontalHeaderItem(5, __qtablewidgetitem12)
         __qtablewidgetitem13 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(7, __qtablewidgetitem13)
+        self.tableWidget_2.setHorizontalHeaderItem(6, __qtablewidgetitem13)
         __qtablewidgetitem14 = QTableWidgetItem()
-        self.tableWidget_2.setHorizontalHeaderItem(8, __qtablewidgetitem14)
+        self.tableWidget_2.setHorizontalHeaderItem(7, __qtablewidgetitem14)
+        __qtablewidgetitem15 = QTableWidgetItem()
+        self.tableWidget_2.setHorizontalHeaderItem(8, __qtablewidgetitem15)
         self.tableWidget_2.setObjectName(u"tableWidget_2")
-        self.tableWidget_2.setGeometry(QRect(0, 410, 681, 371))
+        self.tableWidget_2.setGeometry(QRect(10, 410, 671, 371))
         self.tableWidget_2.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.label_2 = QLabel(Dialog_Sale)
         self.label_2.setObjectName(u"label_2")
@@ -267,10 +265,10 @@ class Ui_Dialog_Sale(object):
     # setupUi
 
     def retranslateUi(self, Dialog_Sale):
-        Dialog_Sale.setWindowTitle(QCoreApplication.translate("Dialog_Sale", u"Dialog", None))
-        self.groupBox.setTitle(QCoreApplication.translate("Dialog_Sale", u"\u041f\u043e\u0441\u0435\u0442\u0438\u0442\u0435\u043b\u0438", None))
+        Dialog_Sale.setWindowTitle(QCoreApplication.translate("Dialog_Sale", u"\u041d\u043e\u0432\u0430\u044f \u043f\u0440\u043e\u0434\u0430\u0436\u0430", None))
+        self.groupBox.setTitle(QCoreApplication.translate("Dialog_Sale", u"\u041f\u043e\u0438\u0441\u043a", None))
         self.pushButton.setText(QCoreApplication.translate("Dialog_Sale", u"\u041d\u0430\u0439\u0442\u0438", None))
-        self.pushButton_2.setText(QCoreApplication.translate("Dialog_Sale", u"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c", None))
+        self.pushButton_2.setText(QCoreApplication.translate("Dialog_Sale", u"\u041d\u043e\u0432\u044b\u0439 \u043a\u043b\u0438\u0435\u043d\u0442", None))
         ___qtablewidgetitem = self.tableWidget.horizontalHeaderItem(0)
         ___qtablewidgetitem.setText(QCoreApplication.translate("Dialog_Sale", u"\u0424\u0430\u043c\u0438\u043b\u0438\u044f", None));
         ___qtablewidgetitem1 = self.tableWidget.horizontalHeaderItem(1)
@@ -283,28 +281,29 @@ class Ui_Dialog_Sale(object):
         ___qtablewidgetitem4.setText(QCoreApplication.translate("Dialog_Sale", u"\u0424\u043b\u0430\u0433", None));
         ___qtablewidgetitem5 = self.tableWidget.horizontalHeaderItem(5)
         ___qtablewidgetitem5.setText(QCoreApplication.translate("Dialog_Sale", u"\u0422\u0435\u043b\u0435\u0444\u043e\u043d", None));
-        self.label.setText(QCoreApplication.translate("Dialog_Sale", u"\u041f\u043e\u0438\u0441\u043a:", None))
+        ___qtablewidgetitem6 = self.tableWidget.horizontalHeaderItem(6)
+        ___qtablewidgetitem6.setText(QCoreApplication.translate("Dialog_Sale", u"id", None));
         self.radioButton.setText(QCoreApplication.translate("Dialog_Sale", u"\u0424\u0430\u043c\u0438\u043b\u0438\u044f", None))
         self.radioButton_2.setText(QCoreApplication.translate("Dialog_Sale", u"\u0418\u043c\u044f", None))
         self.radioButton_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u0422\u0435\u043b\u0435\u0444\u043e\u043d", None))
-        ___qtablewidgetitem6 = self.tableWidget_2.horizontalHeaderItem(0)
-        ___qtablewidgetitem6.setText(QCoreApplication.translate("Dialog_Sale", u"\u0424\u0430\u043c\u0438\u043b\u0438\u044f", None));
-        ___qtablewidgetitem7 = self.tableWidget_2.horizontalHeaderItem(1)
-        ___qtablewidgetitem7.setText(QCoreApplication.translate("Dialog_Sale", u"\u0418\u043c\u044f", None));
-        ___qtablewidgetitem8 = self.tableWidget_2.horizontalHeaderItem(2)
-        ___qtablewidgetitem8.setText(QCoreApplication.translate("Dialog_Sale", u"\u041e\u0442\u0447\u0435\u0441\u0442\u0432\u043e", None));
-        ___qtablewidgetitem9 = self.tableWidget_2.horizontalHeaderItem(3)
-        ___qtablewidgetitem9.setText(QCoreApplication.translate("Dialog_Sale", u"\u0422\u0438\u043f \u0431\u0438\u043b\u0435\u0442\u0430", None));
-        ___qtablewidgetitem10 = self.tableWidget_2.horizontalHeaderItem(4)
-        ___qtablewidgetitem10.setText(QCoreApplication.translate("Dialog_Sale", u"\u0426\u0435\u043d\u0430", None));
-        ___qtablewidgetitem11 = self.tableWidget_2.horizontalHeaderItem(5)
-        ___qtablewidgetitem11.setText(QCoreApplication.translate("Dialog_Sale", u"\u0424\u043b\u0430\u0433", None));
-        ___qtablewidgetitem12 = self.tableWidget_2.horizontalHeaderItem(6)
-        ___qtablewidgetitem12.setText(QCoreApplication.translate("Dialog_Sale", u"id", None));
-        ___qtablewidgetitem13 = self.tableWidget_2.horizontalHeaderItem(7)
-        ___qtablewidgetitem13.setText(QCoreApplication.translate("Dialog_Sale", u"\u041f\u0435\u0447\u0430\u0442\u044c", None));
-        ___qtablewidgetitem14 = self.tableWidget_2.horizontalHeaderItem(8)
-        ___qtablewidgetitem14.setText(QCoreApplication.translate("Dialog_Sale", u"\u0412\u043e\u0437\u0440\u0430\u0441\u0442", None));
+        ___qtablewidgetitem7 = self.tableWidget_2.horizontalHeaderItem(0)
+        ___qtablewidgetitem7.setText(QCoreApplication.translate("Dialog_Sale", u"\u0424\u0430\u043c\u0438\u043b\u0438\u044f", None));
+        ___qtablewidgetitem8 = self.tableWidget_2.horizontalHeaderItem(1)
+        ___qtablewidgetitem8.setText(QCoreApplication.translate("Dialog_Sale", u"\u0418\u043c\u044f", None));
+        ___qtablewidgetitem9 = self.tableWidget_2.horizontalHeaderItem(2)
+        ___qtablewidgetitem9.setText(QCoreApplication.translate("Dialog_Sale", u"\u041e\u0442\u0447\u0435\u0441\u0442\u0432\u043e", None));
+        ___qtablewidgetitem10 = self.tableWidget_2.horizontalHeaderItem(3)
+        ___qtablewidgetitem10.setText(QCoreApplication.translate("Dialog_Sale", u"\u0422\u0438\u043f \u0431\u0438\u043b\u0435\u0442\u0430", None));
+        ___qtablewidgetitem11 = self.tableWidget_2.horizontalHeaderItem(4)
+        ___qtablewidgetitem11.setText(QCoreApplication.translate("Dialog_Sale", u"\u0426\u0435\u043d\u0430", None));
+        ___qtablewidgetitem12 = self.tableWidget_2.horizontalHeaderItem(5)
+        ___qtablewidgetitem12.setText(QCoreApplication.translate("Dialog_Sale", u"\u0424\u043b\u0430\u0433", None));
+        ___qtablewidgetitem13 = self.tableWidget_2.horizontalHeaderItem(6)
+        ___qtablewidgetitem13.setText(QCoreApplication.translate("Dialog_Sale", u"id", None));
+        ___qtablewidgetitem14 = self.tableWidget_2.horizontalHeaderItem(7)
+        ___qtablewidgetitem14.setText(QCoreApplication.translate("Dialog_Sale", u"\u041f\u0435\u0447\u0430\u0442\u044c", None));
+        ___qtablewidgetitem15 = self.tableWidget_2.horizontalHeaderItem(8)
+        ___qtablewidgetitem15.setText(QCoreApplication.translate("Dialog_Sale", u"\u0412\u043e\u0437\u0440\u0430\u0441\u0442", None));
         self.label_2.setText(QCoreApplication.translate("Dialog_Sale", u"\u0418\u0442\u043e\u0433\u043e", None))
         self.label_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u041e\u043f\u043b\u0430\u0442\u0430", None))
         self.pushButton_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c", None))

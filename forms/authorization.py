@@ -1,7 +1,22 @@
-from PySide6.QtCore import QRect, QCoreApplication, QMetaObject
-from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QFrame
-from PySide6.QtGui import QPixmap, Qt
+# -*- coding: utf-8 -*-
 
+################################################################################
+## Form generated from reading UI file 'authorization_1.ui'
+##
+## Created by: Qt User Interface Compiler version 6.2.2
+##
+## WARNING! All changes made in this file will be lost when recompiling UI file!
+################################################################################
+
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
+from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QLabel,
+    QLineEdit, QPushButton, QSizePolicy, QWidget)
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -29,7 +44,7 @@ class Ui_Dialog(object):
         self.pushButton_2.setGeometry(QRect(290, 170, 85, 28))
         self.label_4 = QLabel(Dialog)
         self.label_4.setObjectName(u"label_4")
-        self.label_4.setGeometry(QRect(0, 10, 181, 181))
+        self.label_4.setGeometry(QRect(10, 10, 181, 181))
         self.label_4.setPixmap(QPixmap(u"../../TestProject/files/logo.png"))
         self.label_4.setScaledContents(True)
         self.label_5 = QLabel(Dialog)
@@ -47,14 +62,14 @@ class Ui_Dialog(object):
         self.line.setFrameShadow(QFrame.Sunken)
         self.label_6 = QLabel(Dialog)
         self.label_6.setObjectName(u"label_6")
-        self.label_6.setGeometry(QRect(0, 210, 81, 20))
+        self.label_6.setGeometry(QRect(10, 210, 81, 20))
         self.label_6.setTextFormat(Qt.RichText)
         self.label_7 = QLabel(Dialog)
         self.label_7.setObjectName(u"label_7")
         self.label_7.setGeometry(QRect(80, 210, 41, 20))
         self.label_8 = QLabel(Dialog)
         self.label_8.setObjectName(u"label_8")
-        self.label_8.setGeometry(QRect(120, 210, 321, 20))
+        self.label_8.setGeometry(QRect(130, 210, 321, 20))
 
         self.retranslateUi(Dialog)
 
@@ -72,6 +87,6 @@ class Ui_Dialog(object):
         self.label_3.setText("")
         self.label_6.setText(QCoreApplication.translate("Dialog", u"\u0412\u0435\u0440\u0441\u0438\u044f \u041f\u041e:", None))
         self.label_7.setText(QCoreApplication.translate("Dialog", u"0.0.1", None))
-        self.label_8.setText(QCoreApplication.translate("Dialog", u"\u0421\u043b\u0443\u0436\u0431\u0430 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0438: 12-34-56, dev@pymasl.com", None))
+        self.label_8.setText(QCoreApplication.translate("Dialog", u"https://github.com/MarcusStill/PyMASL.git", None))
     # retranslateUi
 

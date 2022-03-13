@@ -3,3 +3,6 @@
 /sbkernel2201.log
 /ticket.pdf
 /debug.log
+/output/
+/platforms/
+/db/alembic/
