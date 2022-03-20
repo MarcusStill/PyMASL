@@ -8,7 +8,7 @@ from datetime import date, timedelta
 
 import datetime as dt
 import psycopg2
-
+from PySide6 import QtCore, QtGui, QtWidgets, QtSql
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QHBoxLayout, QMainWindow, QTableWidgetItem, QWidget
 from PySide6.QtGui import QPixmap
@@ -18,6 +18,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from sqlalchemy import create_engine, and_, desc, update
 from sqlalchemy.orm import sessionmaker
+
 from db.models import Client
 from db.models import Holiday
 from db.models import Sale
@@ -39,7 +40,7 @@ config = ConfigParser()
 config.read('config.ini')
 host = config.get("DATABASE", "host")
 port = config.get("DATABASE", "port")
-db = config.get("DATABASE", "database")
+database = config.get("DATABASE", "database")
 user = config.get("DATABASE", "user")
 pswrd = config.get("DATABASE", "password")
 software_version = config.get("OTHER", "version")
@@ -48,7 +49,7 @@ log_file = config.get("OTHER", "log_file")
 
 engine = create_engine("postgresql://postgres:"
                        + pswrd + "@" + host + ":"
-                       + port + "/" + db, echo=True)
+                       + port + "/" + database, echo=True)
 Session = sessionmaker(engine)
 logger.add(log_file, rotation="1 MB")
 
@@ -62,10 +63,6 @@ class MainWindow(QMainWindow):
         """Открыть окно добавления нового клиента"""
         self.ui.pushButton_2.clicked.connect(self.open_client)
         """Отображение всех клиентов"""
-        self.ui.pushButton_4.clicked.connect(self.button_all_client)
-        self.ui.tableWidget.doubleClicked.connect(self.search_selected_client)
-        self.ui.pushButton_3.clicked.connect(self.search_selected_client)
-        self.ui.pushButton.clicked.connect(self.search_client)
         self.ui.pushButton_8.clicked.connect(kkt.get_info)
         self.ui.pushButton_11.clicked.connect(kkt.last_document)
         self.ui.pushButton_9.clicked.connect(kkt.get_time)
@@ -77,112 +74,45 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_16.clicked.connect(kkt.terminal_check_itog_window)
         self.ui.pushButton_12.clicked.connect(self.open_sale)
         self.ui.pushButton_13.clicked.connect(self.button_all_sales)
-        # self.ui.pushButton_14.clicked.connect(self.buttonAllTickets)
         self.ui.tableWidget_2.doubleClicked.connect(self.search_selected_sale)
+        self.ui.pushButton_17.clicked.connect(self.statistic_ticket)
+        self.ui.tableView.clicked.connect(self.click_in_client_view)
+        self.ui.dateEdit.setDate(date.today())
+        self.ui.dateEdit_2.setDate(date.today())
+        # tableView с клиентами
+        self.model = QtSql.QSqlTableModel()
+        self.ui.tableView.setModel(self.model)
+        grid = QtWidgets.QGridLayout(self)
+        grid.addWidget(self.ui.lineEdit_2, 0, 0)
+        grid.addWidget(self.ui.comboBox_2, 0, 1)
+        grid.addWidget(self.ui.tableView, 1, 0, 1, 2)
+        self.model.setTable("client")
+        self.model.select()
+        type_col = QtCore.Qt.Horizontal
+        self.ui.comboBox_2.clear()
+        for i in range(self.model.columnCount()):
+            self.ui.comboBox_2.addItem(self.model.headerData(i, type_col))
+        self.ui.lineEdit_2.textChanged.connect(self.filter_table_client)
+        headers_view = ["N", "Фамилия", "Имя", "Отчество", "Дата рожд.", "Пол", "Телефон", "Email", "Категория"]
+        for i in range(len(headers_view)):
+            self.model.setHeaderData(i, Qt.Horizontal, headers_view[i])
 
-    @logger_wraps()
-    def search_client(self):
-        """Поиск клиента"""
-        logger.info("Inside the function def search_client")
-        combo_active_item = self.ui.comboBox.currentText()
-        logger.info(combo_active_item)
-        if combo_active_item == 'телефон':
-            """Очищаем tableWidget"""
-            self.ui.tableWidget.setRowCount(0)
-            session = Session()
-            search = session.query(Client).filter(
-                Client.phone.like('%'+self.ui.lineEdit.text()+'%')).all()
-            for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(
-                    row, 0, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setItem(
-                    row, 1, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 2, QTableWidgetItem(f"{client.first_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 3, QTableWidgetItem(f"{client.middle_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 4, QTableWidgetItem(f"{client.gender}"))
-                self.ui.tableWidget.setItem(
-                    row, 5, QTableWidgetItem(f"{client.birth_date}"))
-                self.ui.tableWidget.setItem(
-                    row, 6, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(
-                    row, 7, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(
-                    row, 8, QTableWidgetItem(f"{client.email}"))
-            session.close()
-        elif combo_active_item == 'фамилия':
-            """Очищаем tableWidget"""
-            self.ui.tableWidget.setRowCount(0)
-            session = Session()
-            search = session.query(Client).filter(Client.last_name.ilike(
-                '%'+self.ui.lineEdit.text()+'%')).all()
-            for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(
-                    row, 0, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setItem(
-                    row, 1, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 2, QTableWidgetItem(f"{client.first_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 3, QTableWidgetItem(f"{client.middle_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 4, QTableWidgetItem(f"{client.gender}"))
-                self.ui.tableWidget.setItem(
-                    row, 5, QTableWidgetItem(f"{client.birth_date}"))
-                self.ui.tableWidget.setItem(
-                    row, 6, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(
-                    row, 7, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(
-                    row, 8, QTableWidgetItem(f"{client.email}"))
-            session.close()
-        elif combo_active_item == 'имя':
-            """Очищаем tableWidget"""
-            self.ui.tableWidget.setRowCount(0)
-            session = Session()
-            search = session.query(Client).filter(Client.first_name.ilike(
-                '%'+self.ui.lineEdit.text()+'%')).all()
-            for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(
-                    row, 0, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setItem(
-                    row, 1, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 2, QTableWidgetItem(f"{client.first_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 3, QTableWidgetItem(f"{client.middle_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 4, QTableWidgetItem(f"{client.gender}"))
-                self.ui.tableWidget.setItem(
-                    row, 5, QTableWidgetItem(f"{client.birth_date}"))
-                self.ui.tableWidget.setItem(
-                    row, 6, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(
-                    row, 7, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(
-                    row, 8, QTableWidgetItem(f"{client.email}"))
-            session.close()
+    def filter_table_client(self, text):
+        filter = (" {} LIKE '%{}%'".format(self.ui.comboBox_2.currentText(),
+                                           text) if text else text)
+        self.model.setFilter(filter)
 
-    def search_selected_client(self):
+    def click_in_client_view(self):
         """Поиск выделенной строки в таблице клиентов
-         и открытие формы с найденными данными
+                 и открытие формы с найденными данными
         """
-        logger.info("Inside the function def search_selected_client")
-        for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
-            """Номер строки найден"""
-            row_number = idx.row()
-            """Получаем содержимое ячейки"""
-            res = self.ui.tableWidget.item(row_number, 0).text()
+        # ищем индекс и значение ячейки
+        index = (self.ui.tableView.selectionModel().currentIndex())
+        # ! исправить передавать в index всегда первый столбец
+        value = index.sibling(index.row(), index.column()).data()
+        if type(value) == int:
             session = Session()
-            search_client = session.query(Client).filter_by(id=(res)).first()
+            search_client = session.query(Client).filter_by(id=(value)).first()
             session.close()
             # сохраняем id клиента
             System.client_id = search_client.id
@@ -223,8 +153,8 @@ class MainWindow(QMainWindow):
         for idx in self.ui.tableWidget_2.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
-            row_count = self.ui.tableWidget_2.rowCount()
-            sale_number = row_count - row_number
+            """Получаем содержимое ячейки"""
+            sale_number = self.ui.tableWidget_2.item(row_number, 0).text()
             session = Session()
             client_in_sale = session.query(Client.first_name,
                                            Client.last_name,
@@ -240,11 +170,13 @@ class MainWindow(QMainWindow):
                                            Ticket.datetime).join(
                 Ticket).filter(and_(Client.id == Ticket.id_client,
                                     Ticket.id_sale == sale_number)).all()
+            # ! bug отображение сохраненной продажи + добавить новую форму для них
             # запрашиваем статус продажи
             sale_status = (session.query(Sale.status).filter(
                 Sale.id == sale_number).one())._asdict()
             """Передаем в форму данные клиента"""
             sale = SaleForm()
+            sale.ui.tableView_2.setEnabled(False)
             sale.ui.tableWidget_2.setRowCount(0)
             sale.ui.dateEdit.setDate(client_in_sale[0][11])
             sale.ui.dateEdit.setEnabled(False)
@@ -314,6 +246,59 @@ class MainWindow(QMainWindow):
             sale.exec_()
 
     @logger_wraps()
+    def button_all_sales(self):
+        """Показ всех продаж в tableWidget"""
+        logger.info("Inside the function def button_all_sales")
+        type = None
+        self.ui.tableWidget_2.setRowCount(0)
+        """Фильтр продаж за 1, 3 и 7 дней"""
+        if self.ui.radioButton.isChecked():
+            filter_day = dt.datetime(dt.datetime.today().year,
+                                     dt.datetime.today().month,
+                                     dt.datetime.today().day)
+        elif self.ui.radioButton_2.isChecked():
+            filter_day = dt.datetime.today() - timedelta(days=3)
+        elif self.ui.radioButton_3.isChecked():
+            filter_day = dt.datetime.today() - timedelta(days=7)
+        session = Session()
+        sales = session.query(Sale).filter(Sale.datetime >=
+                                           filter_day).order_by(Sale.id)
+        for sale in sales:
+            row = self.ui.tableWidget_2.rowCount()
+            self.ui.tableWidget_2.insertRow(row)
+            self.ui.tableWidget_2.setItem(
+                row, 0, QTableWidgetItem(f"{sale.id}"))
+            self.ui.tableWidget_2.setItem(
+                row, 1, QTableWidgetItem(f"{sale.id_client}"))
+            self.ui.tableWidget_2.setItem(
+                row, 2, QTableWidgetItem(f"{sale.price}"))
+            self.ui.tableWidget_2.setItem(
+                row, 3, QTableWidgetItem(f"{sale.datetime}"))
+            if sale.status == 0:
+                type = 'создана'
+            if sale.status == 1:
+                type = 'оплачена'
+            self.ui.tableWidget_2.setItem(
+                row, 4, QTableWidgetItem(f"{type}"))
+            self.ui.tableWidget_2.setItem(
+                row, 5, QTableWidgetItem(f"{sale.discount}"))
+            self.ui.tableWidget_2.setItem(
+                row, 6, QTableWidgetItem(f"{sale.pc_name}"))
+            if sale.payment_type == 1:
+                type = 'карта'
+            if sale.payment_type == 2:
+                type = 'наличные'
+            else:
+                type = '-'
+            self.ui.tableWidget_2.setItem(
+                row, 7, QTableWidgetItem(f"{type}"))
+            # self.ui.tableWidget_2.setItem(
+            #     row, 8, QTableWidgetItem(f"{sale.datetime}"))
+            # self.ui.tableWidget_2.setItem(
+            #     row, 3, QTableWidgetItem(f"{sale.datetime_save}"))
+        session.close()
+
+    @logger_wraps()
     def open_client(self):
         """Открываем форму с данными клиента"""
         logger.info("Inside the function def open_client")
@@ -330,77 +315,96 @@ class MainWindow(QMainWindow):
         sale.show()
         sale.exec_()
 
-    @logger_wraps()
-    def button_all_client(self):
-        """Очищаем tableWidget"""
-        logger.info("Inside the function def button_all_client")
-        self.ui.tableWidget.setRowCount(0)
+    def statistic_ticket(self):
+        logger.info("Inside the function def statistic_ticket")
+        # считаем выручку
+        start_time = ' 00:00:00'
+        end_time = ' 23:59:59'
+        dt1 = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
+        dt2 = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
         session = Session()
-        System.all_clients = session.query(Client).order_by(Client.id)
-        for client in System.all_clients:
-            row = self.ui.tableWidget.rowCount()
-            self.ui.tableWidget.insertRow(row)
-            self.ui.tableWidget.setItem(
-                row, 0, QTableWidgetItem(f"{client.id}"))
-            self.ui.tableWidget.setItem(
-                row, 1, QTableWidgetItem(f"{client.last_name}"))
-            self.ui.tableWidget.setItem(
-                row, 2, QTableWidgetItem(f"{client.first_name}"))
-            self.ui.tableWidget.setItem(
-                row, 3, QTableWidgetItem(f"{client.middle_name}"))
-            self.ui.tableWidget.setItem(
-                row, 4, QTableWidgetItem(f"{client.gender}"))
-            self.ui.tableWidget.setItem(
-                row, 5, QTableWidgetItem(f"{client.birth_date}"))
-            self.ui.tableWidget.setItem(
-                row, 6, QTableWidgetItem(f"{client.privilege}"))
-            self.ui.tableWidget.setItem(
-                row, 7, QTableWidgetItem(f"{client.phone}"))
-            self.ui.tableWidget.setItem(
-                row, 8, QTableWidgetItem(f"{client.email}"))
+        sales = session.query(Sale.pc_name, Sale.payment_type, Sale.price).filter(Sale.datetime.between(dt1, dt2)).all()
         session.close()
+        logger.info('sales')
+        logger.info(sales)
+        pc_1 = {'Name PC': 'prog20-note', 'sum_card': 0, 'sum_cashe': 0}
+        pc_2 = {'Name PC': 'prog20-note1', 'sum_card': 0, 'sum_cashe': 0}
+        type = [1, 2]
+        for i in range(len(sales)):
+            if sales[i][0] in pc_1.values():
+                if sales[i][1] == type[1]:
+                    pc_1['sum_card'] += sales[i][2]
+                else:
+                    pc_1['sum_cashe'] += sales[i][2]
+            else:
+                if sales[i][1] == type[1]:
+                    pc_2['sum_card'] += sales[i][2]
+                else:
+                    pc_2['sum_cashe'] += sales[i][2]
+        logger.info('pc_1')
+        logger.debug(pc_1)
+        logger.info('pc_2')
+        logger.debug(pc_2)
+        card = int(pc_1['sum_card']) + int(pc_2['sum_card'])
+        cashe = int(pc_1['sum_cashe']) + int(pc_2['sum_cashe'])
+        sum = card + cashe
+        self.ui.tableWidget_4.setRowCount(0)
+        self.ui.tableWidget_4.insertRow(0)
+        self.ui.tableWidget_4.setItem(0, 0, QTableWidgetItem(f"{pc_1['Name PC']}"))
+        self.ui.tableWidget_4.setItem(0, 1, QTableWidgetItem(f"{pc_1['sum_card']}"))
+        self.ui.tableWidget_4.setItem(0, 2, QTableWidgetItem(f"{pc_1['sum_cashe']}"))
+        self.ui.tableWidget_4.insertRow(1)
+        self.ui.tableWidget_4.setItem(1, 0, QTableWidgetItem(pc_2['Name PC']))
+        self.ui.tableWidget_4.setItem(1, 1, QTableWidgetItem(f"{pc_2['sum_card']}"))
+        self.ui.tableWidget_4.setItem(1, 2, QTableWidgetItem(f"{pc_2['sum_cashe']}"))
+        self.ui.tableWidget_4.insertRow(2)
+        self.ui.tableWidget_4.setItem(2, 0, QTableWidgetItem(f"Итого"))
+        self.ui.tableWidget_4.setItem(2, 1, QTableWidgetItem(f"{card}"))
+        self.ui.tableWidget_4.setItem(2, 2, QTableWidgetItem(f"{cashe}"))
+        self.ui.tableWidget_4.setItem(2, 3, QTableWidgetItem(f"{sum}"))
 
-    @logger_wraps()
-    def button_all_sales(self):
-        """Очищаем tableWidget"""
-        logger.info("Inside the function def button_all_sales")
-        self.ui.tableWidget_2.setRowCount(0)
-        """Фильтр продаж за 1, 3 и 7 дней"""
-        if self.ui.radioButton.isChecked():
-            filter_day = dt.datetime(dt.datetime.today().year,
-                                     dt.datetime.today().month,
-                                     dt.datetime.today().day)
-        elif self.ui.radioButton_2.isChecked():
-            filter_day = dt.datetime.today() - timedelta(days=3)
-        elif self.ui.radioButton_3.isChecked():
-            filter_day = dt.datetime.today() - timedelta(days=7)
+        # считаем билеты
         session = Session()
-        sales = session.query(Sale).filter(Sale.datetime >=
-                                           filter_day).order_by(desc(Sale.id))
-        for sale in sales:
-            row = self.ui.tableWidget_2.rowCount()
-            self.ui.tableWidget_2.insertRow(row)
-            self.ui.tableWidget_2.setItem(
-                row, 0, QTableWidgetItem(f"{sale.id}"))
-            self.ui.tableWidget_2.setItem(
-                row, 1, QTableWidgetItem(f"{sale.id_client}"))
-            self.ui.tableWidget_2.setItem(
-                row, 2, QTableWidgetItem(f"{sale.price}"))
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{sale.status}"))
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{sale.discount}"))
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{sale.payment_type}"))
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{sale.id_user}"))
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{sale.pc_name}"))
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{sale.datetime}"))
-            # self.ui.tableWidget_2.setItem(
-            #     row, 3, QTableWidgetItem(f"{sale.datetime_save}"))
+        tickets = session.query(Ticket.ticket_type, Ticket.arrival_time, Ticket.description).filter(
+            Ticket.datetime.between(dt1, dt2)).all()
         session.close()
+        logger.info('tickets')
+        logger.info(tickets)
+        logger.debug((len(tickets)))
+        type_tickets = [0, 1]
+        time_arrival = [1, 2, 3]
+        child = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        adult = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        for i in range(len(tickets)):
+            if tickets[i][0] == type_tickets[0]:
+                adult['sum'] += 1
+                if tickets[i][1] == time_arrival[0]:
+                    adult['t_1'] += 1
+                elif tickets[i][1] == time_arrival[1]:
+                    adult['t_2'] += 1
+                elif tickets[i][1] == time_arrival[2]:
+                    adult['t_3'] += 1
+            elif tickets[i][0] == type_tickets[1]:
+                child['sum'] += 1
+                if tickets[i][1] == time_arrival[0]:
+                    child['t_1'] += 1
+                elif tickets[i][1] == time_arrival[1]:
+                    child['t_2'] += 1
+                elif tickets[i][1] == time_arrival[2]:
+                    child['t_3'] += 1
+        self.ui.tableWidget_3.setRowCount(0)
+        self.ui.tableWidget_3.insertRow(0)
+        self.ui.tableWidget_3.setItem(0, 0, QTableWidgetItem('взрослый'))
+        self.ui.tableWidget_3.setItem(0, 1, QTableWidgetItem(f"{adult['sum']}"))
+        self.ui.tableWidget_3.setItem(0, 2, QTableWidgetItem(f"{adult['t_1']}"))
+        self.ui.tableWidget_3.setItem(0, 3, QTableWidgetItem(f"{adult['t_2']}"))
+        self.ui.tableWidget_3.setItem(0, 4, QTableWidgetItem(f"{adult['t_3']}"))
+        self.ui.tableWidget_3.insertRow(1)
+        self.ui.tableWidget_3.setItem(1, 0, QTableWidgetItem('детский'))
+        self.ui.tableWidget_3.setItem(1, 1, QTableWidgetItem(f"{child['sum']}"))
+        self.ui.tableWidget_3.setItem(1, 2, QTableWidgetItem(f"{child['t_1']}"))
+        self.ui.tableWidget_3.setItem(1, 3, QTableWidgetItem(f"{child['t_2']}"))
+        self.ui.tableWidget_3.setItem(1, 4, QTableWidgetItem(f"{child['t_3']}"))
 
 
 class AuthForm(QDialog):
@@ -408,7 +412,7 @@ class AuthForm(QDialog):
     def __init__(self):
         super().__init__()
         """Проверяем статус соединения с БД"""
-        address = "dbname="+db+" user="+user+" host="+host+" password="+pswrd
+        address = "dbname="+database+" user="+user+" host="+host+" password="+pswrd
         try:
             conn = psycopg2.connect(address)
             if conn:
@@ -526,22 +530,39 @@ class SaleForm(QDialog):
         super().__init__()
         self.ui = Ui_Dialog_Sale()
         self.ui.setupUi(self)
-        self.ui.pushButton.clicked.connect(self.search_clients_to_sale)
         self.ui.pushButton_2.clicked.connect(lambda: MainWindow.open_client(self))
         self.ui.pushButton_3.clicked.connect(self.sale_save)
         self.ui.pushButton_4.clicked.connect(self.close)
-        self.ui.pushButton_5.clicked.connect(
-            lambda: self.open_pay(self.ui.label_8.text()))
+        self.ui.pushButton_5.clicked.connect(lambda: self.open_pay(self.ui.label_8.text()))
         self.ui.pushButton_6.clicked.connect(self.sale_return)
         self.ui.pushButton_7.clicked.connect(self.generate_saved_tickets)
-        self.ui.tableWidget.doubleClicked.connect(self.add_client_to_sale)
+        self.ui.tableView_2.clicked.connect(self.add_client_to_sale)
         cur_today = date.today()
         self.ui.dateEdit.setDate(cur_today)
         self.ui.dateEdit.dateChanged.connect(self.calendar_color_change)
         self.ui.comboBox.currentTextChanged.connect(self.edit_sale)
         self.ui.checkBox_2.stateChanged.connect(self.check_sale_enabled)
         self.ui.comboBox_2.currentTextChanged.connect(self.edit_sale)
+        # tableView с клиентами
+        self.model_3 = QtSql.QSqlTableModel()
+        self.ui.tableView_2.setModel(self.model_3)
+        self.model_3.setTable("client")
+        self.model_3.select()
+        # фильтр для tableView
+        type_col = QtCore.Qt.Horizontal
+        self.ui.comboBox_3.clear()
+        for i in range(self.model_3.columnCount()):
+            self.ui.comboBox_3.addItem(self.model_3.headerData(i, type_col))
+        self.ui.lineEdit.textChanged.connect(self.filter_sale_client)
+        # устанавливаем заголовки столбцов для tableView
+        headers_view = ["N", "Фамилия", "Имя", "Отчество", "Дата рожд.", "Пол", "Телефон", "Email", "Категория"]
+        for i in range(len(headers_view)):
+            self.model_3.setHeaderData(i, Qt.Horizontal, headers_view[i])
 
+    def filter_sale_client(self, text):
+        filter = (" {} LIKE '%{}%'".format(self.ui.comboBox_3.currentText(),
+                                           text) if text else text)
+        self.model_3.setFilter(filter)
 
     def calendar_color_change(self):
         logger.info("Inside the function def calendar_color_change")
@@ -566,88 +587,6 @@ class SaleForm(QDialog):
             self.ui.comboBox_2.setEnabled(False)
 
     @logger_wraps()
-    def search_clients_to_sale(self):
-        """Выводим в tableWidget новой продажи список всех клиентов"""
-        logger.info("Inside the function def button_all_clients_to_sale")
-        if System.what_a_day == 1:
-            self.ui.dateEdit.setStyleSheet('background-color: red;')
-        if self.ui.radioButton_3.isChecked():
-            """Очищаем tableWidget"""
-            self.ui.tableWidget.setRowCount(0)
-            session = Session()
-            search = session.query(Client).filter(Client.phone.like(
-                '%'+self.ui.lineEdit.text()+'%')).all()
-            for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(
-                    row, 0, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 1, QTableWidgetItem(f"{client.first_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 2, QTableWidgetItem(f"{client.middle_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 3, QTableWidgetItem(f"{client.birth_date}"))
-                self.ui.tableWidget.setItem(
-                    row, 4, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(
-                    row, 5, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(
-                    row, 6, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setColumnHidden(6, True)
-            session.close()
-        elif self.ui.radioButton.isChecked():
-            """Очищаем tableWidget"""
-            self.ui.tableWidget.setRowCount(0)
-            session = Session()
-            search = session.query(Client).filter(Client.last_name.ilike(
-                '%' + self.ui.lineEdit.text()+'%')).all()
-            for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(
-                    row, 0, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 1, QTableWidgetItem(f"{client.first_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 2, QTableWidgetItem(f"{client.middle_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 3, QTableWidgetItem(f"{client.birth_date}"))
-                self.ui.tableWidget.setItem(
-                    row, 4, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(
-                    row, 5, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(
-                    row, 6, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setColumnHidden(6, True)
-            session.close()
-        elif self.ui.radioButton_2.isChecked():
-            """Очищаем tableWidget"""
-            self.ui.tableWidget.setRowCount(0)
-            session = Session()
-            search = session.query(Client).filter(Client.first_name.ilike(
-                '%' + self.ui.lineEdit.text()+'%')).all()
-            for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(
-                    row, 0, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 1, QTableWidgetItem(f"{client.first_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 2, QTableWidgetItem(f"{client.middle_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 3, QTableWidgetItem(f"{client.birth_date}"))
-                self.ui.tableWidget.setItem(
-                    row, 4, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(
-                    row, 5, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(
-                    row, 6, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setColumnHidden(6, True)
-            session.close()
-
-    @logger_wraps()
     def add_client_to_sale(self, *args, **kwargs):
         """Поиск выделенной строки в таблице клиентов
         и передача ее в таблицу заказа
@@ -656,20 +595,19 @@ class SaleForm(QDialog):
         # если продажа новая - обновляем статус
         System.sale_status = 0
         logger.warning("status_sale %s" % (System.sale_status))
-
-        for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
-            """Номер строки найден"""
-            row_number = idx.row()
-            """Получаем содержимое ячейки"""
-            res = self.ui.tableWidget.item(row_number, 6).text()
+        """Поиск строки и ячейки"""
+        index = (self.ui.tableView_2.selectionModel().currentIndex())
+        # ! исправить передавать в index всегда первый столбец
+        value = index.sibling(index.row(), index.column()).data()
+        if type(value) == int:
             session = Session()
-            search_client = session.query(Client).filter_by(id=(res)).first()
+            search_client = session.query(Client).filter_by(id=(value)).first()
             session.close()
             """Вычисляем возраст клиента"""
             today = date.today()
-            age = (today.year - search_client.birth_date.year -
-                   ((today.month, today.day) < (search_client.birth_date.month,
-                                                search_client.birth_date.day)))
+            age = today.year - (search_client.birth_date.year -
+                                ((today.month, today.day) < (search_client.birth_date.month,
+                                                             search_client.birth_date.day)))
             """Определяем тип билета и цену"""
             if 5 <= age < 14:
                 type_ticket = 'детский'
@@ -693,26 +631,19 @@ class SaleForm(QDialog):
             layoutH.setContentsMargins(0, 0, 0, 0)
             row = self.ui.tableWidget_2.rowCount()
             self.ui.tableWidget_2.insertRow(row)
+            """Передаем в таблицу заказа данные клиента"""
+            self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{search_client.last_name}"))
+            self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{search_client.first_name}"))
+            self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{search_client.middle_name}"))
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{type_ticket}"))
+            self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{price}"))
+            self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client.privilege}"))
+            self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client.id}"))
+            # self.ui.tableWidget_2.setColumnHidden(6, True)
             """добавляем checkbox"""
             self.ui.tableWidget_2.setCellWidget(row, 7, widget)
-            """Передаем в таблицу заказа данные клиента"""
-            self.ui.tableWidget_2.setItem(
-                row, 0, QTableWidgetItem(f"{search_client.last_name}"))
-            self.ui.tableWidget_2.setItem(
-                row, 1, QTableWidgetItem(f"{search_client.first_name}"))
-            self.ui.tableWidget_2.setItem(
-                row, 2, QTableWidgetItem(f"{search_client.middle_name}"))
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{type_ticket}"))
-            self.ui.tableWidget_2.setItem(
-                row, 4, QTableWidgetItem(f"{price}"))
-            self.ui.tableWidget_2.setItem(
-                row, 5, QTableWidgetItem(f"{search_client.privilege}"))
-            self.ui.tableWidget_2.setItem(
-                row, 6, QTableWidgetItem(f"{search_client.id}"))
-            self.ui.tableWidget_2.setColumnHidden(6, True)
             self.ui.tableWidget_2.setItem(row, 8, QTableWidgetItem(f"{age}"))
-            self.ui.tableWidget_2.setColumnHidden(8, True)
+            # self.ui.tableWidget_2.setColumnHidden(8, True)
             """Заполняем таблицу с итоговой информацией"""
             self.edit_sale()
 
@@ -800,12 +731,17 @@ class SaleForm(QDialog):
                             self.ui.tableWidget_2.item(row, 4).text(),
                             self.ui.tableWidget_2.item(row, 5).text(),
                             self.ui.tableWidget_2.item(row, 6).text(),
-                            # self.ui.tableWidget_2.item(row, 7).text(),
+                            '1',
+                            # проверить состояние checkbox`a
                             self.ui.tableWidget_2.item(row, 8).text(),
                             time_ticket, talent, date_time))
         System.sale_tuple = sale_tuple
+        logger.info('System.sale_tuple')
+        logger.info(System.sale_tuple)
         System.sale_tickets = tickets
-        return sale_tuple, tickets
+        logger.info('System.sale_tickets')
+        logger.info(System.sale_tickets)
+        # return sale_tuple, tickets
 
     def sale_save(self):
         """Сохраняем данные заказа"""
@@ -840,7 +776,7 @@ class SaleForm(QDialog):
                     if System.sale_tickets[i][3] == 'взрослый':
                         type = 0
                     elif System.sale_tickets[i][3] == 'детский':
-                        type = 1
+                        type = '1'
                     logger.info('тип билета %s' % (type))
                     add_ticket = Ticket(id_client=System.sale_tickets[i][6],
                                         id_sale=int(System.sale_id),
@@ -849,7 +785,7 @@ class SaleForm(QDialog):
                                         price=System.sale_tickets[i][4],
                                         description=System.sale_tickets[i][5],
                                         ticket_type=type,
-                                        print=System.sale_tickets[i][7],
+                                        # print=System.sale_tickets[i][7],
                                         # если печатаем билет
                                         # исправить на checkbox
                                         client_age=System.sale_tickets[i][8])
@@ -858,7 +794,7 @@ class SaleForm(QDialog):
                     session.add(add_ticket)
                     session.commit()
                 session.close()
-                self.close()
+                # self.close()
             else:
                 windows.info_window(
                     'Внимание! В продаже отсутствует взрослый',
@@ -869,10 +805,10 @@ class SaleForm(QDialog):
     def sale_transaction(self, payment_type):
         """Проводим операцию продажи"""
         logger.info("Inside the function def sale_transaction")
-        # state_check = 1
-        # payment = 2
-        state_check, payment = kkt.check_open(System.sale_tuple,
-                                              payment_type, System.user, 1)
+        state_check = 1
+        payment = 2
+        # state_check, payment = kkt.check_open(System.sale_tuple,
+        #                                       payment_type, System.user, 1)
         check = None
         """Если прошла оплата"""
         if state_check == 1:
@@ -903,6 +839,7 @@ class SaleForm(QDialog):
             # предлагаем очистить окно для проведения новой продажи
             res = windows.info_dialog_window('Внимание',
                                              'Открыть окно с новой продажей?')
+            logger.debug('res %s' % (res))
             if res == 1:
                 self.ui.dateEdit.setEnabled(True)
                 self.ui.dateEdit.setDate(date.today())
@@ -1070,27 +1007,27 @@ class SaleForm(QDialog):
         logger.info("Inside the function def open_pay")
         pay = PayForm()
         # Передаем текст в форму PayForm
-        pay.set_text(txt)
+        pay.setText(txt)
 
         res = pay.exec_()
         # если пользователь нажал крестик или кнопку Escape,
         # то по-умолчанию возвращается QDialog.Rejected
-        if res == QDialog.Rejected:\
-        # наверное, надо ничего не делать в этом случае и
-        # просто завершить работу функции
+        if res == QDialog.Rejected:
+            # наверное, надо ничего не делать в этом случае и
+            # просто завершить работу функции
             return
             # или закрыть SaleForm при помощи вызова reject()
 
         # иначе, если оплата выбрана
-        if res == PaymentType.ByCard:
+        if res == Payment.ByCard:
             # Оплачено картой
             logger.info('CARD')
-            payment_type = PaymentType.ByCard
+            payment_type = Payment.ByCard
             # запустить оплату по терминалу
             self.sale_transaction(payment_type)
-        elif res == PaymentType.ByCash:
+        elif res == Payment.ByCash:
             logger.info('CASH')
-            payment_type = PaymentType.ByCash
+            payment_type = Payment.ByCash
             self.sale_transaction(payment_type)
         # Генерируем чек
 
@@ -1098,13 +1035,14 @@ class SaleForm(QDialog):
         self.accept()
 
 
-# Тип платежа (перечисление)
-class PaymentType:
+class Payment:
+    """Тип платежа (перечисление)"""
     ByCard = 101
     ByCash = 102
 
 
 class System:
+    """Системная информация"""
     user = None
     # флаг для обновления клиента
     client_id = None
@@ -1173,28 +1111,31 @@ class System:
 
 class PayForm(QDialog):
     """Форма оплаты"""
-    start_generate = Signal()
-
+    startGenerate = Signal()
     def __init__(self):
         super().__init__()
         self.ui = Ui_Dialog_Pay()
         self.ui.setupUi(self)
-        """Посылаем сигнал генерации чека
-        self.ui.pushButton.clicked.connect(self.start_generate.emit)
-        при вызове done() окно должно закрыться и exec_
-        вернет переданный аргумент из done()
-        """
-        self.ui.pushButton.clicked.connect(lambda:
-                                           self.done(PaymentType.ByCash))
-        self.ui.pushButton_2.clicked.connect(lambda:
-                                             self.done(PaymentType.ByCard))
-        # Устанавливаем текстовое значение в метку
+        # Посылаем сигнал генерации чека
+        # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
+        # при вызове done() окно должно закрыться и exec_
+        # вернет переданный аргумент из done()
+        self.ui.pushButton.clicked.connect(lambda: self.done(Payment.ByCash))
+        self.ui.pushButton_2.clicked.connect(lambda: self.done(Payment.ByCard))
 
-    def set_text(self, txt):
+        # Устанавливаем текстовое значение в метку
+    def setText(self, txt):
         self.ui.label_2.setText(txt)
 
 
 if __name__ == "__main__":
+    db = QtSql.QSqlDatabase.addDatabase("QPSQL")
+    db.setHostName(f"{host}")
+    db.setPort(int(port))
+    db.setDatabaseName(f"{database}")
+    db.setUserName(f"{user}")
+    db.setPassword(f"{pswrd}")
+
     app = QApplication(sys.argv)
     auth = AuthForm()
     auth.show()
