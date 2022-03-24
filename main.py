@@ -3,8 +3,10 @@ import os
 import socket
 import subprocess
 import sys
+import time
 from configparser import ConfigParser
 from datetime import date, timedelta
+from time import sleep
 
 import datetime as dt
 import psycopg2
@@ -16,6 +18,7 @@ from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
 from sqlalchemy import create_engine, and_, desc, update
 from sqlalchemy.orm import sessionmaker
 
@@ -33,6 +36,7 @@ from forms.client import Ui_Dialog_Client
 from forms.main_form import Ui_MainWindow
 from forms.pay import Ui_Dialog_Pay
 from forms.sale import Ui_Dialog_Sale
+# from forms.sale_saved import Ui_Dialog_Sale
 
 
 # Чтение параметров из файла конфигурации
@@ -176,7 +180,10 @@ class MainWindow(QMainWindow):
                 Sale.id == sale_number).one())._asdict()
             """Передаем в форму данные клиента"""
             sale = SaleForm()
-            sale.ui.tableView_2.setEnabled(False)
+            # для уже созданных продаж отключаем модель к таблице клиентов
+            self.model_clear = QtSql.QSqlTableModel()
+            # self.ui.tableView.setModel(self.model_clear)
+            sale.ui.tableView_2.setModel(self.model_clear)
             sale.ui.tableWidget_2.setRowCount(0)
             sale.ui.dateEdit.setDate(client_in_sale[0][11])
             sale.ui.dateEdit.setEnabled(False)
@@ -406,34 +413,26 @@ class MainWindow(QMainWindow):
         self.ui.tableWidget_3.setItem(1, 3, QTableWidgetItem(f"{child['t_2']}"))
         self.ui.tableWidget_3.setItem(1, 4, QTableWidgetItem(f"{child['t_3']}"))
 
+    def otchet_kassira(self):
+        """Формирование отчета кассира"""
+        pass
+        # """Удаляем предыдущий файл"""
+        # os.system("TASKKILL /F /IM SumatraPDF.exe")
+        # if os.path.exists('./otchet.pdf'):  # os.path.isfile ()?
+        #     os.remove('./otchet.pdf')
 
 class AuthForm(QDialog):
     """Форма авторизации"""
     def __init__(self):
         super().__init__()
-        """Проверяем статус соединения с БД"""
-        address = "dbname="+database+" user="+user+" host="+host+" password="+pswrd
-        try:
-            conn = psycopg2.connect(address)
-            if conn:
-                result = 1
-        except:
-            logger.warning("Connection was invalidated")
-            result = 0
-        finally:
-            self.ui = Ui_Dialog()
-            self.ui.setupUi(self)
-            """Добавляем логотип на форму"""
-            pixmap = QPixmap('pylogo.png')
-            self.ui.label_4.setPixmap(pixmap)
-            """Проверяем соединение с БД"""
-            if result == 1:
-                self.ui.label_3.setText('установлено')
-            else:
-                self.ui.label_3.setText('ошибка соединения!')
-            self.ui.label_7.setText(software_version)
-            self.ui.pushButton.clicked.connect(self.logincheck)
-            self.ui.pushButton_2.clicked.connect(self.close)
+        self.ui = Ui_Dialog()
+        self.ui.setupUi(self)
+        """Добавляем логотип на форму"""
+        pixmap = QPixmap('pylogo.png')
+        self.ui.label_4.setPixmap(pixmap)
+        self.ui.label_7.setText(software_version)
+        self.ui.pushButton.clicked.connect(self.logincheck)
+        self.ui.pushButton_2.clicked.connect(self.close)
 
     def logincheck(self):
         """Проверяем есть ли в таблице user запись с указанными полями"""
@@ -458,8 +457,10 @@ class AuthForm(QDialog):
                 System.what_a_day = 0
             elif day_today == 1:
                 System.what_a_day = 1
+                sun = System.check_one_sunday(self)
+                System.sunday = sun
             else:
-                System.what_a_day = 0
+                System.what_a_day = 0  # надо ли??
             window.show()
             window.exec_()
         else:
@@ -543,6 +544,7 @@ class SaleForm(QDialog):
         self.ui.comboBox.currentTextChanged.connect(self.edit_sale)
         self.ui.checkBox_2.stateChanged.connect(self.check_sale_enabled)
         self.ui.comboBox_2.currentTextChanged.connect(self.edit_sale)
+        self.ui.tableWidget_2.clicked.connect(self.edit_sale)
         # tableView с клиентами
         self.model_3 = QtSql.QSqlTableModel()
         self.ui.tableView_2.setModel(self.model_3)
@@ -558,6 +560,9 @@ class SaleForm(QDialog):
         headers_view = ["N", "Фамилия", "Имя", "Отчество", "Дата рожд.", "Пол", "Телефон", "Email", "Категория"]
         for i in range(len(headers_view)):
             self.model_3.setHeaderData(i, Qt.Horizontal, headers_view[i])
+        # при открытии проверяем день недели
+        self.calendar_color_change()
+        self.ui.checkBox_3.setEnabled(False)
 
     def filter_sale_client(self, text):
         filter = (" {} LIKE '%{}%'".format(self.ui.comboBox_3.currentText(),
@@ -574,10 +579,14 @@ class SaleForm(QDialog):
         logger.debug(date)
         if System.check_day(self, date) == 1:
             self.ui.dateEdit.setStyleSheet('background-color: red;')
+            System.what_a_day = 1
             logger.debug(self.ui.dateEdit.date)
         else:
             self.ui.dateEdit.setStyleSheet('background-color: white;')
+            System.what_a_day = 0
             logger.debug(self.ui.dateEdit.date)
+        self.edit_sale()
+        System.check_day(self)
 
     def check_sale_enabled(self):
         logger.info("Inside the function def check_sale_enabled")
@@ -616,11 +625,20 @@ class SaleForm(QDialog):
             """Определяем тип билета и цену"""
             time_ticket = self.ui.comboBox.currentText()
             if (int(time_ticket)) == 1:
-                price = 200
+                if type_ticket == 'детский':
+                    price = System.ticket_child_1
+                else:
+                    price = System.ticket_adult_1
             elif (int(time_ticket)) == 2:
-                price = 400
+                if type_ticket == 'детский':
+                    price = System.ticket_child_2
+                else:
+                    price = System.ticket_adult_2
             else:
-                price = 600
+                if type_ticket == 'детский':
+                    price = System.ticket_child_3
+                else:
+                    price = System.ticket_adult_3
             """Создаем виджет checkbox"""
             widget = QWidget()
             checkbox = QCheckBox()
@@ -648,17 +666,18 @@ class SaleForm(QDialog):
             self.edit_sale()
 
     @logger_wraps()
-    def key_press_event(self, event):
+    def keyPressEvent(self, event):  # don`t fix this
         """Отслеживаем нажатие кнопок "delete", "backspace" """
-        logger.info("Inside the function def key_press_event")
+        logger.info("Inside the function def keyPressEvent")
         if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
             self.del_selected_item()
-        QDialog.key_press_event(self, event)
+        QDialog.keyPressEvent(self, event)
 
     @logger_wraps()
     def del_selected_item(self):
         """Удаляем запись из таблицы при нажатии кнопки в key_press_event"""
         logger.info("Inside the function def del_selected_item")
+        logger.warning('press key')
         if self.ui.tableWidget_2.rowCount() > 0:
             currentrow = self.ui.tableWidget_2.currentRow()
             self.ui.tableWidget_2.removeRow(currentrow)
@@ -673,40 +692,91 @@ class SaleForm(QDialog):
         kol_child = 0
         price_adult = 0
         price_child = 0
+        kol_adult_many_child = 0
+        kol_child_many_child = 0
         id_adult = 0
+        time = 0
         time_ticket = self.ui.comboBox.currentText()
         sale = 0
         tickets = []
+        many_child = 0
         if (int(time_ticket)) == 1:
-            price = 200
-            talent = 25
+            time = 1
+            talent = System.talent_1
         elif (int(time_ticket)) == 2:
-            price = 400
-            talent = 35
+            time = 2
+            talent = System.talent_2
         elif (int(time_ticket)) == 3:
-            price = 600
-            talent = 50
+            time = 3
+            talent = System.talent_3
         date_time = self.ui.dateEdit.date().toString("yyyy-MM-dd")
         """считаем общую сумму"""
         rows = self.ui.tableWidget_2.rowCount()
         for row in range(rows):
-            self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{price}"))
-            sale = sale + price
-            self.ui.label_8.setText(str(sale))
+            print('flag', self.ui.tableWidget_2.item(row, 5).text())
+            # if self.ui.tableWidget_2.item(row, 5).text() == 'м':
+            #     print('yes')
+            """Акция день многодетных?"""
+            print('system day', System.sunday)
+            if self.ui.tableWidget_2.item(row, 5).text() == 'м':
+                if System.sunday == 1:
+                    many_child = 1
+                    # устанавливаем продолжительность посещения
+                    self.ui.comboBox.setCurrentIndex(1)
+                    self.ui.comboBox.setEnabled(False)
+                    # отмена скидки многодетным
+                    self.ui.checkBox_3.setEnabled(True)  # ! добавить логику
+                    self.ui.checkBox_2.setEnabled(False)
+                    logger.info('многодетный')
             """Считаем общее количество позиций и берем цену"""
             type = self.ui.tableWidget_2.item(row, 3).text()
             if type == 'взрослый':
                 """Привязываем продажу ко взрослому"""
+                if time == 1:
+                    price = System.ticket_adult_1
+                elif time == 2:
+                    if many_child == 0:
+                        if System.what_a_day == 0:
+                            price = System.ticket_adult_2
+                    else:
+                        price = System.ticket_many_child
+                        kol_adult_many_child += 1
+                else:
+                    price = System.ticket_adult_3
                 if id_adult == 0:
                     id_adult = self.ui.tableWidget_2.item(row, 6).text()
                     logger.warning('id_adult %s' % (id_adult))
                 kol_adult += 1
                 price_adult = self.ui.tableWidget_2.item(row, 4).text()
             else:
+                if time == 1:
+                    if System.what_a_day == 0:
+                        price = System.ticket_child_1
+                    else:
+                        price = System.ticket_child_week_1
+                elif time == 2:
+                    if many_child == 0:
+                        if System.what_a_day == 0:
+                            price = System.ticket_child_2
+                        else:
+                            price = System.ticket_child_week_2
+                    else:
+                        price = System.ticket_many_child
+                        kol_child_many_child += 1
+                else:
+                    if System.what_a_day == 0:
+                        price = System.ticket_child_3
+                    else:
+                        price = System.ticket_child_week_3
                 kol_child += 1
                 price_child = self.ui.tableWidget_2.item(row, 4).text()
+            self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{price}"))
+            sale = sale + price
+            self.ui.label_8.setText(str(sale))
         self.ui.label_5.setText(str(kol_adult))
         self.ui.label_7.setText(str(kol_child))
+        self.ui.label_17.setText(str(kol_adult_many_child))
+        self.ui.label_19.setText(str(kol_child_many_child))
         """проверить есть ли взрослый"""
         # !
         """применяем скидку"""
@@ -766,40 +836,42 @@ class SaleForm(QDialog):
                 session.commit()
                 System.sale_id = session.query(Sale).count()
                 session.close()
-                """Генерируем билеты"""
-                logger.info("Генерируем билеты")
-                logger.debug(System.sale_tickets)
-                session = Session()
-                for i in range(len(System.sale_tickets)):
-                    type = 0
-                    """Считаем количество начисленных талантов"""
-                    if System.sale_tickets[i][3] == 'взрослый':
-                        type = 0
-                    elif System.sale_tickets[i][3] == 'детский':
-                        type = '1'
-                    logger.info('тип билета %s' % (type))
-                    add_ticket = Ticket(id_client=System.sale_tickets[i][6],
-                                        id_sale=int(System.sale_id),
-                                        arrival_time=System.sale_tickets[i][9],
-                                        talent=System.sale_tickets[i][10],
-                                        price=System.sale_tickets[i][4],
-                                        description=System.sale_tickets[i][5],
-                                        ticket_type=type,
-                                        # print=System.sale_tickets[i][7],
-                                        # если печатаем билет
-                                        # исправить на checkbox
-                                        client_age=System.sale_tickets[i][8])
-                    logger.info("Сохраняем билет")
-                    logger.info(add_ticket)
-                    session.add(add_ticket)
-                    session.commit()
-                session.close()
+
                 # self.close()
             else:
                 windows.info_window(
                     'Внимание! В продаже отсутствует взрослый',
                     'Для оформления новой продажи добавьте,'
                     'пожалуйста, в нее взрослого.', '')
+        """Генерируем билеты"""
+        logger.info("Генерируем билеты")
+        logger.debug(System.sale_tickets)
+        session = Session()
+        for i in range(len(System.sale_tickets)):
+            type = 0
+            """Считаем количество начисленных талантов"""
+            if System.sale_tickets[i][3] == 'взрослый':
+                type = 0
+            elif System.sale_tickets[i][3] == 'детский':
+                type = '1'
+            logger.info('тип билета %s' % (type))
+            add_ticket = Ticket(id_client=System.sale_tickets[i][6],
+                                id_sale=int(System.sale_id),
+                                arrival_time=System.sale_tickets[i][9],
+                                talent=System.sale_tickets[i][10],
+                                price=System.sale_tickets[i][4],
+                                description=System.sale_tickets[i][5],
+                                ticket_type=type,
+                                # print=System.sale_tickets[i][7],
+                                # если печатаем билет
+                                # исправить на checkbox
+                                client_age=System.sale_tickets[i][8])
+            logger.info("Сохраняем билет")
+            logger.info(add_ticket)
+            session.add(add_ticket)
+            session.commit()
+        session.close()
+        self.close()
 
     @logger.catch()
     def sale_transaction(self, payment_type):
@@ -1056,7 +1128,25 @@ class System:
     sale_tuple = []
     # какой сегодня день: 0 - будний, 1 - выходной
     what_a_day = None
+    # первое воскресенье месяца: 0 - нет, 1 - да
+    sunday = None
+    today = date.today()
     pc_name = socket.gethostname()
+    # цена билетов
+    ticket_child_1 = 200
+    ticket_child_2 = 400
+    ticket_child_3 = 600
+    ticket_child_week_1 = 250
+    ticket_child_week_2 = 500
+    ticket_child_week_3 = 750
+    ticket_adult_1 = 100
+    ticket_adult_2 = 150
+    ticket_adult_3 = 200
+    ticket_many_child = 0
+    # количество талантов
+    talent_1 = 25
+    talent_2 = 35
+    talent_3 = 50
 
     def check_login(self, login, password):
         """Авторизация кассира"""
@@ -1075,7 +1165,7 @@ class System:
             return 1
 
     def check_day(self, day=dt.datetime.now().strftime('%Y-%m-%d')):
-        """Проверка статуса дня"""
+        """Проверка статуса дня: выходной ли это"""
         status = None
         num_day = None
         session = Session()
@@ -1107,6 +1197,15 @@ class System:
                 else:
                     status = 0
         return status
+
+    def check_one_sunday(self):
+        """Проверка 1го воскресного дня месяца"""
+        if System.what_a_day == 1:
+            # проверяем если номер дня недели равен 7 и дата <= 7
+            if dt.datetime.today().isoweekday() == 7 and date.today().day <= 7:
+                print('mnogodet!')
+                System.sunday = 1
+                return 1
 
 
 class PayForm(QDialog):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'sale_15.ui'
+## Form generated from reading UI file 'sale_16.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.2.2
 ##
@@ -18,7 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateEdit,
     QDialog, QFrame, QGroupBox, QHeaderView,
     QLabel, QLineEdit, QPushButton, QSizePolicy,
-    QTableView, QTableWidget, QTableWidgetItem, QAbstractItemView)
+    QTableView, QTableWidget, QTableWidgetItem, QWidget, QAbstractItemView)
 
 class Ui_Dialog_Sale(object):
     def setupUi(self, Dialog_Sale):
@@ -97,7 +97,7 @@ class Ui_Dialog_Sale(object):
         self.tableWidget_2.horizontalHeader().setDefaultSectionSize(100)
         self.label_2 = QLabel(Dialog_Sale)
         self.label_2.setObjectName(u"label_2")
-        self.label_2.setGeometry(QRect(730, 190, 51, 20))
+        self.label_2.setGeometry(QRect(730, 180, 51, 20))
         font1 = QFont()
         font1.setPointSize(11)
         font1.setBold(True)
@@ -108,7 +108,7 @@ class Ui_Dialog_Sale(object):
         self.label_3.setFont(font1)
         self.pushButton_3 = QPushButton(Dialog_Sale)
         self.pushButton_3.setObjectName(u"pushButton_3")
-        self.pushButton_3.setGeometry(QRect(500, 400, 94, 28))
+        self.pushButton_3.setGeometry(QRect(570, 400, 94, 28))
         self.pushButton_4 = QPushButton(Dialog_Sale)
         self.pushButton_4.setObjectName(u"pushButton_4")
         self.pushButton_4.setGeometry(QRect(710, 740, 95, 45))
@@ -117,29 +117,29 @@ class Ui_Dialog_Sale(object):
         self.pushButton_4.setFont(font2)
         self.label_4 = QLabel(Dialog_Sale)
         self.label_4.setObjectName(u"label_4")
-        self.label_4.setGeometry(QRect(690, 220, 71, 31))
+        self.label_4.setGeometry(QRect(690, 210, 71, 31))
         font3 = QFont()
         font3.setPointSize(10)
         self.label_4.setFont(font3)
         self.label_5 = QLabel(Dialog_Sale)
         self.label_5.setObjectName(u"label_5")
-        self.label_5.setGeometry(QRect(770, 230, 21, 20))
+        self.label_5.setGeometry(QRect(770, 220, 21, 20))
         self.label_5.setFont(font3)
         self.label_6 = QLabel(Dialog_Sale)
         self.label_6.setObjectName(u"label_6")
-        self.label_6.setGeometry(QRect(690, 260, 61, 51))
+        self.label_6.setGeometry(QRect(690, 250, 61, 51))
         self.label_6.setFont(font3)
         self.label_7 = QLabel(Dialog_Sale)
         self.label_7.setObjectName(u"label_7")
-        self.label_7.setGeometry(QRect(770, 280, 21, 20))
+        self.label_7.setGeometry(QRect(770, 270, 21, 20))
         self.label_7.setFont(font3)
         self.label_8 = QLabel(Dialog_Sale)
         self.label_8.setObjectName(u"label_8")
-        self.label_8.setGeometry(QRect(780, 320, 41, 20))
+        self.label_8.setGeometry(QRect(790, 310, 41, 20))
         self.label_8.setFont(font1)
         self.label_9 = QLabel(Dialog_Sale)
         self.label_9.setObjectName(u"label_9")
-        self.label_9.setGeometry(QRect(690, 320, 121, 20))
+        self.label_9.setGeometry(QRect(690, 310, 121, 20))
         self.label_9.setFont(font1)
         self.pushButton_5 = QPushButton(Dialog_Sale)
         self.pushButton_5.setObjectName(u"pushButton_5")
@@ -163,7 +163,7 @@ class Ui_Dialog_Sale(object):
         self.pushButton_8.setFont(font2)
         self.label_11 = QLabel(Dialog_Sale)
         self.label_11.setObjectName(u"label_11")
-        self.label_11.setGeometry(QRect(500, 380, 63, 20))
+        self.label_11.setGeometry(QRect(570, 380, 63, 20))
         self.dateEdit = QDateEdit(Dialog_Sale)
         self.dateEdit.setObjectName(u"dateEdit")
         self.dateEdit.setGeometry(QRect(10, 400, 110, 30))
@@ -236,6 +236,30 @@ class Ui_Dialog_Sale(object):
         self.label_16.setObjectName(u"label_16")
         self.label_16.setGeometry(QRect(730, 640, 63, 21))
         self.label_16.setFont(font1)
+        self.label_17 = QLabel(Dialog_Sale)
+        self.label_17.setObjectName(u"label_17")
+        self.label_17.setGeometry(QRect(810, 360, 21, 20))
+        self.label_17.setFont(font3)
+        self.label_18 = QLabel(Dialog_Sale)
+        self.label_18.setObjectName(u"label_18")
+        self.label_18.setGeometry(QRect(690, 350, 111, 31))
+        self.label_18.setFont(font3)
+        self.label_19 = QLabel(Dialog_Sale)
+        self.label_19.setObjectName(u"label_19")
+        self.label_19.setGeometry(QRect(810, 410, 21, 20))
+        self.label_19.setFont(font3)
+        self.label_20 = QLabel(Dialog_Sale)
+        self.label_20.setObjectName(u"label_20")
+        self.label_20.setGeometry(QRect(690, 390, 111, 51))
+        self.label_20.setFont(font3)
+        self.checkBox_3 = QCheckBox(Dialog_Sale)
+        self.checkBox_3.setObjectName(u"checkBox_3")
+        self.checkBox_3.setGeometry(QRect(370, 410, 81, 21))
+        self.checkBox_3.setAcceptDrops(False)
+        self.checkBox_3.setAutoRepeat(False)
+        self.label_21 = QLabel(Dialog_Sale)
+        self.label_21.setObjectName(u"label_21")
+        self.label_21.setGeometry(QRect(370, 380, 101, 31))
 
         self.retranslateUi(Dialog_Sale)
 
@@ -316,5 +340,14 @@ class Ui_Dialog_Sale(object):
 
         self.label_15.setText(QCoreApplication.translate("Dialog_Sale", u"\u0411\u0435\u0437 \u0432\u0437\u0440\u043e\u0441\u043b\u043e\u0433\u043e", None))
         self.label_16.setText(QCoreApplication.translate("Dialog_Sale", u"\u0412\u043e\u0437\u0432\u0440\u0430\u0442", None))
+        self.label_17.setText(QCoreApplication.translate("Dialog_Sale", u"-", None))
+        self.label_18.setText(QCoreApplication.translate("Dialog_Sale", u"\u0412\u0437\u0440\u043e\u0441\u043b\u044b\u0439\n"
+"\u043c\u043d\u043e\u0433-\u0439 \u0431\u0438\u043b\u0435\u0442, \u0448\u0442.:", None))
+        self.label_19.setText(QCoreApplication.translate("Dialog_Sale", u"-", None))
+        self.label_20.setText(QCoreApplication.translate("Dialog_Sale", u"\u0414\u0435\u0442\u0441\u043a\u0438\u0439\n"
+"\u043c\u043d\u043e\u0433-\u0439 \u0431\u0438\u043b\u0435\u0442, \u0448\u0442.:", None))
+        self.checkBox_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u0414\u0430/\u043d\u0435\u0442", None))
+        self.label_21.setText(QCoreApplication.translate("Dialog_Sale", u"\u041c\u043d\u043e\u0433\u043e\u0434\u0435\u0442\u043d\u044b\u0435\n"
+"\u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435 \u0431\u0438\u043b\u0435\u0442\u0430", None))
     # retranslateUi
 
