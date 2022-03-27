@@ -169,7 +169,8 @@ def get_status_obmena():
 	"""Статус информационного обмена"""
 	logger.info("Inside the function def get_status_obmena")
 	fptr.open()
-	fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS)
+	fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE,
+				  IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS)
 	fptr.fnQueryData()
 	exchangeStatus = fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS)
 	unsentCount = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT)
@@ -182,7 +183,10 @@ def get_status_obmena():
 	logger.info("OfdMessageRead: %s" % (ofdMessageRead))
 	logger.info("DateTime: %s" % (dateTime))
 	fptr.close()
-	info = "ExchangeStatus: " + str(exchangeStatus) + ".\nUnsentCount: " + str(unsentCount) + ".\nFirstUnsentNumber: " + str(firstUnsentNumber)+ ".\nOfdMessageRead: " + str(ofdMessageRead)+ ".\nDateTime: " + str(dateTime)
+	info = ("ExchangeStatus: " + str(exchangeStatus) + ".\nUnsentCount: "
+			+ str(unsentCount) + ".\nFirstUnsentNumber: "
+			+ str(firstUnsentNumber) + ".\nOfdMessageRead: "
+			+ str(ofdMessageRead) + ".\nDateTime: " + str(dateTime))
 	windows.info_window('Смотрите подробную информацию.', '', info)
 
 
@@ -218,8 +222,10 @@ def smena_info():
 		result = 'открыта'
 	logger.info("Номер смены: %s" % (number))
 	logger.info("Дата и время истечения текущей смены: %s" % (dateTime))
-	info = "Состояние смены: " + result +".\nНомер смены: " + str(number) +".\nДата и время истечения текущей смены: " + str(dateTime)
-	windows.info_window("Состояние смены: " + result, 'Смотрите подробную информацию.', info)
+	info = ("Состояние смены: " + result +".\nНомер смены: " + str(number)
+			+ ".\nДата и время истечения текущей смены: " + str(dateTime))
+	windows.info_window("Состояние смены: " + result,
+						'Смотрите подробную информацию.', info)
 	fptr.close()
 	return state
 
@@ -229,7 +235,8 @@ def last_document():
 	"""Копия последнего документа"""
 	logger.info("Inside the function def last_document")
 	fptr.open()
-	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT)
+	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE,
+				  IFptr.LIBFPTR_RT_LAST_DOCUMENT)
 	fptr.report()	
 	fptr.close()
 
@@ -239,7 +246,8 @@ def report_payment():
 	"""Отчет о состоянии расчетов"""
 	logger.info("Inside the function def report_payment")
 	fptr.open()
-	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS)
+	fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE,
+				  IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS)
 	fptr.report()
 	fptr.close()
 
@@ -305,9 +313,6 @@ def check_open(sale_tuple,  payment_type, user, type_operation):
 		fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
 		fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale[4])
 		fptr.payment()
-		# """Регистрация итога чека"""
-		# fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, sale[4])
-		# fptr.receiptTotal()
 		"""Закрытие полностью оплаченного чека"""
 		fptr.closeReceipt()
 	elif payment_type == 101:
@@ -315,46 +320,62 @@ def check_open(sale_tuple,  payment_type, user, type_operation):
 		bank = terminal_oplata(str(sale[4]))
 		logger.warning("BANK: %s" % (bank))
 		if bank == 1:
-			fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY)
+			fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE,
+						  IFptr.LIBFPTR_PT_ELECTRONICALLY)
 			fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale[4])
 			fptr.payment()
-			# """Регистрация итога чека"""
-			# fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, sale[4])
-			# fptr.receiptTotal()
 			"""Закрытие полностью оплаченного чека"""
 			fptr.closeReceipt()
 		else:
 			logger.warning("Оплата по банковскому терминалу не прошла")
-			windows.info_window("Оплата по банковскому терминалу не прошла", '', "")
+			windows.info_window("Оплата по банковскому терминалу не прошла",
+								'', "")
 	"""Допечатывание документа"""
 	fptr.continuePrint()
-	#! проверить распечатался ли документ
+	# ! проверить распечатался ли документ
 	while fptr.checkDocumentClosed() < 0:
-		# Не удалось проверить состояние документа. Вывести пользователю текст ошибки, попросить устранить неполадку и повторить запрос
-		windows.info_window("fptr.errorDescription:", str(fptr.errorDescription()), '')
-		logger.warning("fptr.errorDescription: %s" % (fptr.errorDescription()))
+		# Не удалось проверить состояние документа.
+		# Вывести пользователю текст ошибки,
+		# попросить устранить неполадку и повторить запрос
+		windows.info_window("fptr.errorDescription:",
+							str(fptr.errorDescription()), '')
+		logger.warning("fptr.errorDescription: %s" %
+					   (fptr.errorDescription()))
 		continue
 	if not fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
-		# Документ не закрылся. Требуется его отменить (если это чек) и сформировать заново
+		# Документ не закрылся. Требуется его отменить
+		# (если это чек) и сформировать заново
 		windows.info_window("Кассовый документ не закрылся!", '', "")
 		logger.warning("Кассовый документ не закрылся!")
 		fptr.cancelReceipt()
 		return
 	if not fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED):
-		# Можно сразу вызвать метод допечатывания документа, он завершится с ошибкой, если это невозможно
+		# Можно сразу вызвать метод допечатывания документа,
+		# он завершится с ошибкой, если это невозможно
 		while fptr.continuePrint() < 0:
-			# Если не удалось допечатать документ - показать пользователю ошибку и попробовать еще раз.
-			windows.info_window('Не удалось напечатать документ.\n Устраните неполадку и повторите.', str(fptr.errorDescription()), '')
-			logger.warning('Не удалось напечатать документ. Устраните неполадку и повторите.' % (fptr.errorDescription()))
+			# Если не удалось допечатать документ - показать
+			# пользователю ошибку и попробовать еще раз.
+			windows.info_window('Не удалось напечатать документ.\n'
+								'Устраните неполадку и повторите.',
+								str(fptr.errorDescription()), '')
+			logger.warning('Не удалось напечатать документ.'
+						   'Устраните неполадку и повторите.' %
+						   (fptr.errorDescription()))
 			continue_print()
 			continue
 	"""Оплата прошла, можно сохранять продажу"""
 	if fptr.checkDocumentClosed() == 0:
 		state = 1
 	else:
-		# Не удалось проверить состояние документа. Вывести пользователю текст ошибки, попросить устранить неполадку и повторить запрос
-		windows.info_window('Не удалось напечатать документ (Ошибка "%s").\nУстраните неполадку и повторите.', str(fptr.errorDescription()), '')
-		logger.info('Не удалось напечатать документ (Ошибка "%s"). Устраните неполадку и повторите.', fptr.errorDescription())
+		# Не удалось проверить состояние документа.
+		# Вывести пользователю текст ошибки,
+		# попросить устранить неполадку и повторить запрос
+		windows.info_window('Не удалось напечатать документ (Ошибка "%s").\n'
+							'Устраните неполадку и повторите.',
+							str(fptr.errorDescription()), '')
+		logger.info('Не удалось напечатать документ (Ошибка "%s").'
+					'Устраните неполадку и повторите.',
+					fptr.errorDescription())
 	fptr.close()
 	if payment_type == 101:
 		print_slip_check()
@@ -367,7 +388,9 @@ def smena_close(user):
 	logger.info("Inside the function def smena_close")
 	state = smena_info()
 	if state != 0:
-		res = windows.info_dialog_window('Внимание! Кассовая смена не закрыта', 'Хотите сделать сверку итогов и снять отчет с гашением?')
+		res = windows.info_dialog_window('Внимание! Кассовая сменане закрыта',
+										 'Хотите сделать сверку итогов и'
+										 'снять отчет с гашением?')
 		if res == 1:
 			logger.warning(state)
 			result = terminal_check_itog()
@@ -377,14 +400,17 @@ def smena_close(user):
 					fptr.setParam(1021, f'{user[0]} {user[1]}')
 					fptr.setParam(1203, user[2])
 					fptr.operatorLogin()
-					fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT)
+					fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE,
+								  IFptr.LIBFPTR_RT_CLOSE_SHIFT)
 					fptr.report()
 					fptr.checkDocumentClosed()
 					fptr.close()
 			except FileNotFoundError as not_found:
 				lines = 'File not found!'
 				logger.info("File not found")
-				windows.info_window('Сверка итогов по банковскому терминалу завершена неудачно.', '', str(lines))
+				windows.info_window('Сверка итогов по банковскому'
+									'терминалу завершена неудачно.', '',
+									str(lines))
 		else:
 			logger.warning(state)
 
@@ -397,7 +423,8 @@ def continue_print():
 
 @logger_wraps()
 def terminal_check_itog_window():
-	"""Сверка итогов работы дбанковского терминала с выводом результата в QMessageBox"""
+	"""Сверка итогов работы банковского терминала
+	с выводом результата в QMessageBox"""
 	logger.info("Proverka file")
 	pinpad_file = r"C:\sc552\p"
 	subprocess.call('C:\\sc552\\loadparm.exe 7')
@@ -407,8 +434,10 @@ def terminal_check_itog_window():
 		with open(pinpad_file, encoding='IBM866') as file:
 			lines = file.readlines()[2:]
 			logger.info("Сверка итогов успешно завершена")
-			windows.info_window('Сверка итогов по банковскому терминалу успешно завершена.', '', str(lines))
+			windows.info_window('Сверка итогов по банковскому терминалу'
+								'успешно завершена.', '', str(lines))
 	except FileNotFoundError as not_found:
 		lines = 'File not found!'
 		logger.info("File not found")
-		windows.info_window('Ошибка сверки итогов по банковскому терминалу!', '', str(lines))
+		windows.info_window('Ошибка сверки итогов по банковскому'
+							'терминалу!', '', str(lines))
