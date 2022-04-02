@@ -1,24 +1,11 @@
 # -*- coding: utf-8 -*-
 
-################################################################################
-## Form generated from reading UI file 'sale_17.ui'
-##
-## Created by: Qt User Interface Compiler version 6.2.2
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
-
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateEdit,
-    QDialog, QFrame, QGroupBox, QHeaderView,
-    QLabel, QLineEdit, QPushButton, QSizePolicy,
-    QTableView, QTableWidget, QTableWidgetItem, QWidget, QAbstractItemView)
+from PySide6.QtCore import (QCoreApplication, QMetaObject, QRect,
+    QSize, Qt)
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDateEdit,
+    QFrame, QGroupBox, QLabel, QLineEdit, QPushButton,
+    QTableView, QTableWidget, QTableWidgetItem, QAbstractItemView)
 
 class Ui_Dialog_Sale(object):
     def setupUi(self, Dialog_Sale):
@@ -108,7 +95,7 @@ class Ui_Dialog_Sale(object):
         self.label_3.setFont(font1)
         self.pushButton_3 = QPushButton(Dialog_Sale)
         self.pushButton_3.setObjectName(u"pushButton_3")
-        self.pushButton_3.setGeometry(QRect(570, 400, 94, 28))
+        self.pushButton_3.setGeometry(QRect(500, 400, 94, 28))
         self.pushButton_4 = QPushButton(Dialog_Sale)
         self.pushButton_4.setObjectName(u"pushButton_4")
         self.pushButton_4.setGeometry(QRect(710, 740, 95, 45))
@@ -163,7 +150,7 @@ class Ui_Dialog_Sale(object):
         self.pushButton_8.setFont(font2)
         self.label_11 = QLabel(Dialog_Sale)
         self.label_11.setObjectName(u"label_11")
-        self.label_11.setGeometry(QRect(570, 380, 63, 20))
+        self.label_11.setGeometry(QRect(500, 380, 63, 20))
         self.dateEdit = QDateEdit(Dialog_Sale)
         self.dateEdit.setObjectName(u"dateEdit")
         self.dateEdit.setGeometry(QRect(10, 400, 110, 30))
@@ -180,11 +167,6 @@ class Ui_Dialog_Sale(object):
         self.comboBox.addItem("")
         self.comboBox.setObjectName(u"comboBox")
         self.comboBox.setGeometry(QRect(150, 400, 78, 30))
-        self.checkBox = QCheckBox(Dialog_Sale)
-        self.checkBox.setObjectName(u"checkBox")
-        self.checkBox.setGeometry(QRect(260, 410, 81, 21))
-        self.checkBox.setAcceptDrops(False)
-        self.checkBox.setAutoRepeat(False)
         self.label_14 = QLabel(Dialog_Sale)
         self.label_14.setObjectName(u"label_14")
         self.label_14.setGeometry(QRect(690, 510, 81, 20))
@@ -224,9 +206,6 @@ class Ui_Dialog_Sale(object):
         self.line_5.setGeometry(QRect(680, 140, 161, 21))
         self.line_5.setFrameShape(QFrame.HLine)
         self.line_5.setFrameShadow(QFrame.Sunken)
-        self.label_15 = QLabel(Dialog_Sale)
-        self.label_15.setObjectName(u"label_15")
-        self.label_15.setGeometry(QRect(260, 380, 101, 20))
         self.line_6 = QFrame(Dialog_Sale)
         self.line_6.setObjectName(u"line_6")
         self.line_6.setGeometry(QRect(680, 720, 161, 21))
@@ -254,12 +233,12 @@ class Ui_Dialog_Sale(object):
         self.label_20.setFont(font3)
         self.checkBox_3 = QCheckBox(Dialog_Sale)
         self.checkBox_3.setObjectName(u"checkBox_3")
-        self.checkBox_3.setGeometry(QRect(370, 410, 81, 21))
+        self.checkBox_3.setGeometry(QRect(400, 400, 81, 21))
         self.checkBox_3.setAcceptDrops(False)
         self.checkBox_3.setAutoRepeat(False)
         self.label_21 = QLabel(Dialog_Sale)
         self.label_21.setObjectName(u"label_21")
-        self.label_21.setGeometry(QRect(370, 380, 101, 31))
+        self.label_21.setGeometry(QRect(270, 390, 151, 41))
         self.line_7 = QFrame(Dialog_Sale)
         self.line_7.setObjectName(u"line_7")
         self.line_7.setGeometry(QRect(680, 300, 161, 21))
@@ -269,6 +248,16 @@ class Ui_Dialog_Sale(object):
         self.label_22.setObjectName(u"label_22")
         self.label_22.setGeometry(QRect(710, 320, 101, 16))
         self.label_22.setFont(font1)
+        self.line_8 = QFrame(Dialog_Sale)
+        self.line_8.setObjectName(u"line_8")
+        self.line_8.setGeometry(QRect(250, 390, 20, 41))
+        self.line_8.setFrameShape(QFrame.VLine)
+        self.line_8.setFrameShadow(QFrame.Sunken)
+        self.line_9 = QFrame(Dialog_Sale)
+        self.line_9.setObjectName(u"line_9")
+        self.line_9.setGeometry(QRect(450, 390, 20, 41))
+        self.line_9.setFrameShape(QFrame.VLine)
+        self.line_9.setFrameShadow(QFrame.Sunken)
 
         self.retranslateUi(Dialog_Sale)
 
@@ -327,7 +316,6 @@ class Ui_Dialog_Sale(object):
         self.comboBox.setItemText(1, QCoreApplication.translate("Dialog_Sale", u"2", None))
         self.comboBox.setItemText(2, QCoreApplication.translate("Dialog_Sale", u"3", None))
 
-        self.checkBox.setText(QCoreApplication.translate("Dialog_Sale", u"\u0414\u0430/\u043d\u0435\u0442", None))
         self.label_14.setText(QCoreApplication.translate("Dialog_Sale", u"\u0420\u0430\u0437\u043c\u0435\u0440 (%):", None))
         self.checkBox_2.setText(QCoreApplication.translate("Dialog_Sale", u"\u0421\u043a\u0438\u0434\u043a\u0430", None))
         self.comboBox_2.setItemText(0, QCoreApplication.translate("Dialog_Sale", u"0", None))
@@ -347,7 +335,6 @@ class Ui_Dialog_Sale(object):
         self.comboBox_2.setItemText(14, QCoreApplication.translate("Dialog_Sale", u"90", None))
         self.comboBox_2.setItemText(15, QCoreApplication.translate("Dialog_Sale", u"100", None))
 
-        self.label_15.setText(QCoreApplication.translate("Dialog_Sale", u"\u0411\u0435\u0437 \u0432\u0437\u0440\u043e\u0441\u043b\u043e\u0433\u043e", None))
         self.label_16.setText(QCoreApplication.translate("Dialog_Sale", u"\u0412\u043e\u0437\u0432\u0440\u0430\u0442", None))
         self.label_17.setText(QCoreApplication.translate("Dialog_Sale", u"-", None))
         self.label_18.setText(QCoreApplication.translate("Dialog_Sale", u"\u0412\u0437\u0440\u043e\u0441\u043b\u044b\u0439\n"
@@ -355,9 +342,9 @@ class Ui_Dialog_Sale(object):
         self.label_19.setText(QCoreApplication.translate("Dialog_Sale", u"-", None))
         self.label_20.setText(QCoreApplication.translate("Dialog_Sale", u"\u0414\u0435\u0442\u0441\u043a\u0438\u0439\n"
 "\u0431\u0438\u043b\u0435\u0442, \u0448\u0442.:", None))
-        self.checkBox_3.setText(QCoreApplication.translate("Dialog_Sale", u"\u0414\u0430/\u043d\u0435\u0442", None))
-        self.label_21.setText(QCoreApplication.translate("Dialog_Sale", u"\u041c\u043d\u043e\u0433\u043e\u0434\u0435\u0442\u043d\u044b\u0435\n"
-"\u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435 \u0431\u0438\u043b\u0435\u0442\u0430", None))
+        self.checkBox_3.setText("")
+        self.label_21.setText(QCoreApplication.translate("Dialog_Sale", u"\u041f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435 \u0431\u0438\u043b\u0435\u0442\u043e\u0432\n"
+"\u0432 \u0434\u0435\u043d\u044c \u043c\u043d\u043e\u0433\u043e\u0434\u0435\u0442\u043d\u044b\u0445", None))
         self.label_22.setText(QCoreApplication.translate("Dialog_Sale", u"\u041c\u043d\u043e\u0433\u043e\u0434\u0435\u0442\u043d\u044b\u0435", None))
     # retranslateUi
 

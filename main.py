@@ -31,7 +31,14 @@ from forms.client import Ui_Dialog_Client
 from forms.main_form import Ui_MainWindow
 from forms.pay import Ui_Dialog_Pay
 from forms.sale import Ui_Dialog_Sale
-
+from reportlab.platypus import SimpleDocTemplate
+from reportlab.lib.units import mm, inch, cm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib import colors
 
 # Чтение параметров из файла конфигурации
 config = ConfigParser()
@@ -68,7 +75,7 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_11.clicked.connect(kkt.last_document)
         self.ui.pushButton_9.clicked.connect(kkt.get_time)
         self.ui.pushButton_5.clicked.connect(kkt.report_x)
-        self.ui.pushButton_6.clicked.connect(kkt.smena_close(System.user))
+        self.ui.pushButton_6.clicked.connect(lambda: kkt.smena_close(System.user))
         self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
         self.ui.pushButton_15.clicked.connect(kkt.continue_print)
         self.ui.pushButton_10.clicked.connect(kkt.smena_info)
@@ -79,6 +86,7 @@ class MainWindow(QMainWindow):
         self.ui.pushButton_19.clicked.connect(self.otchet_administratora)
         self.ui.tableWidget_2.doubleClicked.connect(self.search_selected_sale)
         self.ui.pushButton_17.clicked.connect(self.get_statistic)
+        self.ui.pushButton_3.clicked.connect(self.click_in_client_view)
         self.ui.tableView.clicked.connect(self.click_in_client_view)
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
@@ -189,7 +197,7 @@ class MainWindow(QMainWindow):
             sale.ui.dateEdit.setEnabled(False)
             sale.ui.comboBox.setCurrentText(str(client_in_sale[0][9]))
             sale.ui.comboBox.setEnabled(False)
-            sale.ui.checkBox.setEnabled(False)
+            # sale.ui.checkBox.setEnabled(False)
             # если продажа оплачена
             if sale_status.get('status') == 1:
                 sale.ui.pushButton_3.setEnabled(False)
@@ -260,7 +268,8 @@ class MainWindow(QMainWindow):
     def button_all_sales(self):
         """Показ всех продаж в tableWidget"""
         logger.info("Inside the function def button_all_sales")
-        type = None
+        status_type = None
+        payment_type = None
         self.ui.tableWidget_2.setRowCount(0)
         """Фильтр продаж за 1, 3 и 7 дней"""
         if self.ui.radioButton.isChecked():
@@ -286,23 +295,25 @@ class MainWindow(QMainWindow):
             self.ui.tableWidget_2.setItem(
                 row, 3, QTableWidgetItem(f"{sale.datetime}"))
             if sale.status == 0:
-                type = 'создана'
-            if sale.status == 1:
-                type = 'оплачена'
+                status_type = 'создана'
+            elif sale.status == 1:
+                status_type = 'оплачена'
+            else:
+                status_type = 'возврат'
             self.ui.tableWidget_2.setItem(
-                row, 4, QTableWidgetItem(f"{type}"))
+                row, 4, QTableWidgetItem(f"{status_type}"))
             self.ui.tableWidget_2.setItem(
                 row, 5, QTableWidgetItem(f"{sale.discount}"))
             self.ui.tableWidget_2.setItem(
                 row, 6, QTableWidgetItem(f"{sale.pc_name}"))
             if sale.payment_type == 1:
-                type = 'карта'
-            if sale.payment_type == 2:
-                type = 'наличные'
+                payment_type = 'карта'
+            elif sale.payment_type == 2:
+                payment_type = 'наличные'
             else:
-                type = '-'
+                payment_type = '-'
             self.ui.tableWidget_2.setItem(
-                row, 7, QTableWidgetItem(f"{type}"))
+                row, 7, QTableWidgetItem(f"{payment_type}"))
         session.close()
 
     @logger_wraps()
@@ -391,7 +402,7 @@ class MainWindow(QMainWindow):
         session = Session()
         tickets = session.query(Ticket.ticket_type,
                                 Ticket.arrival_time,
-                                Ticket.description
+                                Ticket.description,
                                 ).filter(Ticket.datetime.between(dt1,
                                                                  dt2)).all()
         session.close()
@@ -407,28 +418,33 @@ class MainWindow(QMainWindow):
         a = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # many_child
         m = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
-        # продление многодетного со скидкой? или в будний день
         # invalid
-        i = {'sum': 0, 't': 0}
+        i_ = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # считаем количество билетов
         for i in range(len(tickets)):
+            # обычный билет - '-'
             if tickets[i][2] == type_tickets[4]:
+                # взрослый?
                 if tickets[i][0] == type_tickets[0]:
                     a['sum'] += 1
+                    # проверяем продолжительность времени
                     if tickets[i][1] == time_arrival[0]:
                         a['t_1'] += 1
                     elif tickets[i][1] == time_arrival[1]:
                         a['t_2'] += 1
                     elif tickets[i][1] == time_arrival[2]:
                         a['t_3'] += 1
+                # детский?
                 elif tickets[i][0] == type_tickets[1]:
                     c['sum'] += 1
+                    # проверяем продолжительность времени
                     if tickets[i][1] == time_arrival[0]:
                         c['t_1'] += 1
                     elif tickets[i][1] == time_arrival[1]:
                         c['t_2'] += 1
                     elif tickets[i][1] == time_arrival[2]:
                         c['t_3'] += 1
+            # многодетный?
             elif tickets[i][2] == type_tickets[2]:
                 m['sum'] += 1
                 if tickets[i][1] == time_arrival[0]:
@@ -437,9 +453,16 @@ class MainWindow(QMainWindow):
                     m['t_2'] += 1
                 elif tickets[i][1] == time_arrival[2]:
                     m['t_3'] += 1
+                a['price'] += tickets[i][3]
+            # инвалид?
             elif tickets[i][2] == type_tickets[3]:
-                i['sum'] += 1
-                i['t'] += 1
+                i_['sum'] += 1
+                if tickets[i][1] == time_arrival[0]:
+                    i_['t_1'] += 1
+                elif tickets[i][1] == time_arrival[1]:
+                    i_['t_2'] += 1
+                elif tickets[i][1] == time_arrival[2]:
+                    i_['t_3'] += 1
         # выводим обобщенную информаци юв таблицу
         self.ui.tableWidget_3.setRowCount(0)
         self.ui.tableWidget_3.insertRow(0)
@@ -462,12 +485,18 @@ class MainWindow(QMainWindow):
         self.ui.tableWidget_3.setItem(2, 4, QTableWidgetItem(f"{m['t_3']}"))
         self.ui.tableWidget_3.insertRow(3)
         self.ui.tableWidget_3.setItem(3, 0, QTableWidgetItem('инвалид'))
-        self.ui.tableWidget_3.setItem(3, 1, QTableWidgetItem(f"{i['sum']}"))
+        self.ui.tableWidget_3.setItem(3, 1, QTableWidgetItem(f"{i_['sum']}"))
+        self.ui.tableWidget_3.setItem(3, 2, QTableWidgetItem(f"{i_['t_1']}"))
+        self.ui.tableWidget_3.setItem(3, 3, QTableWidgetItem(f"{i_['t_2']}"))
+        self.ui.tableWidget_3.setItem(4, 4, QTableWidgetItem(f"{i_['t_3']}"))
+
 
     @logger_wraps()
     def otchet_administratora(self):
         """Формирование отчета администратора"""
         logger.info("Inside the function def otchet_administratora")
+        path = "./otchet.pdf"
+        path = os.path.realpath(path)
         row = self.ui.tableWidget_3.rowCount()
         if row >= 1:
             type = ['Взрослый, 1 ч.', 'Взрослый, 2 ч.', 'Взрослый, 3 ч.',
@@ -483,8 +512,8 @@ class MainWindow(QMainWindow):
                      self.ui.tableWidget_3.item(3, 1).text()]
             """Удаляем предыдущий файл"""
             os.system("TASKKILL /F /IM SumatraPDF.exe")
-            if os.path.exists('./otchet.pdf'):
-                os.remove('./otchet.pdf')
+            if os.path.exists(path):
+                os.remove(path)
             dt1 = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
             dt2 = self.ui.dateEdit.date().toString("dd-MM-yyyy")
             # формируем данные
@@ -504,31 +533,37 @@ class MainWindow(QMainWindow):
                      int(System.ticket_child_3) * int(table[5])],
                     ['7', type[6], '-', table[6], '-'],
                     ['8', type[7], '-', table[7], '-']]
+            logger.info(data)
             otchet.otchet_administratora(dt1, dt2, data)
-            os.startfile('otchet.pdf')
+            os.startfile(path)
 
     @logger_wraps()
     def otchet_kassira(self):
         """Формирование отчета кассира"""
         logger.info("Inside the function def otchet_kassira")
+        path = "./otchet.pdf"
+        path = os.path.realpath(path)
         """Удаляем предыдущий файл"""
         row_tab_1 = self.ui.tableWidget_3.rowCount()
         row_tab_2 = self.ui.tableWidget_4.rowCount()
         if row_tab_1 >= 1 and row_tab_2 >= 1:
             os.system("TASKKILL /F /IM SumatraPDF.exe")
-            if os.path.exists('./otchet.pdf'):
-                os.remove('./otchet.pdf')
+            if os.path.exists(path):
+                os.remove(path)
             dt1 = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
             dt2 = self.ui.dateEdit.date().toString("dd-MM-yyyy")
             # формируем данные
-            if System.pc_name == self.ui.tableWidget_3.item(0, 0).text():
+            logger.info(self.ui.tableWidget_3.item(0, 0).text())
+            logger.info(System.pc_name)
+            if System.pc_name == self.ui.tableWidget_4.item(0, 0).text():
                 values = [self.ui.tableWidget_4.item(0, 1).text(),
                           self.ui.tableWidget_4.item(0, 2).text()]
             else:
                 values = [self.ui.tableWidget_4.item(1, 1).text(),
                           self.ui.tableWidget_4.item(1, 2).text()]
+            logger.info(values)
             otchet.otchet_kassira(values, dt1, dt2, System.user)
-            os.startfile('otchet.pdf')
+            os.startfile(path)
 
 
 class AuthForm(QDialog):
@@ -1144,10 +1179,10 @@ class SaleForm(QDialog):
     def sale_transaction(self, payment_type):
         """Проводим операцию продажи"""
         logger.info("Inside the function def sale_transaction")
-        state_check = 1
-        payment = 2
-        # state_check, payment = kkt.check_open(System.sale_tuple,
-        #                                       payment_type, System.user, 1)
+        # state_check = 1
+        # payment = 2
+        state_check, payment = kkt.check_open(System.sale_tuple,
+                                              payment_type, System.user, 1)
         check = None
         """Если прошла оплата"""
         if state_check == 1:

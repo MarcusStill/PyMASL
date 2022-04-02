@@ -9,9 +9,10 @@ from reportlab.lib import colors
 
 def generate_saved_tickets(values):
     client_in_sale = values
+    path = "./ticket.pdf"
     """Устанавливаем параметры макета билета"""
     pdfmetrics.registerFont(TTFont('DejaVuSerif', 'files/DejaVuSerif.ttf'))
-    c = canvas.Canvas("ticket.pdf", pagesize=(21 * cm, 8 * cm))
+    c = canvas.Canvas(path, pagesize=(21 * cm, 8 * cm))
     c.setFont('DejaVuSerif', 12)
     """Сохраняем билеты"""
     for i in range(len(client_in_sale)):
@@ -87,8 +88,11 @@ def generate_saved_tickets(values):
 
 def otchet_administratora(date_1, date_2, values):
     """Формирование отчета администратора"""
+    print("Inside the function def otchet_kassira")
+    path = "./otchet.pdf"
     dt1, dt2, data = date_1, date_2, values
-    c = canvas.Canvas("otchet.pdf", pagesize=A4)
+    print('values', data)
+    c = canvas.Canvas(path, pagesize=A4)
     c.setLineWidth(.3)
     pdfmetrics.registerFont(TTFont('DejaVuSerif', 'files/DejaVuSerif.ttf'))
     c.setFont('DejaVuSerif', 12)
@@ -142,11 +146,13 @@ def otchet_administratora(date_1, date_2, values):
     c.save()
 
 
-def otchet_kassira(values, date1, date2, kassir):
+def otchet_kassira(val, date1, date2, kassir):
     """Формирование отчета кассира"""
-    values, dt1, dt2, user = values, date1, date2, kassir
-
-    c = canvas.Canvas("otchet.pdf", pagesize=A4)
+    print("Inside the function def otchet_kassira")
+    path = "./otchet.pdf"
+    values, dt1, dt2, user = val, date1, date2, kassir
+    print('values', values)
+    c = canvas.Canvas(path, pagesize=A4)
     c.setLineWidth(.3)
     pdfmetrics.registerFont(TTFont('DejaVuSerif', 'files/DejaVuSerif.ttf'))
     c.setFont('DejaVuSerif', 12)

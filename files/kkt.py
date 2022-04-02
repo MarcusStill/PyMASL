@@ -1,7 +1,7 @@
+import subprocess
 from files.libfptr10 import IFptr
 from files.logger import *
 from files import windows
-import subprocess
 
 
 fptr = IFptr('')
@@ -388,16 +388,15 @@ def smena_close(user):
 	logger.info("Inside the function def smena_close")
 	state = smena_info()
 	if state != 0:
-		res = windows.info_dialog_window('Внимание! Кассовая сменане закрыта',
+		res = windows.info_dialog_window('Внимание! Кассовая смена не закрыта',
 										 'Хотите сделать сверку итогов и'
 										 'снять отчет с гашением?')
 		if res == 1:
-			logger.warning(state)
 			result = terminal_check_itog()
 			try:
-				if result:
+				if result[0] == 1:
 					fptr.open()
-					fptr.setParam(1021, f'{user[0]} {user[1]}')
+					fptr.setParam(1021, f'{[0]} {user[1]}')
 					fptr.setParam(1203, user[2])
 					fptr.operatorLogin()
 					fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE,
