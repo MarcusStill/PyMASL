@@ -4,7 +4,10 @@ from files.logger import *
 from files import windows
 
 
-fptr = IFptr('')
+try:
+	fptr = IFptr('')
+except Exception as e:
+	logger.warning("Не установлен драйвер ККТ!")
 
 
 @logger_wraps()
@@ -294,18 +297,16 @@ def check_open(sale_tuple,  payment_type, user, type_operation):
 	fptr.openReceipt()
 	"""Регистрация позиции с указанием суммы налога"""
 	if sale[0] > 0:
-		fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, "Билет взрослый")
+		fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f'Билет взрослый {sale[6]} ч.')
 		fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale[1])
 		fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale[0])
 		fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-		fptr.setParam(IFptr.LIBFPTR_PARAM_INFO_DISCOUNT_SUM, sale[6])
 		fptr.registration()
 	if sale[2] > 0:
-		fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, "Билет детский")
+		fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f'Билет детский {sale[6]} ч.')
 		fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale[3])
 		fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale[2])
 		fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-		fptr.setParam(IFptr.LIBFPTR_PARAM_INFO_DISCOUNT_SUM, sale[6])
 		fptr.registration()
 	"""Оплата чека"""
 	if payment_type == 102:

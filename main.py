@@ -31,14 +31,7 @@ from forms.client import Ui_Dialog_Client
 from forms.main_form import Ui_MainWindow
 from forms.pay import Ui_Dialog_Pay
 from forms.sale import Ui_Dialog_Sale
-from reportlab.platypus import SimpleDocTemplate
-from reportlab.lib.units import mm, inch, cm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import Table, TableStyle
-from reportlab.lib import colors
+
 
 # Чтение параметров из файла конфигурации
 config = ConfigParser()
@@ -100,7 +93,13 @@ class MainWindow(QMainWindow):
         self.model.setTable("client")
         self.model.select()
         type_col = QtCore.Qt.Horizontal
+        # скрываем столбец с номерами строк
+        self.ui.tableView.verticalHeader().setVisible(False)
+        # адаптированный для пользователя фильтр к модели
+        self.ui.comboBox_3.currentTextChanged.connect(self.main_check_filter_update)
         self.ui.comboBox_2.clear()
+        # скрываем comboBox_2
+        self.ui.comboBox_2.hide()
         for i in range(self.model.columnCount()):
             self.ui.comboBox_2.addItem(self.model.headerData(i, type_col))
         self.ui.lineEdit_2.textChanged.connect(self.filter_table_client)
@@ -108,6 +107,31 @@ class MainWindow(QMainWindow):
                         "Пол", "Телефон", "Email", "Категория"]
         for i in range(len(headers_view)):
             self.model.setHeaderData(i, Qt.Horizontal, headers_view[i])
+
+
+    def main_check_filter_update(self):
+        """Передаем значение пользовательского
+        фильтра в модель QSqlTableModel"""
+        logger.info("Inside the function def main_check_filter_update ")
+        # вычисляем индекс значения
+        index = self.ui.comboBox_3.currentIndex()
+        # передаем значение в comboBox_2
+        if index == 0:
+            self.ui.comboBox_2.setCurrentIndex(1)
+            self.ui.lineEdit_2.clear()
+        elif index == 1:
+            self.ui.comboBox_2.setCurrentIndex(2)
+            self.ui.lineEdit_2.clear()
+        elif index == 2:
+            self.ui.comboBox_2.setCurrentIndex(6)
+            self.ui.lineEdit_2.clear()
+        elif index == 3:
+            self.ui.comboBox_2.setCurrentIndex(8)
+            self.ui.lineEdit_2.setText('и')
+        elif index == 4:
+            self.ui.comboBox_2.setCurrentIndex(8)
+            self.ui.lineEdit_2.setText('м')
+
 
     def filter_table_client(self, text):
         filter = (" {} LIKE '%{}%'".format(self.ui.comboBox_2.currentText(),
@@ -264,7 +288,6 @@ class MainWindow(QMainWindow):
             self.model.select()
             sale.exec_()
 
-    @logger_wraps()
     def button_all_sales(self):
         """Показ всех продаж в tableWidget"""
         logger.info("Inside the function def button_all_sales")
@@ -280,41 +303,45 @@ class MainWindow(QMainWindow):
             filter_day = dt.datetime.today() - timedelta(days=3)
         elif self.ui.radioButton_3.isChecked():
             filter_day = dt.datetime.today() - timedelta(days=7)
-        session = Session()
-        sales = session.query(Sale).filter(Sale.datetime >=
-                                           filter_day).order_by(Sale.id)
-        for sale in sales:
-            row = self.ui.tableWidget_2.rowCount()
-            self.ui.tableWidget_2.insertRow(row)
-            self.ui.tableWidget_2.setItem(
-                row, 0, QTableWidgetItem(f"{sale.id}"))
-            self.ui.tableWidget_2.setItem(
-                row, 1, QTableWidgetItem(f"{sale.id_client}"))
-            self.ui.tableWidget_2.setItem(
-                row, 2, QTableWidgetItem(f"{sale.price}"))
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{sale.datetime}"))
-            if sale.status == 0:
-                status_type = 'создана'
-            elif sale.status == 1:
-                status_type = 'оплачена'
-            else:
-                status_type = 'возврат'
-            self.ui.tableWidget_2.setItem(
-                row, 4, QTableWidgetItem(f"{status_type}"))
-            self.ui.tableWidget_2.setItem(
-                row, 5, QTableWidgetItem(f"{sale.discount}"))
-            self.ui.tableWidget_2.setItem(
-                row, 6, QTableWidgetItem(f"{sale.pc_name}"))
-            if sale.payment_type == 1:
-                payment_type = 'карта'
-            elif sale.payment_type == 2:
-                payment_type = 'наличные'
-            else:
-                payment_type = '-'
-            self.ui.tableWidget_2.setItem(
-                row, 7, QTableWidgetItem(f"{payment_type}"))
-        session.close()
+        try:
+            session = Session()
+            sales = session.query(Sale).filter(Sale.datetime >=
+                                               filter_day).order_by(Sale.id)
+            if sales:
+                for sale in sales:
+                    row = self.ui.tableWidget_2.rowCount()
+                    self.ui.tableWidget_2.insertRow(row)
+                    self.ui.tableWidget_2.setItem(
+                        row, 0, QTableWidgetItem(f"{sale.id}"))
+                    self.ui.tableWidget_2.setItem(
+                        row, 1, QTableWidgetItem(f"{sale.id_client}"))
+                    self.ui.tableWidget_2.setItem(
+                        row, 2, QTableWidgetItem(f"{sale.price}"))
+                    self.ui.tableWidget_2.setItem(
+                        row, 3, QTableWidgetItem(f"{sale.datetime}"))
+                    if sale.status == 0:
+                        status_type = 'создана'
+                    elif sale.status == 1:
+                        status_type = 'оплачена'
+                    else:
+                        status_type = 'возврат'
+                    self.ui.tableWidget_2.setItem(
+                        row, 4, QTableWidgetItem(f"{status_type}"))
+                    self.ui.tableWidget_2.setItem(
+                        row, 5, QTableWidgetItem(f"{sale.discount}"))
+                    self.ui.tableWidget_2.setItem(
+                        row, 6, QTableWidgetItem(f"{sale.pc_name}"))
+                    if sale.payment_type == 1:
+                        payment_type = 'карта'
+                    elif sale.payment_type == 2:
+                        payment_type = 'наличные'
+                    else:
+                        payment_type = '-'
+                    self.ui.tableWidget_2.setItem(
+                        row, 7, QTableWidgetItem(f"{payment_type}"))
+            session.close()
+        except Exception as e:
+            logger.warning("Продаж не было")
 
     @logger_wraps()
     def open_client(self):
@@ -329,6 +356,8 @@ class MainWindow(QMainWindow):
         """Открываем форму с продажей"""
         logger.info("Inside the function def open_sale")
         sale = SaleForm()
+        # устанавливаем по-умолчанию фильтр по фамилии
+        sale.ui.comboBox_3.setCurrentIndex(1)
         # sale.button_all_clients_to_sale()  # показываем список всех клиентов
         sale.show()
         sale.exec_()
@@ -453,7 +482,7 @@ class MainWindow(QMainWindow):
                     m['t_2'] += 1
                 elif tickets[i][1] == time_arrival[2]:
                     m['t_3'] += 1
-                a['price'] += tickets[i][3]
+                # a['price'] += tickets[i][3]
             # инвалид?
             elif tickets[i][2] == type_tickets[3]:
                 i_['sum'] += 1
@@ -592,9 +621,10 @@ class AuthForm(QDialog):
             window.setWindowTitle('PyMasl ver. ' + software_version +
                                   '. Пользователь: ' +
                                   System.user[0] + ' ' + System.user[1])
-            # отображаем всех клиентов при запуске
+            # отображаем все продажи при запуске
             window.button_all_sales()
-            # window.buttonAllClient()
+            # устанавливаем по-умолчанию фильтр по фамилии
+            window.ui.comboBox_2.setCurrentIndex(1)
             # проверяем статус текущего дня
             day_today = System.check_day(self)
             logger.info('day_today %s' % (day_today))
@@ -708,9 +738,15 @@ class SaleForm(QDialog):
         # фильтр для tableView
         type_col = QtCore.Qt.Horizontal
         self.ui.comboBox_3.clear()
+        # адаптированный для пользователя фильтр к модели
+        self.ui.comboBox_4.currentTextChanged.connect(self.sale_check_filter_update)
+        # скрываем comboBox_3
+        self.ui.comboBox_3.hide()
         for i in range(self.model_3.columnCount()):
             self.ui.comboBox_3.addItem(self.model_3.headerData(i, type_col))
         self.ui.lineEdit.textChanged.connect(self.filter_sale_client)
+        # скрываем столбец с номерами строк
+        self.ui.tableView_2.verticalHeader().setVisible(False)
         # устанавливаем заголовки столбцов для tableView
         headers_view = ["N", "Фамилия", "Имя", "Отчество", "Дата рожд.",
                         "Пол", "Телефон", "Email", "Категория"]
@@ -718,6 +754,30 @@ class SaleForm(QDialog):
             self.model_3.setHeaderData(i, Qt.Horizontal, headers_view[i])
         # при открытии проверяем день недели
         self.calendar_color_change()
+
+    def sale_check_filter_update(self):
+        """Передаем значение пользовательского
+        фильтра в модель QSqlTableModel"""
+        logger.info("Inside the function def sale_check_filter_update ")
+        # вычисляем индекс значения
+        index = self.ui.comboBox_4.currentIndex()
+        # передаем значение в comboBox_2
+        if index == 0:
+            self.ui.comboBox_3.setCurrentIndex(1)
+            self.ui.lineEdit.clear()
+        elif index == 1:
+            self.ui.comboBox_3.setCurrentIndex(2)
+            self.ui.lineEdit.clear()
+        elif index == 2:
+            self.ui.comboBox_3.setCurrentIndex(6)
+            self.ui.lineEdit.clear()
+        elif index == 3:
+            self.ui.comboBox_3.setCurrentIndex(8)
+            self.ui.lineEdit.setText('и')
+        elif index == 4:
+            self.ui.comboBox_3.setCurrentIndex(8)
+            self.ui.lineEdit.setText('м')
+
 
     def filter_sale_client(self, text):
         filter = (" {} LIKE '%{}%'".format(self.ui.comboBox_3.currentText(),
@@ -997,8 +1057,7 @@ class SaleForm(QDialog):
             self.ui.label_8.setText(str(new_price))
         """Сохраняем данные продажи"""
         sale_tuple = (kol_adult, int(price_adult), kol_child,
-                      int(price_child), int(new_price), id_adult,
-                      System.sale_discount)
+                      int(price_child), int(new_price), id_adult, time)
         logger.warning('sale_tuple')
         logger.warning(sale_tuple)
         """Генерируем список с билетами"""
@@ -1021,7 +1080,7 @@ class SaleForm(QDialog):
         logger.info('System.sale_tickets')
         logger.info(System.sale_tickets)
         """Проверяем есть ли в продаже взрослый"""
-        if System.sale_tuple[0] == 1:
+        if System.sale_tuple[0] >= 1:
             self.ui.pushButton_5.setEnabled(True)
         elif System.sale_tuple[0] != 1:
             self.ui.pushButton_5.setEnabled(False)
@@ -1094,8 +1153,7 @@ class SaleForm(QDialog):
             self.ui.label_8.setText(str(new_price))
         """Сохраняем данные продажи"""
         sale_tuple = (kol_adult, int(price_adult), kol_child,
-                      int(price_child), int(new_price), id_adult,
-                      System.sale_discount)
+                      int(price_child), int(new_price), id_adult, time)
         logger.warning('sale_tuple')
         logger.warning(sale_tuple)
         """Генерируем список с билетами"""
@@ -1181,60 +1239,66 @@ class SaleForm(QDialog):
         logger.info("Inside the function def sale_transaction")
         # state_check = 1
         # payment = 2
-        state_check, payment = kkt.check_open(System.sale_tuple,
-                                              payment_type, System.user, 1)
-        check = None
-        """Если прошла оплата"""
-        if state_check == 1:
-            if payment == 1:  # если оплата банковской картой
-                logger.info("Читаем слип-чек из файла")
-                pinpad_file = r"C:\sc552\p"
-                with open(pinpad_file, 'r', encoding='IBM866') as file:
-                    while (line := file.readline().rstrip()):
-                        logger.debug(line)
-                check = kkt.read_slip_check()
-            if System.sale_status == 0:
-                """Сохраняем данные о новой продаже"""
-                self.sale_save()
-            # обновляем информацию о продаже в БД
-            session = Session()
-            session.execute(update(Sale).where(
-                Sale.id == System.sale_id).values(
-                status=1, id_user=System.user[3],
-                pc_name=System.pc_name,
-                payment_type=payment,
-                bank_pay=check,
-                datetime=dt.datetime.now()))
-            session.commit()
-            session.close()
+        # если сумма продажи 0 - генерируем билеты
+        if System.sale_tuple[4] == 0:
+            self.sale_save()
             self.generate_saved_tickets()
-
-            System.sale_status = 0
-            # предлагаем очистить окно для проведения новой продажи
-            res = windows.info_dialog_window('Внимание',
-                                             'Открыть окно с новой продажей?')
-            logger.debug('res %s' % (res))
-            if res == 1:
-                self.ui.dateEdit.setEnabled(True)
-                self.ui.dateEdit.setDate(date.today())
-                self.ui.label_5.setText(str(0))
-                self.ui.label_8.setText(str(7))
-                self.ui.label_8.setText(str(0))
-                self.ui.dateEdit.setDate(date.today())
-                self.ui.comboBox.setEnabled(True)
-                self.ui.checkBox.setEnabled(True)
-                self.ui.pushButton_3.setEnabled(True)
-                self.ui.pushButton_6.setEnabled(True)
-                while (self.ui.tableWidget_2.rowCount() > 0):
-                    self.ui.tableWidget_2.removeRow(0)
-            else:
-                self.close()
         else:
-            logger.info('Оплата не прошла')
-            windows.info_window(
-                "Внимание",
-                'Закройте это окно, откройте сохраненную продажу и проведите'
-                'операцию возврата еще раз.', '')
+            state_check, payment = kkt.check_open(System.sale_tuple,
+                                                  payment_type, System.user, 1)
+            check = None
+            """Если прошла оплата"""
+            if state_check == 1:
+                if payment == 1:  # если оплата банковской картой
+                    logger.info("Читаем слип-чек из файла")
+                    pinpad_file = r"C:\sc552\p"
+                    with open(pinpad_file, 'r', encoding='IBM866') as file:
+                        while (line := file.readline().rstrip()):
+                            logger.debug(line)
+                    check = kkt.read_slip_check()
+                if System.sale_status == 0:
+                    """Сохраняем данные о новой продаже"""
+                    self.sale_save()
+                # обновляем информацию о продаже в БД
+                session = Session()
+                session.execute(update(Sale).where(
+                    Sale.id == System.sale_id).values(
+                    status=1, id_user=System.user[3],
+                    pc_name=System.pc_name,
+                    payment_type=payment,
+                    bank_pay=check,
+                    datetime=dt.datetime.now()))
+                session.commit()
+                session.close()
+                self.generate_saved_tickets()
+
+                System.sale_status = 0
+                # предлагаем очистить окно для проведения новой продажи
+                res = windows.info_dialog_window('Внимание',
+                                                 'Открыть окно с новой продажей?')
+                logger.debug('res %s' % (res))
+                if res == 1:
+                    self.ui.dateEdit.setEnabled(True)
+                    self.ui.dateEdit.setDate(date.today())
+                    self.ui.label_5.setText(str(0))
+                    self.ui.label_8.setText(str(7))
+                    self.ui.label_8.setText(str(0))
+                    self.ui.dateEdit.setDate(date.today())
+                    self.ui.comboBox.setEnabled(True)
+                    self.ui.checkBox.setEnabled(True)
+                    self.ui.pushButton_3.setEnabled(True)
+                    self.ui.pushButton_6.setEnabled(True)
+                    while (self.ui.tableWidget_2.rowCount() > 0):
+                        self.ui.tableWidget_2.removeRow(0)
+                else:
+                    self.close()
+            else:
+                logger.info('Оплата не прошла')
+                windows.info_window(
+                    "Внимание",
+                    'Закройте это окно, откройте сохраненную продажу и проведите'
+                    'операцию возврата еще раз.', '')
+        MainWindow.button_all_sales()
 
     @logger.catch()
     def sale_return(self):

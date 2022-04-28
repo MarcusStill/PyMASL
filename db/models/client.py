@@ -20,7 +20,6 @@ class Client(Base):
         nullable=False,
         unique=True,
         primary_key=True,
-        autoincrement=True
     )
     last_name = Column(String(64), nullable=False, comment='Фамилия')
     first_name = Column(String(64), nullable=False, comment='Имя')
