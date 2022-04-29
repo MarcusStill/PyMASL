@@ -297,6 +297,18 @@ class Ui_MainWindow(object):
         self.pushButton_16.setAcceptDrops(False)
         self.pushButton_16.setAutoExclusive(True)
         self.pushButton_16.setFlat(False)
+        self.pushButton_21 = QPushButton(self.groupBox_2)
+        self.pushButton_21.setObjectName(u"pushButton_21")
+        self.pushButton_21.setGeometry(QRect(130, 20, 111, 61))
+        self.pushButton_21.setAcceptDrops(False)
+        self.pushButton_21.setAutoExclusive(True)
+        self.pushButton_21.setFlat(False)
+        self.pushButton_22 = QPushButton(self.groupBox_2)
+        self.pushButton_22.setObjectName(u"pushButton_22")
+        self.pushButton_22.setGeometry(QRect(250, 20, 111, 61))
+        self.pushButton_22.setAcceptDrops(False)
+        self.pushButton_22.setAutoExclusive(True)
+        self.pushButton_22.setFlat(False)
         self.tabWidget.addTab(self.cashbox, "")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
@@ -432,6 +444,10 @@ class Ui_MainWindow(object):
         self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"\u041e\u043f\u0435\u0440\u0430\u0446\u0438\u0438 \u0441 \u0431\u0430\u043d\u043a\u043e\u0432\u0441\u043a\u0438\u043c \u0442\u0435\u0440\u043c\u0438\u043d\u0430\u043b\u043e\u043c", None))
         self.pushButton_16.setText(QCoreApplication.translate("MainWindow", u"\u0421\u0432\u0435\u0440\u043a\u0430\n"
 "\u0438\u0442\u043e\u0433\u043e\u0432", None))
+        self.pushButton_21.setText(QCoreApplication.translate("MainWindow", u"\u0421\u0432\u043e\u0434\u043d\u044b\u0439\n"
+"\u0447\u0435\u043a", None))
+        self.pushButton_22.setText(QCoreApplication.translate("MainWindow", u"\u041a\u043e\u043d\u0442\u0440\u043e\u043b\u044c\u043d\u0430\u044f\n"
+"\u043b\u0435\u043d\u0442\u0430", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.cashbox), QCoreApplication.translate("MainWindow", u"\u041a\u0430\u0441\u0441\u0430", None))
         self.menu.setTitle(QCoreApplication.translate("MainWindow", u"\u041c\u0435\u043d\u044e", None))
     # retranslateUi

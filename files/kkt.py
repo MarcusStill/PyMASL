@@ -7,7 +7,9 @@ from files import windows
 try:
 	fptr = IFptr('')
 except Exception as e:
-	logger.warning("Не установлен драйвер ККТ!")
+	info = 'Не установлен драйвер ККТ!'
+	windows.info_window(info, '', '')
+	logger.warning('info')
 
 
 @logger_wraps()
@@ -69,20 +71,70 @@ def terminal_check_itog():
     pinpad_file = r"C:\sc552\p"
     subprocess.call('C:\\sc552\\loadparm.exe 7')
     logger.debug('Check itog')
-    lines = None
+    file_result = 'совпали'
     """Выводим результат сверки итогов"""
     try:
         with open(pinpad_file, encoding='IBM866') as file:
-            lines = file.readlines()[2:]
-        logger.info(lines)
-        logger.info("Сверка итогов успешно завершена")
-        result = 1
+            text = file.read()
+        if file_result in text:
+            logger.info("Проверка файла успешно завершена")
+            result = 1
     except FileNotFoundError as not_found:
         print('File not found:', not_found.filename)
+        result = 0
+    return result
+
+@logger_wraps()
+def terminal_check_itog_window():
+	"""Сверка итогов работы банковского терминала
+	с выводом результата в QMessageBox"""
+	logger.info("Proverka file")
+	pinpad_file = r"C:\sc552\p"
+	subprocess.call('C:\\sc552\\loadparm.exe 7')
+	logger.debug('Check itog in QMessageBox')
+	"""Выводим результат сверки итогов"""
+	try:
+		with open(pinpad_file, encoding='IBM866') as file:
+			lines = file.readlines()[2:]
+			logger.info("Сверка итогов завершена")
+			windows.info_window('Сверка итогов по банковскому терминалу '
+								'завершена.', '', str(lines))
+	except FileNotFoundError as not_found:
+		lines = 'File not found!'
+		logger.info("File not found")
+		windows.info_window('Ошибка сверки итогов по банковскому '
+							'терминалу!', '', str(lines))
+
+@logger_wraps()
+def terminal_svod_check():
+    """Сводный чек без детализации"""
+    logger.info("Proverka file")
+    pinpad_file = r"C:\sc552\p"
+    subprocess.call('C:\\sc552\\loadparm.exe 9')
+    logger.debug('Svod itog')
+    file_result = 'совпали'
+    """Выводим результат сверки итогов"""
+    try:
+        with open(pinpad_file, encoding='IBM866') as file:
+            text = file.read()
+        if file_result in text:
+            result = 1
+            print_slip_check()
+    except FileNotFoundError as not_found:
         logger.info("File not found")
         result = 0
-    return result, lines
+    return result
 
+@logger_wraps()
+def terminal_control_lenta():
+    """Печать контрольной ленты"""
+    logger.info("Proverka file")
+    subprocess.call('C:\\sc552\\loadparm.exe 9 1')
+    logger.debug('Сontrol_cheсk')
+    try:
+		print_slip_check()
+	except FileNotFoundError as not_found:
+		logger.info("File not found")
 
 @logger_wraps()
 def read_slip_check():
@@ -126,10 +178,10 @@ def print_slip_check():
 	fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
 	logger.info("Отрезаем чек")
 	fptr.cut()
-	logger.info("Создение копии нефискального документа")
+	logger.info("Создание копии нефискального документа")
 	# Печатаем копию слип-чека
 	fptr.beginNonfiscalDocument()
-	fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "Копия 1")
+	fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT)
 	fptr.printText()
 	line = read_slip_check()
 	fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
@@ -395,7 +447,7 @@ def smena_close(user):
 		if res == 1:
 			result = terminal_check_itog()
 			try:
-				if result[0] == 1:
+				if result == 1:
 					fptr.open()
 					fptr.setParam(1021, f'{[0]} {user[1]}')
 					fptr.setParam(1203, user[2])
@@ -412,6 +464,8 @@ def smena_close(user):
 									'терминалу завершена неудачно.', '',
 									str(lines))
 		else:
+			windows.info_window('Сверка итогов по банковскому'
+								'терминалу завершена неудачно.', '', '')
 			logger.warning(state)
 
 
@@ -419,25 +473,3 @@ def continue_print():
 	"""Допечатать документ"""
 	logger.info("Inside the function def continue_print")
 	fptr.continuePrint()
-
-
-@logger_wraps()
-def terminal_check_itog_window():
-	"""Сверка итогов работы банковского терминала
-	с выводом результата в QMessageBox"""
-	logger.info("Proverka file")
-	pinpad_file = r"C:\sc552\p"
-	subprocess.call('C:\\sc552\\loadparm.exe 7')
-	logger.debug('Check itog in QMessageBox')
-	"""Выводим результат сверки итогов"""
-	try:
-		with open(pinpad_file, encoding='IBM866') as file:
-			lines = file.readlines()[2:]
-			logger.info("Сверка итогов успешно завершена")
-			windows.info_window('Сверка итогов по банковскому терминалу'
-								'успешно завершена.', '', str(lines))
-	except FileNotFoundError as not_found:
-		lines = 'File not found!'
-		logger.info("File not found")
-		windows.info_window('Ошибка сверки итогов по банковскому'
-							'терминалу!', '', str(lines))
