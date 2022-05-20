@@ -4,6 +4,7 @@ from PySide6.QtCore import QCoreApplication, QMetaObject, QRect, Qt
 from PySide6.QtWidgets import (QLabel, QLineEdit, QPushButton, QGridLayout,
 QComboBox, QHBoxLayout, QWidget, QToolBox, QFormLayout, QDateEdit)
 
+
 class Ui_Dialog_Client(object):
     def setupUi(self, Dialog_Client):
         if not Dialog_Client.objectName():
@@ -161,8 +162,3 @@ class Ui_Dialog_Client(object):
         self.pushButton.setText(QCoreApplication.translate("Dialog_Client", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c", None))
         self.pushButton_2.setText(QCoreApplication.translate("Dialog_Client", u"\u041e\u0442\u043c\u0435\u043d\u0430", None))
     # retranslateUi
-
-Error: client_2.ui: Warning: The name 'layoutWidget' (QWidget) is already in use, defaulting to 'layoutWidget1'.
-
-
-while executing 'C:\Users\gostryak\PycharmProjects\PyMASL\venv\Lib\site-packages\PySide6\uic -g python client_2.ui'
