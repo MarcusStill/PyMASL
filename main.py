@@ -731,7 +731,8 @@ class SaleForm(QDialog):
         # KeyPressEvent
         self.ui.tableWidget_2.keyPressEvent = self.key_pressed
         self.ui.pushButton_9.clicked.connect(self.add_new_client)
-
+        self.ui.pushButton_10.clicked.connect(self.edit_sale)
+        self.ui.tableWidget_3.doubleClicked.connect(self.add_client_to_sale_2)
     def add_new_client(self):
         """Добавляем в окно продажи только что созданного клиента"""
         logger.info("Inside the function def add_new_client")
@@ -1028,19 +1029,22 @@ class SaleForm(QDialog):
         """Поиск выделенной строки в таблице клиентов
         и передача ее в таблицу заказа
         """
+        """изменяем ширину столбцов"""
+        self.ui.tableWidget_2.setColumnWidth(3, 5)
+        self.ui.tableWidget_2.setColumnWidth(4, 5)
         logger.info("Inside the function def add_client_to_sale")
         type_ticket = ''
+        today = date.today()
         # если продажа новая - обновляем статус
         System.sale_status = 0
         logger.warning("status_sale %s" % (System.sale_status))
-        # if System.new_clienf_flug !=0:
-        #     print('new_client', System.add_new_client_in_sale)
         for idx in self.ui.tableWidget.selectionModel().selectedIndexes():
             """Номер строки найден"""
             row_number = idx.row()
             """Получаем содержимое ячейки"""
             res = self.ui.tableWidget.item(row_number, 5).text()
             session = Session()
+            """Находим выделенного в таблице клиента"""
             search_client = session.query(Client).filter_by(id=(res)).first()
             session.close()
             # print('search_client', search_client)
@@ -1051,14 +1055,95 @@ class SaleForm(QDialog):
                 type_ticket = 'детский'
             elif age >= 14:
                 type_ticket = 'взрослый'
+            """Создаем виджет checkbox"""
+            widget = QWidget()
+            checkbox = QCheckBox()
+            checkbox.setCheckState(Qt.Unchecked)
+            layoutH = QHBoxLayout(widget)
+            layoutH.addWidget(checkbox)
+            layoutH.setAlignment(Qt.AlignCenter)
+            layoutH.setContentsMargins(0, 0, 0, 0)
+            row = self.ui.tableWidget_2.rowCount()
+            self.ui.tableWidget_2.insertRow(row)
+            """добавляем checkbox"""
+            self.ui.tableWidget_2.setCellWidget(row, 7, widget)
+            """Передаем в таблицу заказа данные клиента"""
+            self.ui.tableWidget_2.setItem(
+                row, 0, QTableWidgetItem(f"{search_client.last_name}"))
+            self.ui.tableWidget_2.setItem(
+                row, 1, QTableWidgetItem(f"{search_client.first_name}"))
+            self.ui.tableWidget_2.setItem(
+                row, 2, QTableWidgetItem(f"{type_ticket}"))
+            # цена
+            self.ui.tableWidget_2.setItem(
+                row, 3, QTableWidgetItem(f"{0}"))
+            self.ui.tableWidget_2.setItem(
+                row, 4, QTableWidgetItem(f"{search_client.privilege}"))
+            self.ui.tableWidget_2.setItem(
+                row, 5, QTableWidgetItem(f"{search_client.id}"))
+            self.ui.tableWidget_2.setColumnHidden(5, True)
+            self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{age}"))
+            # self.ui.tableWidget_2.setColumnHidden(6, True)
+            self.edit_sale()
+            """Очищаем tableWidget_3"""
+            while self.ui.tableWidget_3.rowCount() > 0:
+                self.ui.tableWidget_3.removeRow(0)
+                """изменяем ширину столбцов"""
+            self.ui.tableWidget_3.setColumnWidth(2, 10)
+            self.ui.tableWidget_3.setColumnWidth(3, 5)
+            """Ищем продажи, в которых он был ранее"""
+            session = Session()
+            sales = session.query(Client.id, Ticket.id, Ticket.id_sale).filter(
+                and_(Client.id == search_client.id, Ticket.id_client == search_client.id))
+            for client_in_sales in sales:
+                if client_in_sales:
+                    """Находим других клиентов, которые были в этих продажах"""
+                    search_sale = session.query(Ticket.id_sale, Ticket.id_client).filter(
+                        Ticket.id_sale == client_in_sales[2])
+                    for search_cl in search_sale:
+                        """Запрашиваем информацию об этих клиентах"""
+                        search_client_in_sale = session.query(Client).filter_by(id=search_cl[1]).first()
+                        row = self.ui.tableWidget_3.rowCount()
+                        self.ui.tableWidget_3.insertRow(row)
+                        self.ui.tableWidget_3.setItem(
+                            row, 0, QTableWidgetItem(f"{search_client_in_sale.last_name}"))
+                        self.ui.tableWidget_3.setItem(
+                            row, 1, QTableWidgetItem(f"{search_client_in_sale.first_name}"))
+                        """Вычисляем возраст клиента"""
+                        age = (today.year - search_client_in_sale.birth_date.year -
+                               ((today.month, today.day) < (search_client_in_sale.birth_date.month,
+                                                            search_client_in_sale.birth_date.day)))
+                        self.ui.tableWidget_3.setItem(
+                            row, 2, QTableWidgetItem(f"{age}"))
+                        self.ui.tableWidget_3.setItem(
+                            row, 3, QTableWidgetItem(f"{search_client_in_sale.privilege}"))
+                        self.ui.tableWidget_3.setItem(
+                            row, 4, QTableWidgetItem(f"{search_client_in_sale.id}"))
+                        self.ui.tableWidget_3.setColumnHidden(4, True)
+            session.close()
+
+    @logger_wraps()
+    def add_client_to_sale_2(self, *args, **kwargs):
+        """Поиск выделенной строки в таблице клиентов
+        и передача ее в таблицу заказа
+        """
+        logger.info("Inside the function def add_client_to_sale 2")
+        for idx in self.ui.tableWidget_3.selectionModel().selectedIndexes():
+            """Номер строки найден"""
+            row_number = idx.row()
+            """Получаем содержимое ячейки"""
+            res = self.ui.tableWidget_3.item(row_number, 4).text()
+            age = int(self.ui.tableWidget_3.item(row_number, 2).text())
+            session = Session()
+            """Находим выделенного в таблице клиента"""
+            search_client = session.query(Client).filter_by(id=(res)).first()
+            session.close()
             """Определяем тип билета и цену"""
-            time_ticket = self.ui.comboBox.currentText()
-            if (int(time_ticket)) == 1:
-                price = 200
-            elif (int(time_ticket)) == 2:
-                price = 400
-            else:
-                price = 600
+            if 5 <= age < 14:
+                type_ticket = 'детский'
+            elif age >= 14:
+                type_ticket = 'взрослый'
+            """Определяем тип билета и цену"""
             """Создаем виджет checkbox"""
             widget = QWidget()
             checkbox = QCheckBox()
@@ -1080,16 +1165,16 @@ class SaleForm(QDialog):
             #     row, 2, QTableWidgetItem(f"{search_client.middle_name}"))
             self.ui.tableWidget_2.setItem(
                 row, 2, QTableWidgetItem(f"{type_ticket}"))
+            # цена
             self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{price}"))
+                row, 3, QTableWidgetItem(f"{0}"))
             self.ui.tableWidget_2.setItem(
                 row, 4, QTableWidgetItem(f"{search_client.privilege}"))
             self.ui.tableWidget_2.setItem(
                 row, 5, QTableWidgetItem(f"{search_client.id}"))
             self.ui.tableWidget_2.setColumnHidden(5, True)
             self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{age}"))
-            self.ui.tableWidget_2.setColumnHidden(6, True)
-            """Заполняем таблицу с итоговой информацией"""
+            # self.ui.tableWidget_2.setColumnHidden(6, True)
             self.edit_sale()
 
     def check_field_update(self):

@@ -4,7 +4,6 @@ from PySide6.QtCore import QCoreApplication, QMetaObject, QRect, Qt
 from PySide6.QtWidgets import (QLabel, QLineEdit, QPushButton, QGridLayout,
 QComboBox, QHBoxLayout, QWidget, QToolBox, QFormLayout, QDateEdit)
 
-
 class Ui_Dialog_Client(object):
     def setupUi(self, Dialog_Client):
         if not Dialog_Client.objectName():
@@ -131,6 +130,15 @@ class Ui_Dialog_Client(object):
 
         self.horizontalLayout.addWidget(self.pushButton_2)
 
+        QWidget.setTabOrder(self.lineEdit, self.lineEdit_2)
+        QWidget.setTabOrder(self.lineEdit_2, self.lineEdit_3)
+        QWidget.setTabOrder(self.lineEdit_3, self.dateEdit)
+        QWidget.setTabOrder(self.dateEdit, self.comboBox)
+        QWidget.setTabOrder(self.comboBox, self.comboBox_2)
+        QWidget.setTabOrder(self.comboBox_2, self.lineEdit_4)
+        QWidget.setTabOrder(self.lineEdit_4, self.lineEdit_5)
+        QWidget.setTabOrder(self.lineEdit_5, self.pushButton)
+        QWidget.setTabOrder(self.pushButton, self.pushButton_2)
 
         self.retranslateUi(Dialog_Client)
 
