@@ -3,7 +3,7 @@
 from PySide6.QtCore import (QCoreApplication, QMetaObject, QRect,
 QSize, Qt)
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QGroupBox, QLabel, QPushButton
+from PySide6.QtWidgets import QGroupBox, QLabel, QPushButton, QCheckBox
 
 
 class Ui_Dialog_Pay(object):
@@ -11,7 +11,7 @@ class Ui_Dialog_Pay(object):
         if not Dialog_Pay.objectName():
             Dialog_Pay.setObjectName(u"Dialog_Pay")
         Dialog_Pay.setWindowModality(Qt.ApplicationModal)
-        Dialog_Pay.resize(231, 191)
+        Dialog_Pay.resize(231, 214)
         Dialog_Pay.setMinimumSize(QSize(10, 10))
         Dialog_Pay.setModal(False)
         self.groupBox = QGroupBox(Dialog_Pay)
@@ -47,6 +47,12 @@ class Ui_Dialog_Pay(object):
         self.pushButton_3.setObjectName(u"pushButton_3")
         self.pushButton_3.setGeometry(QRect(10, 140, 211, 41))
         self.pushButton_3.setFont(font3)
+        self.checkBox = QCheckBox(self.groupBox)
+        self.checkBox.setObjectName(u"checkBox")
+        self.checkBox.setGeometry(QRect(70, 190, 91, 20))
+        font4 = QFont()
+        font4.setPointSize(10)
+        self.checkBox.setFont(font4)
 
         self.retranslateUi(Dialog_Pay)
 
@@ -61,5 +67,6 @@ class Ui_Dialog_Pay(object):
         self.pushButton.setText(QCoreApplication.translate("Dialog_Pay", u"\u041d\u0410\u041b\u0418\u0427\u041d\u042b\u041c\u0418", None))
         self.pushButton_2.setText(QCoreApplication.translate("Dialog_Pay", u"\u041a\u0410\u0420\u0422\u041e\u0419", None))
         self.pushButton_3.setText(QCoreApplication.translate("Dialog_Pay", u"\u041a\u0410\u0420\u0422\u041e\u0419 OFFLINE", None))
+        self.checkBox.setText(QCoreApplication.translate("Dialog_Pay", u"\u041f\u0435\u0447\u0430\u0442\u044c \u0447\u0435\u043a\u0430", None))
     # retranslateUi
 

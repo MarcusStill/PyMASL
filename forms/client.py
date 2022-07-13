@@ -18,7 +18,7 @@ class Ui_Dialog_Client(object):
         self.client.setGeometry(QRect(0, 0, 341, 231))
         self.layoutWidget = QWidget(self.client)
         self.layoutWidget.setObjectName(u"layoutWidget")
-        self.layoutWidget.setGeometry(QRect(0, 0, 333, 221))
+        self.layoutWidget.setGeometry(QRect(0, 0, 336, 221))
         self.formLayout = QFormLayout(self.layoutWidget)
         self.formLayout.setObjectName(u"formLayout")
         self.formLayout.setContentsMargins(0, 0, 0, 0)
@@ -100,6 +100,16 @@ class Ui_Dialog_Client(object):
 
         self.gridLayout.addWidget(self.comboBox_2, 4, 4, 1, 1)
 
+        self.pushButton_3 = QPushButton(self.layoutWidget)
+        self.pushButton_3.setObjectName(u"pushButton_3")
+
+        self.gridLayout.addWidget(self.pushButton_3, 0, 3, 1, 1)
+
+        self.pushButton_4 = QPushButton(self.layoutWidget)
+        self.pushButton_4.setObjectName(u"pushButton_4")
+
+        self.gridLayout.addWidget(self.pushButton_4, 0, 4, 1, 1)
+
 
         self.formLayout.setLayout(0, QFormLayout.SpanningRole, self.gridLayout)
 
@@ -165,8 +175,9 @@ class Ui_Dialog_Client(object):
         self.comboBox_2.setItemText(1, QCoreApplication.translate("Dialog_Client", u"\u0438", None))
         self.comboBox_2.setItemText(2, QCoreApplication.translate("Dialog_Client", u"\u043c", None))
 
+        self.pushButton_3.setText(QCoreApplication.translate("Dialog_Client", u"\u041a\u043e\u043f\u0438\u0440.", None))
+        self.pushButton_4.setText(QCoreApplication.translate("Dialog_Client", u"\u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044c", None))
         self.label_7.setText(QCoreApplication.translate("Dialog_Client", u"E-mail", None))
         self.toolBox.setItemText(self.toolBox.indexOf(self.client), QCoreApplication.translate("Dialog_Client", u"\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043e \u043a\u043b\u0438\u0435\u043d\u0442\u0435", None))
         self.pushButton.setText(QCoreApplication.translate("Dialog_Client", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c", None))
         self.pushButton_2.setText(QCoreApplication.translate("Dialog_Client", u"\u041e\u0442\u043c\u0435\u043d\u0430", None))
-    # retranslateUi

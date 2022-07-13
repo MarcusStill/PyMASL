@@ -2,87 +2,108 @@ from reportlab.lib.units import mm, inch, cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape, letter
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib import colors
 
 
 def generate_saved_tickets(values):
     client_in_sale = values
+    adult_talent = 0
+    img_file = 'files/qr-code.jpg'
     path = "./ticket.pdf"
     """Устанавливаем параметры макета билета"""
     pdfmetrics.registerFont(TTFont('DejaVuSerif', 'files/DejaVuSerif.ttf'))
-    c = canvas.Canvas(path, pagesize=(21 * cm, 8 * cm))
+    c = canvas.Canvas(path, pagesize=(landscape(letter)))
+    c.setFillColorRGB(200, 50, 100)
     c.setFont('DejaVuSerif', 12)
     """Сохраняем билеты"""
     for i in range(len(client_in_sale)):
-        if int(client_in_sale[i][4]) >= 14:
-            type = 'взрослый'
-        else:
-            type = 'детский'
-        date_time = str(client_in_sale[i][11])
-        """Сохраняем макет билета"""
-        c.setFont('DejaVuSerif', 12)
-        # имя
-        c.drawString(
-            20 * mm, 53 * mm,
-            str(client_in_sale[i][0]).replace("'",
-                                              "").replace("[",
-                                                          "").replace("]",
-                                                                      ""))
-        # фамилия
-        c.drawString(
-            20 * mm, 47 * mm,
-            str(client_in_sale[i][1]).replace("'",
-                                              "").replace("[",
-                                                          "").replace("]",
-                                                                      ""))
-        # возраст
-        c.drawString(
-            95 * mm, 53 * mm,
-            str(client_in_sale[i][8]).replace("'",
-                                              "").replace("[",
-                                                          "").replace("]",
-                                                                      ""))
-        # продолжительность
-        c.drawString(
-            20 * mm, 41 * mm,
-            str(client_in_sale[i][9]).replace("'",
-                                              "").replace("[",
-                                                          "").replace("]",
-                                                                      ""))
-        # дата и время билета
-        c.drawString(
-            95 * mm, 41 * mm,
-            str(date_time[0:10]).replace("'",
-                                         "").replace("[",
-                                                     "").replace("]",
-                                                                 ""))
-        c.drawString(70 * mm, 30 * mm, "БЕЛГОРОД")
-        c.drawString(70 * mm, 23 * mm, "МАСТЕРСЛАВЛЬ")
-        # цена
-        c.drawString(
-            121 * mm, 30 * mm,
-            str(client_in_sale[i][4]).replace("'",
-                                              "").replace("[",
-                                                          "").replace("]",
-                                                                      ""))
-        # тип билета
-        c.drawString(31 * mm, 13 * mm,
-                     str(type).replace("'",
-                                       "").replace("[",
-                                                   "").replace("]", ""))
-        # доп.отметки
-        c.drawString(90 * mm, 13 * mm, str(client_in_sale[i][5]))
-        # c.drawString(90 * mm, 13 * mm, str(client_in_sale[i][5]))
-        # таланты
-        c.drawString(
-            153 * mm, 40 * mm,
-            str(client_in_sale[i][10]).replace("'",
-                                               "").replace("[",
-                                                           "").replace("]",
-                                                                       ""))
-        c.showPage()
+        age = int(client_in_sale[i][8])
+        if age < 5:
+            type_ticket = 'бесплатный'
+        if 5 <= age < 15:
+            type_ticket = 'детский'
+        elif age >= 15:
+            type_ticket = 'взрослый'
+        # если взрослый отсутствовал в чеке - не печатаем ему билет
+        # if not (int(client_in_sale[i][6]) >= 15 and client_in_sale[i][2]) == 'бесплатный':
+        if type_ticket != 'бесплатный':
+            date_time = str(client_in_sale[i][11])
+            """Сохраняем макет билета"""
+            c.setFont('DejaVuSerif', 12)
+            c.drawImage(img_file, 170, 370, height=80, width=80, preserveAspectRatio=True, mask='auto')
+            # имя
+            c.drawString(
+                75 * mm, 182 * mm,
+                str(client_in_sale[i][0]).replace("'",
+                                                  "").replace("[",
+                                                              "").replace("]",
+                                                                          ""))
+            # фамилия
+            c.drawString(
+                75 * mm, 177 * mm,
+                str(client_in_sale[i][1]).replace("'",
+                                                  "").replace("[",
+                                                              "").replace("]",
+                                                                          ""))
+            # возраст
+            c.drawString(
+                160 * mm, 182 * mm,
+                str(age).replace("'",
+                                                  "").replace("[",
+                                                              "").replace("]",
+                                                                          ""))
+            # продолжительность
+            c.drawString(
+                80 * mm, 167 * mm,
+                (f'{client_in_sale[i][9]} ч. пребывания').replace("'",
+                                                  "").replace("[",
+                                                              "").replace("]",
+                                                                          ""))
+            # дата и время билета
+            c.drawString(
+                160 * mm, 167 * mm,
+                str(date_time[0:10]).replace("'",
+                                             "").replace("[",
+                                                         "").replace("]",
+                                                                     ""))
+            c.drawString(160 * mm, 177 * mm, "гость")
+            c.drawString(130 * mm, 157 * mm, "БЕЛГОРОД")
+            c.drawString(120 * mm, 152 * mm, "МАСТЕРСЛАВЛЬ")
+            # цена
+            c.drawString(
+                190 * mm, 155 * mm,
+                (f'{client_in_sale[i][4]} руб.').replace("'",
+                                                  "").replace("[",
+                                                              "").replace("]",
+                                                                          ""))
+            # тип билета
+            c.drawString(101 * mm, 138 * mm,
+                         str(type_ticket).replace("'",
+                                           "").replace("[",
+                                                       "").replace("]", ""))
+            # доп.отметки
+            c.drawString(170 * mm, 138 * mm, str(client_in_sale[i][5]))
+            # c.drawString(90 * mm, 13 * mm, str(client_in_sale[i][5]))
+            # таланты
+            # печатаем их только для детских билетов
+            c.setFont('DejaVuSerif', 24)
+            if type_ticket == 'взрослый':
+                c.drawString(
+                    225 * mm, 168 * mm,
+                    str(adult_talent).replace("'",
+                                                       "").replace("[",
+                                                                   "").replace("]",
+                                                                               ""))
+            else:
+                c.drawString(
+                    225 * mm, 168 * mm,
+                    str(client_in_sale[i][10]).replace("'",
+                                                       "").replace("[",
+                                                                   "").replace("]",
+                                                                               ""))
+            c.showPage()
     c.save()
 
 

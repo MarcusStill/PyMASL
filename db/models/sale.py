@@ -27,7 +27,7 @@ class Sale(Base):
     )
     id_client = Column(Integer, ForeignKey('client.id'), comment='Id клиента')
     id_user = Column(Integer, ForeignKey('user.id'), comment='Id пользователя')
-    price = Column(SmallInteger, comment='Цена')
+    price = Column(Integer, comment='Цена')
     datetime = Column(DateTime, comment='Дата и время продажи')
     discount = Column(SmallInteger, comment='Скидка')
     status = Column(SmallInteger, comment='Статус продажи')

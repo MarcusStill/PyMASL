@@ -28,7 +28,7 @@ class Client(Base):
     gender = Column(String(3), comment='Отчество')
     phone = Column(String(11), nullable=False, comment='Телефон')
     email = Column(String(20), comment='Адрес электронной почты')
-    privilege = Column(String(1), comment='Наличие льгот')
+    privilege = Column(String(2), comment='Наличие льгот')
 
 
     def __str__(self):
