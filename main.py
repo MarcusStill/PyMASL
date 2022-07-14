@@ -478,8 +478,6 @@ class MainWindow(QMainWindow):
             filter_day = dt.datetime.today() - timedelta(days=7)
         try:
             session = Session()
-            # sales = session.query(Sale).filter(Sale.datetime >=
-            #                                    filter_day).order_by(Sale.id)
             sales = session.query(Sale).filter(Sale.datetime >=
                                                filter_day).order_by(desc(Sale.id))
             if sales:
@@ -850,8 +848,6 @@ class AuthForm(QDialog):
                                   System.user[1] + '. БД: ' + database)
             # отображаем все продажи при запуске
             window.main_button_all_sales()
-            # # устанавливаем по-умолчанию фильтр по фамилии
-            # window.ui.comboBox_3.setCurrentIndex(1)
             # проверяем статус текущего дня
             day_today = System.check_day(self)
             if day_today == 0:
@@ -912,7 +908,6 @@ class ClientForm(QDialog):
                 logger.info('Добавляем нового клиента')
                 session = Session()
                 # получаем максимальный id в таблице клиентов
-                # client_index = session.query(Client).count()
                 client_index = session.query(func.max(Client.id)).scalar()
                 logger.debug('Количество клиентов в бд: %s' % client_index)
                 add_client = Client(id=client_index + 1,
@@ -1633,7 +1628,7 @@ class SaleForm(QDialog):
                     # устанавливаем продолжительность посещения 2 часа
                     self.ui.comboBox.setCurrentIndex(1)
                     self.ui.comboBox.setEnabled(False)
-                    # # устанавливаем скидку
+                    # устанавливаем скидку
                     self.ui.checkBox_2.setEnabled(False)
                     self.ui.comboBox_2.setCurrentIndex(15)
                     self.ui.comboBox_2.setEnabled(False)
@@ -1668,8 +1663,6 @@ class SaleForm(QDialog):
             type_ticket = self.ui.tableWidget_2.item(row, 2).text()
             # считаем взрослые билеты
             if type_ticket == 'взрослый':
-                # # обнуляем таланты
-                # talent = 0
                 # если продолжительность посещения 1 час
                 if System.sale_dict['detail'][6] == 1:
                     # сохраняем цену билета
@@ -1927,7 +1920,6 @@ class SaleForm(QDialog):
                 session.close()
             # Получаем номер сохраненной продажи
             session = Session()
-            # System.sale_id = session.query(Sale).count()
             System.sale_id = session.query(func.max(Sale.id)).scalar()
             session.close()
             # Сохраняем билеты
@@ -2208,6 +2200,7 @@ class System:
 
     # храним id нового клиента
     id_new_client_in_sale = 0
+    # флаг печати кассовых и банковских чеков
     print_check = 1
 
     @staticmethod

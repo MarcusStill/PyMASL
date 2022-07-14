@@ -1,7 +1,8 @@
 import subprocess
+
+from files import windows
 from files.libfptr10 import IFptr
 from files.logger import *
-from files import windows
 
 try:
     fptr = IFptr('')
