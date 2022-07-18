@@ -19,11 +19,26 @@ EMAIL = "test.check@pymasl.ru"
 def terminal_oplata(sum):
     """Операуия оплаты по банковскому терминалу"""
     result = ''
+    status = 0
     sum += '00'
     pinpad = 'C:\\sc552\\loadparm.exe'
     pay_param = ' 1 ' + sum
     pinpad_run = pinpad + pay_param
-    subprocess.call(pinpad_run)
+    # проверяем статус проведения операции по банковскому терминалу
+    while status != 1:
+        proc = subprocess.run(pinpad_run)
+        plat = proc.returncode
+        logger.info("Статус проведения операции по банковскому терминалу: %s" % plat)
+        if plat == 0 or plat == 2000:
+            # оплата прошла успешно (0) или отменена пользователем (2000)
+            status = 1
+        else:
+            dialog = windows.info_dialog_window('Внимание! '
+                                                'Произошла ошибка при проведении платежа по банковской карте.',
+                                                'Хотите повторить операцию?')
+            # пользователь нажал кнопку "нет"
+            if dialog == 0:
+                status = 1
     # Проверка файла с результатом работы банковского терминала
     logger.info("Proverka file")
     pinpad_file = r"C:\sc552\p"
@@ -466,8 +481,8 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check):
                             'Устраните неполадку и повторите запрос.',
                             str(fptr.errorDescription()), '')
         continue
-    # if print_check == 0:
-    #     fptr.close()
+    if print_check == 0:
+        fptr.close()
     if not fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
         # Документ не закрылся. Требуется его отменить (если это чек) и сформировать заново
         logger.warning("Документ не закрылся."
