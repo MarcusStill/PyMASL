@@ -365,18 +365,6 @@ class MainWindow(QMainWindow):
                 sale.ui.tableWidget_2.setEnabled(False)
                 # поле скидка
                 sale.ui.checkBox_2.setEnabled(False)
-            # если продажа многодетным/инвалидам
-            if sale_status == 3 or sale_status == 4:
-                sale.ui.pushButton_3.setEnabled(False)
-                sale.ui.pushButton_5.setEnabled(False)
-                sale.ui.pushButton_10.setEnabled(False)
-                sale.ui.pushButton_6.setEnabled(True)
-                sale.ui.pushButton_7.setEnabled(True)
-                sale.ui.pushButton_8.setEnabled(True)
-                sale.ui.dateEdit.setEnabled(False)
-                sale.ui.comboBox.setEnabled(False)
-                sale.ui.tableWidget_2.setEnabled(False)
-                sale.ui.checkBox_2.setEnabled(False)
             # если продажа не оплачена
             elif sale_status == 0:
                 sale.ui.pushButton_3.setEnabled(False)
@@ -498,10 +486,6 @@ class MainWindow(QMainWindow):
                         status_type = 'оплачена'
                     elif sale.status == 2:
                         status_type = 'возврат'
-                    elif sale.status == 3:
-                        status_type = 'многодетные'
-                    elif sale.status == 4:
-                        status_type = 'инвалид'
                     self.ui.tableWidget_2.setItem(
                         row, 4, QTableWidgetItem(f"{status_type}"))
                     self.ui.tableWidget_2.setItem(
@@ -562,6 +546,8 @@ class MainWindow(QMainWindow):
         System.sale_checkbox_row = None
         # флаг состояния QCheckBox для исключения из продажи 0 - не активен
         System.exclude_from_sale = 0
+        # флаг состояния особенной (бесплатной) продажи
+        System.sale_special = None
         # Обновляем System.sale_dict
         System.sale_dict['kol_adult'] = 0
         System.sale_dict['price_adult'] = 0
@@ -643,7 +629,7 @@ class MainWindow(QMainWindow):
                                       QTableWidgetItem(f"{cash}"))
         self.ui.tableWidget_4.setItem(2, 3,
                                       QTableWidgetItem(f"{summa}"))
-        # считаем билеты
+        # считаем оплаченные билеты
         session = Session()
         tickets = session.query(Ticket.ticket_type,
                                 Ticket.arrival_time,
@@ -658,8 +644,8 @@ class MainWindow(QMainWindow):
                                                 ))).all()
         session.close()
         logger.debug("Билеты %s" % tickets)
-        type_tickets = [0, 1, 'м', 'и', '-']
-        # 0-взрослый, 1-детский, 2-многодетный, 3-инвалид
+        type_tickets = [0, 1, 'м', 'и', '-', 'с']
+        # 0-взрослый, 1-детский, м-многодетный, и-инвалид, с-сопровождающий
         time_arrival = [1, 2, 3]
         # child
         c = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
@@ -702,7 +688,6 @@ class MainWindow(QMainWindow):
                     m['t_2'] += 1
                 elif tickets[i][1] == time_arrival[2]:
                     m['t_3'] += 1
-                # a['price'] += tickets[i][3]
             # инвалид?
             elif tickets[i][2] == type_tickets[3]:
                 i_['sum'] += 1
@@ -737,7 +722,7 @@ class MainWindow(QMainWindow):
         self.ui.tableWidget_3.setItem(3, 1, QTableWidgetItem(f"{i_['sum']}"))
         self.ui.tableWidget_3.setItem(3, 2, QTableWidgetItem(f"{i_['t_1']}"))
         self.ui.tableWidget_3.setItem(3, 3, QTableWidgetItem(f"{i_['t_2']}"))
-        self.ui.tableWidget_3.setItem(4, 4, QTableWidgetItem(f"{i_['t_3']}"))
+        self.ui.tableWidget_3.setItem(3, 4, QTableWidgetItem(f"{i_['t_3']}"))
 
     @logger_wraps()
     def main_otchet_administratora(self):
@@ -1612,6 +1597,8 @@ class SaleForm(QDialog):
             # сегодня день многодетных?
             # проверяем категорию посетителя - если многодетный
             if self.ui.tableWidget_2.item(row, 4).text() == 'м':
+                # активируем поле со скидкой
+                self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).setCheckState(Qt.Checked)
                 # проверяем если номер дня недели равен 7 и дата <= 7
                 # установлена галочка "продление многодетным"
                 if System.sunday == 1 and self.ui.checkBox_3.isChecked():
@@ -1619,6 +1606,7 @@ class SaleForm(QDialog):
                     # отменяем скидку 100%
                     many_child = 0
                     self.ui.checkBox_2.setEnabled(True)
+                    self.ui.checkBox_2.setChecked(True)
                     self.ui.comboBox_2.setCurrentIndex(0)
                     self.ui.comboBox.setEnabled(True)
                 elif System.sunday == 1:
@@ -1633,15 +1621,14 @@ class SaleForm(QDialog):
                     self.ui.comboBox_2.setCurrentIndex(15)
                     self.ui.comboBox_2.setEnabled(False)
                     System.sale_dict['detail'][4] = 100
-                    # отключаем кнопки оплаты и возврата
-                    self.ui.pushButton_5.setEnabled(False)
+                    # отключаем кнопку возврата
                     self.ui.pushButton_6.setEnabled(False)
                 # используем "флаг" many_child, для скидки 50%
                 elif System.num_of_week <= 5:
                     many_child = 2
                     # устанавливаем скидку
                     self.ui.checkBox_2.setChecked(True)
-                    self.ui.checkBox_2.setEnabled(False)
+                    self.ui.checkBox_2.setEnabled(True)
                     self.ui.comboBox_2.setCurrentIndex(10)
                     self.ui.comboBox_2.setEnabled(False)
                     System.sale_dict['detail'][4] = 50
@@ -1656,8 +1643,7 @@ class SaleForm(QDialog):
                 self.ui.checkBox_2.setEnabled(False)
                 self.ui.comboBox_2.setCurrentIndex(15)
                 self.ui.comboBox_2.setEnabled(False)
-                # отключаем кнопки оплаты и возврата
-                self.ui.pushButton_5.setEnabled(False)
+                # отключаем кнопку возврата
                 self.ui.pushButton_6.setEnabled(False)
             # учитываем тип билета
             type_ticket = self.ui.tableWidget_2.item(row, 2).text()
@@ -1668,17 +1654,17 @@ class SaleForm(QDialog):
                     # сохраняем цену билета
                     price = System.ticket_adult_1
                 elif System.sale_dict['detail'][6] == 2:
-                    # если обычный день
-                    if many_child == 0:
-                        price = System.ticket_adult_2
-                    else:
-                        # если день многодетных
+                    # если день многодетных
+                    if many_child == 1:
                         price = System.ticket_free
                         kol_adult_many_child += 1
                         # изменяем цену и записываем размер скидки
                         logger.debug('Добавляем взрослого мног-го в sale_dict[detail]')
                         System.sale_dict['detail'][0] = kol_adult_many_child
                         System.sale_dict['detail'][1] = price
+                    # если обычный день
+                    else:
+                        price = System.ticket_adult_2
                 else:
                     # если продолжительность 3 часа
                     # если в продаже инвалид
@@ -1688,6 +1674,9 @@ class SaleForm(QDialog):
                         # изменяем цену и записываем размер скидки
                         System.sale_dict['detail'][0] = kol_adult_invalid
                         System.sale_dict['detail'][1] = price
+                        # меняем категорию билета на 'c' - сопровождающий
+                        self.ui.tableWidget_2.setItem(
+                            row, 4, QTableWidgetItem('с'))
                     else:
                         price = System.ticket_adult_3
                 # Привязываем продажу ко взрослому
@@ -1748,21 +1737,20 @@ class SaleForm(QDialog):
                     else:
                         price = System.ticket_child_week_1
                 elif System.sale_dict['detail'][6] == 2:
-                    # если продолжительность посещения 2 часа
-                    # если не день многодетных
-                    if many_child == 0:
-                        # проверяем текущий день является выходным
-                        if System.what_a_day == 0:
-                            price = System.ticket_child_2
-                        else:
-                            price = System.ticket_child_week_2
                     # если день многодетных
-                    else:
+                    if many_child == 1:
                         price = System.ticket_free
                         kol_child_many_child += 1
                         # применяем сидку
                         System.sale_dict['detail'][2] = kol_child_many_child
                         System.sale_dict['detail'][3] = price
+                    # если обычный день
+                    else:
+                        # проверяем текущий день является выходным
+                        if System.what_a_day == 0:
+                            price = System.ticket_child_2
+                        else:
+                            price = System.ticket_child_week_2
                 else:
                     # если продолжительность посещения 3 часа
                     # если в продаже инвалид
@@ -1798,8 +1786,10 @@ class SaleForm(QDialog):
                     3,
                     QTableWidgetItem(f"{System.ticket_free}")
                 )
-                System.sale_status = 3
-                logger.warning("Статус продажи - многодетные %s" % System.sale_status)
+                logger.debug("В продаже многодетные")
+                # помечаем продажу как "особенную"
+                System.sale_special = 1
+                logger.debug('Продажа особенная %s' % System.sale_special)
             # скидка 50% в будни
             elif many_child == 2:
                 logger.info('скидка 50% многодетным в будни')
@@ -1815,8 +1805,10 @@ class SaleForm(QDialog):
                 logger.info('скидка 100% инвалидам')
                 self.ui.tableWidget_2.setItem(
                     row, 3, QTableWidgetItem(f"{System.ticket_free}"))
-                System.sale_status = 4
-                logger.warning("Статус продажи-инвалид %s" % System.sale_status)
+                logger.debug("В продаже инвалид")
+                # помечаем продажу как "особенную"
+                System.sale_special = 1
+                logger.debug('Продажа особенная %s' % System.sale_special)
             # иначе проверяем активен ли checkbox со скидкой и размер > 0
             if self.ui.checkBox_2.isChecked():
                 logger.info('Checkbox со скидкой активен - обычный гость')
@@ -1885,10 +1877,7 @@ class SaleForm(QDialog):
         logger.info('System.sale_tickets %s' % System.sale_tickets)
         # Проверяем есть ли в продаже взрослый
         if System.sale_dict['kol_adult'] >= 1:
-            # если в продаже не многодетные и не инвалиды
-            if invalid != 1 and many_child != 1:
-                # активируем кнопку оплаты
-                self.ui.pushButton_5.setEnabled(True)
+            self.ui.pushButton_5.setEnabled(True)
         else:
             self.ui.pushButton_5.setEnabled(False)
 
@@ -1896,6 +1885,9 @@ class SaleForm(QDialog):
         """Сохраняем данные продажи"""
         logger.info("Запуск функции sale_save_selling")
         logger.debug('Статус сохраняемой продажи %s' % System.sale_status)
+        # если продажа особенная - сохраним ее статус оплаченной
+        if System.sale_special == 1:
+            System.sale_status = 1
         if System.sale_dict['kol_adult'] >= 1:
             add_sale = Sale(price=System.sale_dict['detail'][7],
                             id_user=System.user[3],
@@ -1967,8 +1959,8 @@ class SaleForm(QDialog):
         logger.info("Запуск функции sale_transaction_selling")
         # сохраняем продажу
         self.sale_save_selling()
-        # если сумма продажи 0 - генерируем билеты
-        if System.sale_dict['kol_adult'] == 0:
+        # если продажа особенная - генерируем билеты
+        if System.sale_special == 1:
             self.sale_generate_saved_tickets()
         else:
             state_check, payment = kkt.check_open(System.sale_dict,
@@ -2150,14 +2142,13 @@ class System:
     all_clients = None
     # сохраняем фамилию нового клиента
     last_name = ''
-    # статус продажи: 0 - создана, 1 - оплачена,
-    #                 2 - возвращена, 3 - многодетный,
-    #                 4 - инвалид
+    # статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
     sale_status = None
     sale_id = None
     sale_discount = None
     sale_tickets = []
     sale_tuple = []
+    sale_special = None
     # номер строки с активным CheckBox для исключения взрослого из продажи
     sale_checkbox_row = None
     # состояние CheckBox для искл. взрослого из продажи: 0 - есть, 1 - нет
