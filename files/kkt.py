@@ -145,7 +145,7 @@ def terminal_svod_check():
             text = file.read()
         if file_result in text:
             result = 1
-            print_slip_check()
+            print_slip_check(1)
     except FileNotFoundError as not_found:
         logger.info("File not found")
         result = 0
@@ -159,7 +159,7 @@ def terminal_control_lenta():
     subprocess.call('C:\\sc552\\loadparm.exe 9 1')
     logger.debug('Сontrol_cheсk')
     try:
-        print_slip_check()
+        print_slip_check(1)
     except FileNotFoundError as not_found:
         logger.info("File not found")
 
@@ -185,7 +185,7 @@ def read_slip_check():
 
 
 @logger_wraps()
-def print_slip_check():
+def print_slip_check(kol=2):
     """Печать слип-чека"""
     logger.info("Функция печати нефискального документа")
     logger.info("Открываем соединение с ККМ")
@@ -209,23 +209,24 @@ def print_slip_check():
     logger.info("Отрезаем чек")
     fptr.cut()
     logger.info("Создание копии нефискального документа")
-    # Печатаем копию слип-чека
-    fptr.beginNonfiscalDocument()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, '')
-    fptr.printText()
-    line = read_slip_check()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-    fptr.printText()
-    # Промотка чековой ленты на одну строку (пустую)
-    fptr.printText()
-    logger.info("Закрытие нефискального документа")
-    fptr.endNonfiscalDocument()
-    logger.info("Печать документа")
-    fptr.report()
-    # Частичная отрезка ЧЛ
-    fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
-    logger.info("Отрезаем чек")
-    fptr.cut()
+    if kol == 2:
+        # Печатаем копию слип-чека
+        fptr.beginNonfiscalDocument()
+        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, '')
+        fptr.printText()
+        line = read_slip_check()
+        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+        fptr.printText()
+        # Промотка чековой ленты на одну строку (пустую)
+        fptr.printText()
+        logger.info("Закрытие нефискального документа")
+        fptr.endNonfiscalDocument()
+        logger.info("Печать документа")
+        fptr.report()
+        # Частичная отрезка ЧЛ
+        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
+        logger.info("Отрезаем чек")
+        fptr.cut()
     logger.info("Закрываем соединение с ККМ")
     fptr.close()
 

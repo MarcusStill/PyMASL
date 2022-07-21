@@ -561,6 +561,9 @@ class MainWindow(QMainWindow):
         System.sale_dict['detail'][5] = 0
         System.sale_dict['detail'][6] = 0
         System.sale_dict['detail'][7] = 0
+        # сбрасываем id и статус продажи
+        System.sale_id = None
+        System.sale_status = None
         sale.exec_()
 
     @logger_wraps()
@@ -644,8 +647,8 @@ class MainWindow(QMainWindow):
                                                 ))).all()
         session.close()
         logger.debug("Билеты %s" % tickets)
-        type_tickets = [0, 1, 'м', 'и', '-', 'с']
-        # 0-взрослый, 1-детский, м-многодетный, и-инвалид, с-сопровождающий
+        type_tickets = [0, 1, 'м', 'и', '-']
+        # 0-взрослый, 1-детский, м-многодетный, и-инвалид, с-сопровождающий, н-не идет
         time_arrival = [1, 2, 3]
         # child
         c = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
@@ -1643,7 +1646,8 @@ class SaleForm(QDialog):
                 self.ui.checkBox_2.setEnabled(False)
                 self.ui.comboBox_2.setCurrentIndex(15)
                 self.ui.comboBox_2.setEnabled(False)
-                # отключаем кнопку возврата
+                # отключаем кнопки сохранения и возврата
+                self.ui.pushButton_3.setEnabled(False)
                 self.ui.pushButton_6.setEnabled(False)
             # учитываем тип билета
             type_ticket = self.ui.tableWidget_2.item(row, 2).text()
@@ -1695,6 +1699,8 @@ class SaleForm(QDialog):
                         System.sale_checkbox_row = row
                         # изменяем флаг активности QCheckBox
                         System.exclude_from_sale = 1
+                        self.ui.tableWidget_2.setItem(
+                            row, 4, QTableWidgetItem('н'))
                 # если QCheckBox не активен
                 else:
                     # флаг состояния QCheckBox активирован
@@ -1957,9 +1963,12 @@ class SaleForm(QDialog):
     def sale_transaction_selling(self, payment_type, print_check):
         """Проводим операцию продажи"""
         logger.info("Запуск функции sale_transaction_selling")
-        # сохраняем продажу
-        self.sale_save_selling()
-        # если продажа особенная - генерируем билеты
+        logger.debug('System.sale_status: %s' % System.sale_status)
+        logger.debug('System.sale_id: %s' % System.sale_id)
+        # если продажа новая
+        if System.sale_id is None:
+            self.sale_save_selling()
+        # если продажа особенная - генерируем билеты без оплаты
         if System.sale_special == 1:
             self.sale_generate_saved_tickets()
         else:
@@ -2037,7 +2046,7 @@ class SaleForm(QDialog):
             payment_type = 102
         logger.info(payment_type)
         state_check, payment = kkt.check_open(System.sale_dict,
-                                              payment_type, System.user, 2)
+                                              payment_type, System.user, 2, 1)
         check = None
         # Если возврат прошел
         if state_check == 1:
@@ -2146,8 +2155,8 @@ class System:
     sale_status = None
     sale_id = None
     sale_discount = None
-    sale_tickets = []
-    sale_tuple = []
+    sale_tickets = ()
+    sale_tuple = ()
     sale_special = None
     # номер строки с активным CheckBox для исключения взрослого из продажи
     sale_checkbox_row = None

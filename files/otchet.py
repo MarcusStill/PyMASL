@@ -21,13 +21,14 @@ def generate_saved_tickets(values):
     logger.debug("Сохраняем билеты")
     for i in range(len(client_in_sale)):
         age = int(client_in_sale[i][6])
+        not_go = client_in_sale[i][4]
         if age < 5:
             type_ticket = 'бесплатный'
         elif 5 <= age < 15:
             type_ticket = 'детский'
         elif age >= 15:
             type_ticket = 'взрослый'
-        if type_ticket != 'бесплатный':
+        if type_ticket != 'бесплатный' and not_go != 'н':
             date_time = str(client_in_sale[i][9])
             """Сохраняем макет билета"""
             c.setFont('DejaVuSerif', 12)
