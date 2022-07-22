@@ -127,34 +127,33 @@ def otchet_administratora(date_1, date_2, values):
     c.line(100, 621, 500, 621)
     c.setFont("DejaVuSerif", 8)
     c.drawString(255, 610, "ФИО Администратора")
-    t = Table(data, 9 * [1.2 * inch], 9 * [0.3 * inch])
-    t.setStyle(TableStyle([("FONT", (0, 0), (9, 9), "DejaVuSerif", 8),
+    t = Table(data, 9 * [1.2 * inch], 19 * [0.3 * inch])
+    t.setStyle(TableStyle([("FONT", (0, 0), (9, 19), "DejaVuSerif", 8),
                            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.black),
                            ("BOX", (0, 0), (-1, -1), 0.25, colors.black)]))
     # wrap the table to this width, height in case it spills
     t.wrapOn(c, 100 * mm, 180 * mm)
     # draw it on our pdf at x,y
-    t.drawOn(c, 20 * mm, 140 * mm)
+    t.drawOn(c, 20 * mm, 60 * mm)
     # отчет сдал
-    c.drawString(30, 310, "Отчет сдал:")
-    c.drawString(30, 290, "Кассир")
+    c.drawString(30, 150, "Отчет сдал:")
+    c.drawString(30, 130, "Кассир")
     c.setLineWidth(1)
-    c.line(150, 290, 240, 290)
+    c.line(150, 130, 240, 130)
     c.setFont("DejaVuSerif", 8)
-    c.drawString(165, 282, "Подпись")
-    c.line(300, 290, 390, 290)
+    c.drawString(165, 120, "Подпись")
+    c.line(300, 130, 390, 130)
     c.setFont("DejaVuSerif", 8)
-    c.drawString(315, 282, "Расшифровка")
+    c.drawString(315, 120, "Расшифровка")
     # отчет принял
-    c.drawString(30, 210, "Отчет принял:")
-    # c.drawString(30, 190, 'Старший администратор')
+    c.drawString(30, 80, "Отчет принял:")
     c.setLineWidth(1)
-    c.line(150, 190, 240, 190)
+    c.line(150, 65, 240, 65)
     c.setFont("DejaVuSerif", 8)
-    c.drawString(175, 182, "Подпись")
-    c.line(300, 190, 390, 190)
+    c.drawString(175, 58, "Подпись")
+    c.line(300, 65, 390, 65)
     c.setFont("DejaVuSerif", 8)
-    c.drawString(325, 182, "Расшифровка")
+    c.drawString(325, 58, "Расшифровка")
     c.showPage()
     c.save()
 

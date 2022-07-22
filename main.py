@@ -655,7 +655,9 @@ class MainWindow(QMainWindow):
         # adult
         a = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # many_child
-        m = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        m_c = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        # many_adult
+        m_a = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # invalid
         i_ = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # считаем количество билетов
@@ -664,33 +666,47 @@ class MainWindow(QMainWindow):
             if tickets[i][2] == type_tickets[4]:
                 # взрослый?
                 if tickets[i][0] == type_tickets[0]:
-                    a['sum'] += 1
-                    # проверяем продолжительность времени
-                    if tickets[i][1] == time_arrival[0]:
-                        a['t_1'] += 1
-                    elif tickets[i][1] == time_arrival[1]:
-                        a['t_2'] += 1
-                    elif tickets[i][1] == time_arrival[2]:
-                        a['t_3'] += 1
+                    # не многодетный
+                    if tickets[i][2] != type_tickets[2]:
+                        a['sum'] += 1
+                        # проверяем продолжительность времени
+                        if tickets[i][1] == time_arrival[0]:
+                            a['t_1'] += 1
+                        elif tickets[i][1] == time_arrival[1]:
+                            a['t_2'] += 1
+                        elif tickets[i][1] == time_arrival[2]:
+                            a['t_3'] += 1
                 # детский?
                 elif tickets[i][0] == type_tickets[1]:
-                    c['sum'] += 1
-                    # проверяем продолжительность времени
-                    if tickets[i][1] == time_arrival[0]:
-                        c['t_1'] += 1
-                    elif tickets[i][1] == time_arrival[1]:
-                        c['t_2'] += 1
-                    elif tickets[i][1] == time_arrival[2]:
-                        c['t_3'] += 1
+                    # не многодетный
+                    if tickets[i][2] != type_tickets[2]:
+                        c['sum'] += 1
+                        # проверяем продолжительность времени
+                        if tickets[i][1] == time_arrival[0]:
+                            c['t_1'] += 1
+                        elif tickets[i][1] == time_arrival[1]:
+                            c['t_2'] += 1
+                        elif tickets[i][1] == time_arrival[2]:
+                            c['t_3'] += 1
             # многодетный?
             elif tickets[i][2] == type_tickets[2]:
-                m['sum'] += 1
-                if tickets[i][1] == time_arrival[0]:
-                    m['t_1'] += 1
-                elif tickets[i][1] == time_arrival[1]:
-                    m['t_2'] += 1
-                elif tickets[i][1] == time_arrival[2]:
-                    m['t_3'] += 1
+                # взрослый?
+                if tickets[i][0] == type_tickets[0]:
+                    m_a['sum'] += 1
+                    if tickets[i][1] == time_arrival[0]:
+                        m_a['t_1'] += 1
+                    elif tickets[i][1] == time_arrival[1]:
+                        m_a['t_2'] += 1
+                    elif tickets[i][1] == time_arrival[2]:
+                        m_a['t_3'] += 1
+                elif tickets[i][0] == type_tickets[1]:
+                    m_c['sum'] += 1
+                    if tickets[i][1] == time_arrival[0]:
+                        m_c['t_1'] += 1
+                    elif tickets[i][1] == time_arrival[1]:
+                        m_c['t_2'] += 1
+                    elif tickets[i][1] == time_arrival[2]:
+                        m_c['t_3'] += 1
             # инвалид?
             elif tickets[i][2] == type_tickets[3]:
                 i_['sum'] += 1
@@ -715,17 +731,23 @@ class MainWindow(QMainWindow):
         self.ui.tableWidget_3.setItem(1, 3, QTableWidgetItem(f"{c['t_2']}"))
         self.ui.tableWidget_3.setItem(1, 4, QTableWidgetItem(f"{c['t_3']}"))
         self.ui.tableWidget_3.insertRow(2)
-        self.ui.tableWidget_3.setItem(2, 0, QTableWidgetItem('многодетный'))
-        self.ui.tableWidget_3.setItem(2, 1, QTableWidgetItem(f"{m['sum']}"))
-        self.ui.tableWidget_3.setItem(2, 2, QTableWidgetItem(f"{m['t_1']}"))
-        self.ui.tableWidget_3.setItem(2, 3, QTableWidgetItem(f"{m['t_2']}"))
-        self.ui.tableWidget_3.setItem(2, 4, QTableWidgetItem(f"{m['t_3']}"))
+        self.ui.tableWidget_3.setItem(2, 0, QTableWidgetItem('мног-й взр.'))
+        self.ui.tableWidget_3.setItem(2, 1, QTableWidgetItem(f"{m_a['sum']}"))
+        self.ui.tableWidget_3.setItem(2, 2, QTableWidgetItem(f"{m_a['t_1']}"))
+        self.ui.tableWidget_3.setItem(2, 3, QTableWidgetItem(f"{m_a['t_2']}"))
+        self.ui.tableWidget_3.setItem(2, 4, QTableWidgetItem(f"{m_a['t_3']}"))
         self.ui.tableWidget_3.insertRow(3)
-        self.ui.tableWidget_3.setItem(3, 0, QTableWidgetItem('инвалид'))
-        self.ui.tableWidget_3.setItem(3, 1, QTableWidgetItem(f"{i_['sum']}"))
-        self.ui.tableWidget_3.setItem(3, 2, QTableWidgetItem(f"{i_['t_1']}"))
-        self.ui.tableWidget_3.setItem(3, 3, QTableWidgetItem(f"{i_['t_2']}"))
-        self.ui.tableWidget_3.setItem(3, 4, QTableWidgetItem(f"{i_['t_3']}"))
+        self.ui.tableWidget_3.setItem(3, 0, QTableWidgetItem('мног-й дет.'))
+        self.ui.tableWidget_3.setItem(3, 1, QTableWidgetItem(f"{m_c['sum']}"))
+        self.ui.tableWidget_3.setItem(3, 2, QTableWidgetItem(f"{m_c['t_1']}"))
+        self.ui.tableWidget_3.setItem(3, 3, QTableWidgetItem(f"{m_c['t_2']}"))
+        self.ui.tableWidget_3.setItem(3, 4, QTableWidgetItem(f"{m_c['t_3']}"))
+        self.ui.tableWidget_3.insertRow(4)
+        self.ui.tableWidget_3.setItem(4, 0, QTableWidgetItem('инвалид'))
+        self.ui.tableWidget_3.setItem(4, 1, QTableWidgetItem(f"{i_['sum']}"))
+        self.ui.tableWidget_3.setItem(4, 2, QTableWidgetItem(f"{i_['t_1']}"))
+        self.ui.tableWidget_3.setItem(4, 3, QTableWidgetItem(f"{i_['t_2']}"))
+        self.ui.tableWidget_3.setItem(4, 4, QTableWidgetItem(f"{i_['t_3']}"))
 
     @logger_wraps()
     def main_otchet_administratora(self):
@@ -737,38 +759,76 @@ class MainWindow(QMainWindow):
         if row >= 1:
             type_ticket = ['Взрослый, 1 ч.', 'Взрослый, 2 ч.', 'Взрослый, 3 ч.',
                            'Детский, 1 ч.', 'Детский, 2 ч.', 'Детский, 3 ч.',
-                           'Многодетный', 'Инвалид']
-            table = [self.ui.tableWidget_3.item(0, 2).text(),
-                     self.ui.tableWidget_3.item(0, 3).text(),
-                     self.ui.tableWidget_3.item(0, 4).text(),
-                     self.ui.tableWidget_3.item(1, 2).text(),
-                     self.ui.tableWidget_3.item(1, 3).text(),
-                     self.ui.tableWidget_3.item(1, 4).text(),
-                     self.ui.tableWidget_3.item(2, 1).text(),
-                     self.ui.tableWidget_3.item(3, 1).text()]
+                           'Мног-й взр., 1 ч.', 'Мног-й взр., 2 ч.', 'Мног-й взр., 3 ч.',
+                           'Мног-й дет., 1 ч.', 'Мног-й дет., 2 ч.', 'Мног-й дет., 3 ч.',
+                           'Инвалид, 3 ч.']
+            table = [self.ui.tableWidget_3.item(0, 2).text(),   # взр 1
+                     self.ui.tableWidget_3.item(0, 3).text(),   # взр 2
+                     self.ui.tableWidget_3.item(0, 4).text(),   # взр 3
+                     self.ui.tableWidget_3.item(1, 2).text(),   # дет 1
+                     self.ui.tableWidget_3.item(1, 3).text(),   # дет 2
+                     self.ui.tableWidget_3.item(1, 4).text(),   # дет 3
+                     self.ui.tableWidget_3.item(2, 2).text(),   # мн взр 1
+                     self.ui.tableWidget_3.item(2, 3).text(),   # мн взр 2
+                     self.ui.tableWidget_3.item(2, 4).text(),   # мн взр 3
+                     self.ui.tableWidget_3.item(3, 2).text(),   # мн дет 1
+                     self.ui.tableWidget_3.item(3, 3).text(),   # мн дет 2
+                     self.ui.tableWidget_3.item(3, 4).text(),   # мн дет 3
+                     self.ui.tableWidget_3.item(4, 1).text()]   # инв
             """Удаляем предыдущий файл"""
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             if os.path.exists(path):
                 os.remove(path)
             dt1 = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
             dt2 = self.ui.dateEdit.date().toString("dd-MM-yyyy")
+            # промежуточные расчеты
+            adult_1 = int(System.ticket_adult_1) * int(table[0])
+            adult_2 = int(System.ticket_adult_2) * int(table[1])
+            adult_3 = int(System.ticket_adult_3) * int(table[2])
+            kol_adult = int(table[0]) + int(table[1]) + int(table[2])
+            sum_adult = adult_1 + adult_2 + adult_3
+            child_1 = int(System.ticket_child_1) * int(table[3])
+            child_2 = int(System.ticket_child_2) * int(table[4])
+            child_3 = int(System.ticket_child_3) * int(table[5])
+            kol_child = int(table[3]) + int(table[4]) + int(table[5])
+            sum_child = child_1 + child_2 + child_3
+            many_adult_1 = round(int(System.ticket_adult_1)/2 * int(table[6]))
+            many_adult_2 = round(int(System.ticket_adult_2)/2 * int(table[7]))
+            many_adult_3 = round(int(System.ticket_adult_3)/2 * int(table[8]))
+            kol_many_adult = int(table[6]) + int(table[7]) + int(table[8])
+            sum_many_adult = many_adult_1 + many_adult_2 + many_adult_3
+            many_child_1 = round(int(System.ticket_child_1)/2 * int(table[9]))
+            many_child_2 = round(int(System.ticket_child_2)/2 * int(table[10]))
+            many_child_3 = round(int(System.ticket_child_3)/2 * int(table[11]))
+            kol_many_child = int(table[9]) + int(table[10]) + int(table[11])
+            sum_many_child = many_child_1 + many_child_2 + many_child_3
             # формируем данные
             data = [['№ п/п', 'Тип\nбилета', 'Цена, руб.',
                      'Количество, шт.', 'Стоимость, руб.'],
-                    ['1', type_ticket[0], System.ticket_adult_1, table[0],
-                     int(System.ticket_adult_1) * int(table[0])],
-                    ['2', type_ticket[1], System.ticket_adult_2, table[1],
-                     int(System.ticket_adult_2) * int(table[1])],
-                    ['3', type_ticket[2], System.ticket_adult_3, table[2],
-                     int(System.ticket_adult_3) * int(table[2])],
-                    ['4', type_ticket[3], System.ticket_child_1, table[3],
-                     int(System.ticket_child_1) * int(table[3])],
-                    ['5', type_ticket[4], System.ticket_child_2, table[4],
-                     int(System.ticket_child_2) * int(table[4])],
-                    ['6', type_ticket[5], System.ticket_child_3, table[5],
-                     int(System.ticket_child_3) * int(table[5])],
-                    ['7', type_ticket[6], '-', table[6], '-'],
-                    ['8', type_ticket[7], '-', table[7], '-']]
+                    # взрослые
+                    ['1', type_ticket[0], System.ticket_adult_1, table[0], adult_1],
+                    ['2', type_ticket[1], System.ticket_adult_2, table[1], adult_2],
+                    ['3', type_ticket[2], System.ticket_adult_3, table[2], adult_3],
+                    # дети
+                    ['4', 'Всего взрослых билетов', '', kol_adult, sum_adult],
+                    ['5', type_ticket[3], System.ticket_child_1, table[3], child_1],
+                    ['6', type_ticket[4], System.ticket_child_2, table[4], child_2],
+                    ['7', type_ticket[5], System.ticket_child_3, table[5], child_3],
+                    ['8', 'Всего детских билетов', '', kol_child, sum_child],
+                    # многодетные взрослые
+                    ['9', type_ticket[6], round(int(System.ticket_adult_1)/2), table[6], many_adult_1],
+                    ['10', type_ticket[7], round(int(System.ticket_adult_2)/2), table[7], many_adult_2],
+                    ['11', type_ticket[8], round(int(System.ticket_adult_3)/2), table[8], many_adult_3],
+                    ['12', 'Всего многодетных взрослых билетов', '', kol_many_adult, sum_many_adult],
+                    # многодетные детские
+                    ['13', type_ticket[9], round(int(System.ticket_child_1)/2), table[9], many_child_1],
+                    ['14', type_ticket[10], round(int(System.ticket_child_2)/2), table[10], many_child_2],
+                    ['15', type_ticket[11], round(int(System.ticket_child_3)/2), table[11], many_child_3],
+                    ['16', 'Всего многодетных детских билетов', '', kol_many_child, sum_many_child],
+                    ['17', type_ticket[12], '-', table[12], '-'],
+                    ['', 'Итого билетов', '',
+                     kol_adult + kol_child + kol_many_adult + kol_many_child,
+                     sum_adult + sum_child + sum_many_adult + sum_many_child]]
             logger.debug("Сведения для отчета администратора %s" % data)
             otchet.otchet_administratora(dt1, dt2, data)
             os.startfile(path)
@@ -1699,6 +1759,7 @@ class SaleForm(QDialog):
                         System.sale_checkbox_row = row
                         # изменяем флаг активности QCheckBox
                         System.exclude_from_sale = 1
+                        # ставим метку "не идет"
                         self.ui.tableWidget_2.setItem(
                             row, 4, QTableWidgetItem('н'))
                 # если QCheckBox не активен
@@ -1864,6 +1925,11 @@ class SaleForm(QDialog):
         logger.debug('Sale_dict %s' % System.sale_dict)
         # Генерируем список с билетами
         for row in range(rows):
+            # если установлена метка "не идет"
+            if self.ui.tableWidget_2.item(row, 4).text() == 'н':
+                # изменяем цену
+                logger.warning('изменяем цену!!!')
+                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f'{System.ticket_free}'))
             tickets.append((self.ui.tableWidget_2.item(row, 0).text(),
                             # фамилия
                             self.ui.tableWidget_2.item(row, 1).text(),
