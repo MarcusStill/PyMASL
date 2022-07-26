@@ -15,6 +15,7 @@ except (Exception,) as e:
 GOOD = 'ОДОБРЕНО'
 EMAIL = "test.check@pymasl.ru"
 
+
 @logger_wraps()
 def terminal_oplata(sum):
     """Операуия оплаты по банковскому терминалу"""
@@ -66,7 +67,7 @@ def terminal_vozvrat(sum):
     pay_param = ' 8 ' + sum
     pinpad_run = pinpad + pay_param
     subprocess.call(pinpad_run)
-    #  Проверка файла с результатом работы дбанковского терминала"""
+    #  Проверка файла с результатом работы банковского терминала"""
     logger.info("Proverka file")
     # Проверяем одобрение операции
     try:
@@ -123,7 +124,7 @@ def terminal_check_itog_window():
             )
     except FileNotFoundError as not_found:
         lines = 'File not found!'
-        logger.info("File not found")
+        logger.warning(not_found.filename)
         windows.info_window(
             'Ошибка сверки итогов по банковскому '
             'терминалу!', '', str(lines)
@@ -147,7 +148,7 @@ def terminal_svod_check():
             result = 1
             print_slip_check(1)
     except FileNotFoundError as not_found:
-        logger.info("File not found")
+        logger.warning(not_found.filename)
         result = 0
     return result
 
@@ -161,7 +162,7 @@ def terminal_control_lenta():
     try:
         print_slip_check(1)
     except FileNotFoundError as not_found:
-        logger.info("File not found")
+        logger.warning(not_found.filename)
 
 
 @logger_wraps()
@@ -363,6 +364,7 @@ def kassir_reg(user):
 def check_open(sale_dict, payment_type, user, type_operation, print_check):
     """Проведение операции оплаты"""
     logger.info("Запуск функции check_open")
+    logger.debug('В функцию переданы следующие данные %s' % sale_dict)
     time = sale_dict['detail'][6]
     bank, kkt_type, payment = None, None, None
     if print_check == 0:
@@ -371,16 +373,28 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check):
         logger.info("Кассовый чек печатаем")
     # если оплата банковской картой
     if payment_type == 101:
-        payment = 1
-        # результат операции по терминалу
-        logger.info("Запускаем оплату по банковскому терминалу")
-        bank = terminal_oplata(str(sale_dict['detail'][7]))
-        logger.debug("BANK: %s" % bank)
-        if bank != 1:
-            logger.warning("Оплата по банковскому терминалу завершена с ошибкой")
-            windows.info_window("Оплата по банковскому терминалу завершена с ошибкой",
-                                '', "")
-            return 0, payment
+        if type_operation == 1:
+            payment = 1
+            # результат операции по терминалу
+            logger.info("Запускаем оплату по банковскому терминалу")
+            bank = terminal_oplata(str(sale_dict['detail'][7]))
+            logger.debug("BANK: %s" % bank)
+            if bank != 1:
+                logger.warning("Оплата по банковскому терминалу завершена с ошибкой")
+                windows.info_window("Оплата по банковскому терминалу завершена с ошибкой",
+                                    '', "")
+                return 0, payment
+        elif type_operation == 2:
+            payment = 1
+            # результат операции по терминалу
+            logger.info("Запускаем оплату по банковскому терминалу")
+            bank = terminal_vozvrat(str(sale_dict['detail'][7]))
+            logger.debug("BANK: %s" % bank)
+            if bank != 1:
+                logger.warning("Оплата по банковскому терминалу завершена с ошибкой")
+                windows.info_window("Оплата по банковскому терминалу завершена с ошибкой",
+                                    '', "")
+                return 0, payment
     # если offline оплата банковской картой
     elif payment_type == 100:
         payment = 3
@@ -523,7 +537,7 @@ def smena_close(user):
                     fptr.close()
             except FileNotFoundError as not_found:
                 lines = 'File not found!'
-                logger.info("File not found")
+                logger.warning(not_found.filename)
                 windows.info_window('Сверка итогов по банковскому'
                                     'терминалу завершена неудачно.', '',
                                     str(lines))

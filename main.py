@@ -898,15 +898,22 @@ class AuthForm(QDialog):
             window.main_button_all_sales()
             # проверяем статус текущего дня
             day_today = System.check_day(self)
+            logger.info('Статус текущего дня %s' % day_today)
             if day_today == 0:
                 System.what_a_day = 0
                 logger.info("Сегодня будний день %s" % System.what_a_day)
             elif day_today == 1:
                 System.what_a_day = 1
-                sun, num_of_week = System.check_one_sunday(self)
-                # проверяем если номер дня недели равен 7 и дата <= 7
-                System.sunday = sun
-                System.num_of_week = num_of_week
+                logger.info("Сегодня выходной день %s" % System.what_a_day)
+            # проверяем номер дня недели
+            num_of_week = dt.datetime.today().isoweekday()
+            logger.debug('Номер дня недели %s' % num_of_week)
+            System.num_of_week = num_of_week
+            # проверяем текущую дату
+            date_num = date.today().day
+            if num_of_week == 7 and date_num <= 7:
+                logger.info("Сегодня день многодетных")
+                System.sunday = 1
             # считываем количество РМ и имена
             System.kol_pc = kol_pc
             System.pc_1 = pc_1
@@ -1516,8 +1523,6 @@ class SaleForm(QDialog):
                                                               Ticket.id_client == search_client.id))
             for client_in_sales in sales:
                 if client_in_sales:
-                    logger.debug('Продажи, в которых клиент был ранее %s'
-                                 % (client_in_sales))
                     # Находим других посетителей, которые были в этих продажах
                     search_sale = session.query(Ticket.id_sale,
                                                 Ticket.id_client).filter(Ticket.id_sale == client_in_sales[2])
@@ -1688,6 +1693,7 @@ class SaleForm(QDialog):
                     self.ui.pushButton_6.setEnabled(False)
                 # используем "флаг" many_child, для скидки 50%
                 elif System.num_of_week <= 5:
+                    logger.info('Многодетным скидка 50%')
                     many_child = 2
                     # устанавливаем скидку
                     self.ui.checkBox_2.setChecked(True)
@@ -1709,6 +1715,9 @@ class SaleForm(QDialog):
                 # отключаем кнопки сохранения и возврата
                 self.ui.pushButton_3.setEnabled(False)
                 self.ui.pushButton_6.setEnabled(False)
+            # если стоит флаг 'н' - исключаем из продажи
+            elif self.ui.tableWidget_2.item(row, 4).text() == 'н':
+                self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setCheckState(Qt.Checked)
             # учитываем тип билета
             type_ticket = self.ui.tableWidget_2.item(row, 2).text()
             # считаем взрослые билеты
@@ -1782,6 +1791,10 @@ class SaleForm(QDialog):
                             System.sale_checkbox_row, 8
                     ).findChild(QCheckBox).isChecked():
                         logger.info('возвращаем в продажу')
+                        self.ui.tableWidget_2.setItem(
+                            row, 4, QTableWidgetItem('-'))
+                        self.ui.tableWidget_2.setItem(
+                            row, 4, QTableWidgetItem(price))
                         System.sale_dict['detail'][0] = 0
                         System.sale_dict['detail'][1] = 0
                         System.sale_dict['detail'][4] = 0
@@ -1928,7 +1941,7 @@ class SaleForm(QDialog):
             # если установлена метка "не идет"
             if self.ui.tableWidget_2.item(row, 4).text() == 'н':
                 # изменяем цену
-                logger.warning('изменяем цену!!!')
+                logger.debug('Изменяем цену в билете посетителя!')
                 self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f'{System.ticket_free}'))
             tickets.append((self.ui.tableWidget_2.item(row, 0).text(),
                             # фамилия
@@ -2110,7 +2123,6 @@ class SaleForm(QDialog):
             payment_type = 101
         else:
             payment_type = 102
-        logger.info(payment_type)
         state_check, payment = kkt.check_open(System.sale_dict,
                                               payment_type, System.user, 2, 1)
         check = None
@@ -2306,7 +2318,7 @@ class System:
             # день недели 5 или 6
             if num_day >= 5:
                 status = 1
-                System.what_a_day = 1
+                # System.what_a_day = 1
                 logger.info('Сегодня выходной день')
             else:
                 day = '-'.join(day)
@@ -2317,27 +2329,11 @@ class System:
                 session.close()
                 if check_day:
                     status = 1
-                    System.what_a_day = 1
+                    # System.what_a_day = 1
                     logger.info('Сегодня дополнительный выходной')
                 else:
                     status = 0
         return status
-
-    def check_one_sunday(self):
-        """Проверяем день многодетных"""
-        logger.info("Запуск функции check_one_sunday")
-        day = 0
-        num_of_week = None
-        # если сегодня выходной
-        if System.what_a_day == 1:
-            # проверяем если номер дня недели равен 7 и дата <= 7
-            num_of_week = dt.datetime.today().isoweekday()
-            date_num = date.today().day
-            if num_of_week == 7 and date_num <= 7:
-                logger.info("Сегодня день многодетных")
-                day = 1
-                System.sunday = day
-        return day, num_of_week
 
 
 class PayForm(QDialog):
