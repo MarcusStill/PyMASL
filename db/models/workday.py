@@ -1,8 +1,7 @@
-from sqlalchemy import (
-    Column,
-    SmallInteger,
-    Date,
-)
+from datetime import date
+
+from sqlalchemy import Date
+from sqlalchemy.orm import Mapped, mapped_column
 
 from db.models.base import Base
 
@@ -14,18 +13,11 @@ class Workday(Base):
         'comment': 'Информация о рабочих днях'
     }
 
-    id = Column(
-        SmallInteger,
-        nullable=False,
-        unique=True,
-        primary_key=True,
-    )
-    date = Column(Date, nullable=False, comment='Рабочий день')
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, unique=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False, comment='Рабочий день')
 
+    def __str__(self) -> str:
+        return f'id={self.id}, date={self.date}'
 
-    def __str__(self):
-        return f'{self.id} {self.date}'
-
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
