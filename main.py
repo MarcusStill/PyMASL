@@ -7,13 +7,12 @@ import sys
 from configparser import ConfigParser
 from datetime import date, timedelta
 from design.main_form import Ui_MainWindow
-# from myclasses.client import ClientForm
-# from myclasses.sale import SaleForm
+
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import QApplication, QCheckBox, QDialog
 from PySide6.QtCore import Qt, Signal
 
-from design.client import Ui_Dialog_Client
+from design.pay import Ui_Dialog_Pay
 
 from design.sale import Ui_Dialog_Sale
 from files import windows
@@ -27,10 +26,11 @@ from db.models import Ticket
 from db.models import Workday
 from db.models.user import User
 from db.models.sale_service import SaleService
-from sqlalchemy import engine, and_, select
+from sqlalchemy import engine, and_, select, func, update, desc
 from PySide6.QtGui import QPixmap
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, exc
+from design.client import Ui_Dialog_Client
 
 
 # Чтение параметров из файла конфигурации
@@ -112,13 +112,188 @@ class AuthForm(QDialog):
             System.pc_1 = pc_1
             System.pc_2 = pc_2
             window.show()
-            # window.exec_()
+            window.exec_()
         else:
             logger.warning("Неудачная авторизация пользователя %s" % login)
             windows.info_window(
                 'Пользователь не найден',
                 'Проверьте правильность ввода логина и пароля.', '')
 
+
+class ClientForm(QDialog):
+    """Форма с данными клиента"""
+
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Dialog_Client()
+        self.ui.setupUi(self)
+        self.ui.pushButton.clicked.connect(self.client_data_save)
+        self.ui.pushButton_2.clicked.connect(self.close)
+        self.ui.pushButton_3.clicked.connect(self.client_data_copy)
+        self.ui.pushButton_4.clicked.connect(self.client_data_paste)
+
+    def client_data_copy(self):
+        """
+        Функция запоминает фамилию нового клиента для последующей вставки.
+        Полезна при внесении в БД сведений об однофамильцах.
+        """
+        logger.info("Запуск функции client_data_copy")
+        System.last_name = str(self.ui.lineEdit.text()).title()
+
+    def client_data_paste(self):
+        """
+        Функция вставляет в соответствующее поле заранее сохраненную фамилию клиента,
+        внесенного в БД в предыдущий раз
+        """
+        logger.info("Запуск функции client_data_paste")
+        self.ui.lineEdit.setText(System.last_name)
+
+    def client_data_save(self):
+        """Функция сохраняет в БД сведения о новом клиенте"""
+        logger.info("Запуск функции client_data_save")
+        # сбрасываем id последнего добавленного клиента
+        System.add_new_client_in_sale = 0
+        # делаем заглавными первые буквы фамилии и имени
+        System.last_name = str(self.ui.lineEdit.text()).title()
+        first_name = str(self.ui.lineEdit_2.text()).title()
+        # проверяем заполнены ли поля имени и фамилии
+        if len(System.last_name) >= 2 and len(first_name) >= 2:
+            if System.client_update != 1:
+                logger.info('Добавляем нового клиента')
+                with Session(engine) as session:
+                    # # получаем максимальный id в таблице клиентов
+                    query = func.max(Client.id)
+                    client_index: int = session.execute(query).scalars().first()
+                    logger.debug('Количество клиентов в бд: %s' % client_index)
+                    new_client = Client(
+                        id=client_index + 1,
+                        last_name=System.last_name,
+                        first_name=str(self.ui.lineEdit_2.text()),
+                        middle_name=str(self.ui.lineEdit_3.text()),
+                        birth_date=(self.ui.dateEdit.date().toString("yyyy-MM-dd")),
+                        gender=str(self.ui.comboBox.currentText()),
+                        phone=self.ui.lineEdit_4.text(),
+                        email=self.ui.lineEdit_5.text(),
+                        privilege=str(self.ui.comboBox_2.currentText())
+                    )
+                    session.add(new_client)
+                    session.commit()
+                # сохраняем id нового клиента
+                System.id_new_client_in_sale = client_index + 1
+            elif System.client_update == 1:
+                # обновляем информацию о клиенте
+                logger.info('Обновляем информацию о клиенте')
+                with Session(engine) as session:
+                    session.execute(
+                        update(Client).where(Client.id == System.client_id).values(
+                            id=System.client_id,
+                            last_name=str(self.ui.lineEdit.text()),
+                            first_name=str(self.ui.lineEdit_2.text()),
+                            middle_name=str(self.ui.lineEdit_3.text()),
+                            birth_date=self.ui.dateEdit.date().toString("yyyy-MM-dd"),
+                            gender=str(self.ui.comboBox.currentText()),
+                            phone=self.ui.lineEdit_4.text(),
+                            email=self.ui.lineEdit_5.text(),
+                            privilege=str((self.ui.comboBox_2.currentText()))
+                        )
+                    )
+                    session.commit()
+            self.close()
+            System.client_update = None
+            System.client_id = None
+        else:
+            windows.info_window('Внимание!',
+                                'Необходимо заполнить обязательные поля: имя и фамилия',
+                                '')
+
+class SaleForm(QDialog):
+    """Форма продажи"""
+
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Dialog_Sale()
+        self.ui.setupUi(self)
+        # self.ui.pushButton.clicked.connect(self.sale_search_clients)
+        # self.ui.pushButton_2.clicked.connect(lambda: MainWindow.main_open_client(self))
+        # self.ui.pushButton_11.clicked.connect(self.sale_edit_client)
+        # self.ui.pushButton_3.clicked.connect(self.sale_save_selling)
+        # self.ui.pushButton_4.clicked.connect(self.close)
+        self.ui.pushButton_5.clicked.connect(
+            lambda: self.sale_open_pay(self.ui.label_8.text()))
+        # self.ui.pushButton_6.clicked.connect(self.sale_return_selling)
+        # self.ui.pushButton_7.clicked.connect(self.sale_generate_saved_tickets)
+        # self.ui.tableWidget.doubleClicked.connect(self.sale_add_client_to_selling)
+        # cur_today = date.today()
+        # self.ui.dateEdit.setDate(cur_today)
+        # self.ui.dateEdit.dateChanged.connect(self.sale_calendar_color_change)
+        # self.ui.comboBox.currentTextChanged.connect(self.sale_edit_selling)
+        # self.ui.checkBox_2.stateChanged.connect(self.sale_check_discount_enabled)
+        # self.ui.comboBox_2.currentTextChanged.connect(self.sale_edit_selling)
+        # # адаптированный для пользователя фильтр
+        # self.ui.comboBox_4.currentTextChanged.connect(self.sale_check_filter_update)
+        # # KeyPressEvent
+        # self.ui.tableWidget_2.keyPressEvent = self.sale_key_pressed
+        # self.ui.pushButton_9.clicked.connect(self.sale_add_new_client)
+        # self.ui.pushButton_10.clicked.connect(self.sale_edit_selling)
+        # self.ui.tableWidget_3.doubleClicked.connect(self.sale_add_client_to_selling_2)
+
+    def sale_open_pay(self, txt):
+        """Открываем форму оплаты"""
+        logger.info("Запуск функции sale_open_pay")
+        pay = PayForm()
+        # Передаем текст в форму PayForm
+        pay.setText(txt)
+
+        res = pay.exec_()
+        # если пользователь нажал крестик или кнопку Escape,
+        # то по-умолчанию возвращается QDialog.Rejected
+        if res == QDialog.Rejected:
+            # наверное, надо ничего не делать в этом случае и
+            # просто завершить работу функции
+            return
+            # или закрыть SaleForm при помощи вызова reject()
+        # иначе, если оплата выбрана
+        if res == Payment.Card:
+            # Оплачено картой
+            logger.info('Оплата банковской картой')
+            payment_type = Payment.Card
+            # запустить оплату по терминалу
+            self.sale_transaction_selling(payment_type, System.print_check)
+        elif res == Payment.Cash:
+            logger.info('Оплата наличными')
+            payment_type = Payment.Cash
+            self.sale_transaction_selling(payment_type, System.print_check)
+        elif res == Payment.Offline:
+            logger.info('Оплата банковской картой offline')
+            payment_type = Payment.Offline
+            self.sale_transaction_selling(payment_type, System.print_check)
+        # Закрываем окно продажи и возвращаем QDialog.Accepted
+        self.accept()
+
+class PayForm(QDialog):
+    """Форма оплаты"""
+    startGenerate = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Dialog_Pay()
+        self.ui.setupUi(self)
+        # self.ui.checkBox.setChecked(True)
+        # self.ui.checkBox.stateChanged.connect(self.check_print)
+        # # Посылаем сигнал генерации чека
+        # # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
+        # # при вызове done() окно должно закрыться и exec_
+        # # вернет переданный аргумент из done()
+        # self.ui.pushButton.clicked.connect(lambda: self.done(Payment.Cash))
+        # self.ui.pushButton_2.clicked.connect(lambda: self.done(Payment.Card))
+        # self.ui.pushButton_3.clicked.connect(lambda: self.done(Payment.Offline))
+
+    def setText(self, txt):
+        """Устанавливаем текстовое значение в метку"""
+        logger.info("Запуск функции setText")
+        self.ui.label_2.setText(txt)
+        # по умолчанию печатаем чек
+        System.print_check = 1
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     """Главная форма"""
