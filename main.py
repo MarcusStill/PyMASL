@@ -11,7 +11,7 @@ from design.main_form import Ui_MainWindow
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import QApplication, QCheckBox, QDialog
 from PySide6.QtCore import Qt, Signal
-from typing import Type
+from typing import Type, Any
 from design.pay import Ui_Dialog_Pay
 
 from design.sale import Ui_Dialog_Sale
@@ -466,60 +466,52 @@ class SaleForm(QDialog):
             System.sale_dict['detail'][3] = 0
             self.sale_edit_selling()
 
+    def filling_client_tablewidget(self, last_name: str, first_name: str, age: int, privilege: str, phone: int, id: int):
+        row = self.ui.tableWidget.rowCount()
+        self.ui.tableWidget.insertRow(row)
+        self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(last_name))
+        self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(first_name))
+        self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(age))
+        self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(privilege))
+        self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(phone))
+        self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(id))
+        self.ui.tableWidget.setColumnHidden(5, True)
+
     @logger_wraps()
     def sale_search_clients(self):
         """Выводим в tableWidget список найденных клиентов"""
         logger.info("Запуск функции sale_search_clients")
-        today = date.today()
         if System.what_a_day == 1:
             self.ui.dateEdit.setStyleSheet('background-color: red;')
-        # вычисляем индекс значения
-        index = self.ui.comboBox_4.currentIndex()
+        # Вычисляем индекс значения
+        index: int = self.ui.comboBox_4.currentIndex()
         if index == 2:
             # Поиск по номеру телефона
-            query = '%' + self.ui.lineEdit.text() + '%'
+            query: str = '%' + self.ui.lineEdit.text() + '%'
             with Session(engine) as session:
                 search: list[Type[Client]] = session.query(Client).filter(Client.phone.like(query)).all()
             for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
-                # Вычисляем возраст клиента
-                age = (today.year - client.birth_date.year - (
-                        (today.month, today.day) < (client.birth_date.month, client.birth_date.day)
-                ))
-                self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{age}"))
-                self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setColumnHidden(5, True)
+                age: str = str(System.calculate_age(self, client.birth_date))
+                self.filling_client_tablewidget(
+                    client.last_name, client.first_name, age, client.privilege, client.phone, client.id
+                )
         elif index == 1:
             # Поиск по фамилии
-            query = '%' + self.ui.lineEdit.text() + '%'
+            query: str = '%' + self.ui.lineEdit.text() + '%'
             self.ui.tableWidget.setRowCount(0)
             with Session(engine) as session:
                 search: list[Type[Client]] = session.query(Client).filter(Client.last_name.ilike(query)).all()
             for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
-                # Вычисляем возраст клиента
-                age = (today.year - client.birth_date.year - (
-                        (today.month, today.day) < (client.birth_date.month, client.birth_date.day)
-                ))
-                self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{age}"))
-                self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setColumnHidden(5, True)
+                age: str = str(System.calculate_age(self, client.birth_date))
+                self.filling_client_tablewidget(
+                    client.last_name, client.first_name, age, client.privilege, client.phone, client.id
+                )
         elif index == 0:
             # Поиск по фамилии и имени
             self.ui.tableWidget.setRowCount(0)
-            search = self.ui.lineEdit.text().title()
-            # разбиваем поисковую фразу на две
-            lst = search.split()
+            search: list[Type[Client]] = self.ui.lineEdit.text().title()
+            # Разбиваем поисковую фразу на две
+            lst: Any = search.split()
             if len(lst) == 2:
                 with Session(engine) as session:
                     search: list[Type[Client]] = session.query(Client).filter(and_(Client.first_name.ilike(
@@ -530,59 +522,30 @@ class SaleForm(QDialog):
                                     'Введите начальные буквы фамилии'
                                     'и имени через пробел', '')
             for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(
-                    row, 0, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(
-                    row, 1, QTableWidgetItem(f"{client.first_name}"))
-                # Вычисляем возраст клиента
-                age = (today.year - client.birth_date.year - (
-                        (today.month, today.day) < (client.birth_date.month, client.birth_date.day)
-                ))
-                self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{age}"))
-                self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setColumnHidden(5, True)
+                age: str = str(System.calculate_age(self, client.birth_date))
+                self.filling_client_tablewidget(
+                    client.last_name, client.first_name, age, client.privilege, client.phone, client.id
+                )
         elif index == 3:
             # Поиск инвалидов
             self.ui.tableWidget.setRowCount(0)
             with Session(engine) as session:
                 search: list[Type[Client]] = session.query(Client).filter(Client.privilege.ilike('%' + 'и')).all()
             for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
-                # Вычисляем возраст клиента
-                age = (today.year - client.birth_date.year - (
-                        (today.month, today.day) < (client.birth_date.month, client.birth_date.day)
-                ))
-                self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{age}"))
-                self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setColumnHidden(5, True)
+                age: str = str(System.calculate_age(self, client.birth_date))
+                self.filling_client_tablewidget(
+                    client.last_name, client.first_name, age, client.privilege, client.phone, client.id
+                )
         elif index == 4:
             # Поиск многодетных
             self.ui.tableWidget.setRowCount(0)
             with Session(engine) as session:
                 search: list[Type[Client]] = session.query(Client).filter(Client.privilege.ilike('%' + 'м')).all()
             for client in search:
-                row = self.ui.tableWidget.rowCount()
-                self.ui.tableWidget.insertRow(row)
-                self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(f"{client.last_name}"))
-                self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(f"{client.first_name}"))
-                # Вычисляем возраст клиента
-                age = (today.year - client.birth_date.year - (
-                        (today.month, today.day) < (client.birth_date.month, client.birth_date.day)
-                ))
-                self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(f"{age}"))
-                self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(f"{client.privilege}"))
-                self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(f"{client.phone}"))
-                self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(f"{client.id}"))
-                self.ui.tableWidget.setColumnHidden(5, True)
+                age: str = str(System.calculate_age(self, client.birth_date))
+                self.filling_client_tablewidget(
+                    client.last_name, client.first_name, age, client.privilege, client.phone, client.id
+                )
 
     @logger_wraps()
     def sale_add_client_to_selling(self, *args, **kwargs):
@@ -1568,6 +1531,10 @@ class System:
                 else:
                     status_day: int = 0
         return status_day
+
+    def calculate_age(self, born: date) -> int:
+        today: date = date.today()
+        return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
 
 if __name__ == "__main__":
