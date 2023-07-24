@@ -237,7 +237,7 @@ class SaleForm(QDialog):
         self.ui.comboBox.currentTextChanged.connect(self.sale_update)
         self.ui.checkBox_2.stateChanged.connect(self.checking_status_discounted_field)
         self.ui.comboBox_2.currentTextChanged.connect(self.sale_update)
-        # адаптированный для пользователя фильтр
+        # Адаптированный для пользователя фильтр
         self.ui.comboBox_4.currentTextChanged.connect(self.check_filter_update)
         # KeyPressEvent
         self.ui.tableWidget_2.keyPressEvent = self.tracking_button_pressing
@@ -1195,22 +1195,30 @@ class PayForm(QDialog):
         super().__init__()
         self.ui = Ui_Dialog_Pay()
         self.ui.setupUi(self)
-        # self.ui.checkBox.setChecked(True)
-        # self.ui.checkBox.stateChanged.connect(self.check_print)
-        # # Посылаем сигнал генерации чека
-        # # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
-        # # при вызове done() окно должно закрыться и exec_
-        # # вернет переданный аргумент из done()
-        # self.ui.pushButton.clicked.connect(lambda: self.done(Payment.Cash))
-        # self.ui.pushButton_2.clicked.connect(lambda: self.done(Payment.Card))
-        # self.ui.pushButton_3.clicked.connect(lambda: self.done(Payment.Offline))
+        self.ui.checkBox.setChecked(True)
+        self.ui.checkBox.stateChanged.connect(self.check_print)
+        # Посылаем сигнал генерации чека
+        # self.ui.pushButton.clicked.connect(self.startGenerate.emit)
+        # при вызове done() окно должно закрыться и exec_
+        # вернет переданный аргумент из done()
+        self.ui.pushButton.clicked.connect(lambda: self.done(Payment.Cash))
+        self.ui.pushButton_2.clicked.connect(lambda: self.done(Payment.Card))
+        self.ui.pushButton_3.clicked.connect(lambda: self.done(Payment.Offline))
 
-    def setText(self, txt):
-        """Устанавливаем текстовое значение в метку"""
+    def setText(self, txt) -> None:
+        """Функция устанавливает текстовое значение в метку"""
         logger.info("Запуск функции setText")
         self.ui.label_2.setText(txt)
-        # по умолчанию печатаем чек
+        # По умолчанию печатаем чек
         System.print_check = 1
+
+    def check_print(self) -> None:
+        """Функция печатает кассовый чек, если checkBox на форме оплаты был активен"""
+        logger.info("Запуск функции check_print")
+        if self.ui.checkBox.isChecked():
+            System.print_check = 1
+        else:
+            System.print_check = 0
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -1220,30 +1228,167 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.ui.pushButton.clicked.connect(self.main_search_clients)
         # Открыть окно добавления нового клиента
         self.ui.pushButton_2.clicked.connect(self.main_open_client)
+        self.ui.pushButton_3.clicked.connect(self.main_edit_client)
+        self.ui.tableWidget.doubleClicked.connect(self.main_edit_client)
+        # Отображение всех клиентов
+        self.ui.pushButton_8.clicked.connect(kkt.get_info)
+        self.ui.pushButton_11.clicked.connect(kkt.last_document)
+        self.ui.pushButton_9.clicked.connect(kkt.get_time)
+        self.ui.pushButton_5.clicked.connect(kkt.report_x)
+        self.ui.pushButton_6.clicked.connect(lambda: kkt.smena_close(System.user))
+        self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
+        self.ui.pushButton_15.clicked.connect(kkt.continue_print)
+        self.ui.pushButton_10.clicked.connect(kkt.smena_info)
+        self.ui.pushButton_16.clicked.connect(kkt.terminal_check_itog_window)
+        self.ui.pushButton_21.clicked.connect(kkt.terminal_svod_check)
+        self.ui.pushButton_22.clicked.connect(kkt.terminal_control_lenta)
         self.ui.pushButton_23.clicked.connect(self.main_open_sale)
+        self.ui.pushButton_13.clicked.connect(self.main_button_all_sales)
+        self.ui.pushButton_18.clicked.connect(self.main_otchet_kassira)
+        self.ui.pushButton_19.clicked.connect(self.main_otchet_administratora)
+        self.ui.tableWidget_2.doubleClicked.connect(self.main_search_selected_sale)
+        self.ui.pushButton_17.clicked.connect(self.main_get_statistic)
+        self.ui.dateEdit.setDate(date.today())
+        self.ui.dateEdit_2.setDate(date.today())
+        self.ui.lineEdit_2.returnPressed.connect(self.main_search_clients)
+        self.ui.comboBox_3.currentTextChanged.connect(self.main_filter_clear)
+        # изменяем ширину столбца
+        self.ui.tableWidget_2.setColumnWidth(3, 250)
 
-    def main_search_clients(self):
+    def filling_client_table_widget_main_form(self, last_name: str, first_name: str, middle_name: str, birth_date: date,
+                                    gender: str, phone: str, email: str,privilege: str, id: int) -> None:
+        """Функция заполняет полученными данными tableWidget (список посетителей)"""
+        row = self.ui.tableWidget.rowCount()
+        self.ui.tableWidget.insertRow(row)
+        self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(last_name))
+        self.ui.tableWidget.setItem(row, 1, QTableWidgetItem(first_name))
+        self.ui.tableWidget.setItem(row, 2, QTableWidgetItem(middle_name))
+        self.ui.tableWidget.setItem(row, 3, QTableWidgetItem(birth_date))
+        self.ui.tableWidget.setItem(row, 4, QTableWidgetItem(gender))
+        self.ui.tableWidget.setItem(row, 5, QTableWidgetItem(phone))
+        self.ui.tableWidget.setItem(row, 6, QTableWidgetItem(email))
+        self.ui.tableWidget.setItem(row, 7, QTableWidgetItem(privilege))
+        self.ui.tableWidget.setItem(row, 8, QTableWidgetItem(id))
+        self.ui.tableWidget.setColumnHidden(8, True)
+
+    @logger_wraps()
+    def main_search_clients(self) -> None:
         """
-        Выводим в tableWidget (вкладка "посетители")
-        отфильтрованный список клиентов
+        Выводим в tableWidget (вкладка "посетители") отфильтрованный список клиентов
         """
-        pass
+        logger.info("Запуск функции main_search_clients")
+        user_filter: str = '%' + self.ui.lineEdit_2.text() + '%'
+        # Вычисляем индекс значения
+        index: int = self.ui.comboBox_3.currentIndex()
+        # Изменяем ширину столбов
+        self.ui.tableWidget.setColumnWidth(0, 200)
+        self.ui.tableWidget.setColumnWidth(1, 150)
+        self.ui.tableWidget.setColumnWidth(2, 150)
+        self.ui.tableWidget.setColumnWidth(6, 200)
+        self.ui.tableWidget.setColumnWidth(7, 200)
+        if index == 2:
+            # Поиск по номеру телефона
+            with Session(engine) as session:
+                search: list[Type[Client]] = session.query(Client).filter(Client.phone.ilike(user_filter)).all()
+            for client in search:
+                self.filling_client_table_widget_main_form(
+                    client.last_name, client.first_name, client.middle_name, str(client.birth_date), client.gender,
+                    client.phone, client.email, client.privilege, str(client.id)
+                )
+        elif index == 1:
+            # Поиск по фамилии
+            self.ui.tableWidget.setRowCount(0)
+            with Session(engine) as session:
+                search: list[Type[Client]] = session.query(Client).filter(Client.last_name.ilike(user_filter)).all()
+            for client in search:
+                self.filling_client_table_widget_main_form(
+                    client.last_name, client.first_name, client.middle_name, str(client.birth_date), client.gender,
+                    client.phone, client.email, client.privilege, str(client.id)
+                )
+        elif index == 0:
+            # Поиск по фамилии и имени
+            self.ui.tableWidget.setRowCount(0)
+            user_filter: str = self.ui.lineEdit_2.text().title()
+            # Разбиваем поисковую фразу на две
+            lst: Any = user_filter.split()
+            if len(lst) == 2:
+                with Session(engine) as session:
+                    search: list[Type[Client]] = session.query(Client).filter(and_(Client.first_name.ilike(
+                        lst[1] + '%'), Client.last_name.ilike(
+                        lst[0] + '%'))).all()
+            else:
+                windows.info_window('Неправильно задано условие для поиска',
+                                    'Введите начальные буквы фамилии'
+                                    'и имени через пробел', '')
+            for client in search:
+                self.filling_client_table_widget_main_form(
+                    client.last_name, client.first_name, client.middle_name, str(client.birth_date), client.gender,
+                    client.phone, client.email, client.privilege, str(client.id)
+                )
+        elif index == 3:
+            # Поиск инвалидов
+            self.ui.tableWidget.setRowCount(0)
+            with Session(engine) as session:
+                search: list[Type[Client]] = session.query(Client).filter(Client.privilege.ilike('%' + 'и')).all()
+            for client in search:
+                self.filling_client_table_widget_main_form(
+                    client.last_name, client.first_name, client.middle_name, str(client.birth_date), client.gender,
+                    client.phone, client.email, client.privilege, str(client.id)
+                )
+        elif index == 4:
+            # Поиск многодетных
+            self.ui.tableWidget.setRowCount(0)
+            with Session(engine) as session:
+                search: list[Type[Client]] = session.query(Client).filter(Client.privilege.ilike('%' + 'м')).all()
+            for client in search:
+                self.filling_client_table_widget_main_form(
+                    client.last_name, client.first_name, client.middle_name, str(client.birth_date), client.gender,
+                    client.phone, client.email, client.privilege, str(client.id)
+                )
 
     def main_edit_client(self):
-        """
-        Поиск выделенной строки в таблице клиентов
-        и открытие формы для редактирования
-        """
-        pass
+        """Функция ищет выделенную строку в таблице клиентов и открывает форму для редактирования данных"""
+        logger.info("Запуск функции edit_client_in_sale")
+        # Ищем индекс и значение ячейки
+        row_number: int = self.ui.tableWidget.currentRow()
+        # Получаем содержимое ячейки
+        client_id: str = self.ui.tableWidget.item(row_number, 8).text()
+
+        with Session(engine) as session:
+            search_client: Type[Client] = session.query(Client).filter_by(id=client_id).first()
+        # Сохраняем id клиента
+        System.client_id = search_client.id
+        # Передаем в форму данные клиента
+        client = ClientForm()
+        client.ui.lineEdit.setText(search_client.last_name)
+        client.ui.lineEdit_2.setText(search_client.first_name)
+        client.ui.lineEdit_3.setText(search_client.middle_name)
+        client.ui.dateEdit.setDate(search_client.birth_date)
+        # Поиск значения для установки в ComboBox gender
+        index_gender: int = client.ui.comboBox.findText(
+            search_client.gender, Qt.MatchFixedString)
+        if index_gender >= 0:
+            client.ui.comboBox.setCurrentIndex(index_gender)
+        client.ui.lineEdit_4.setText(search_client.phone)
+        client.ui.lineEdit_5.setText(search_client.email)
+        # Ищем значение для установки в ComboBox privilege
+        index_privilege: int | None = client.ui.comboBox.findText(search_client.privilege, Qt.MatchFixedString)
+        if index_privilege >= 0:
+            client.ui.comboBox_2.setCurrentIndex(index_privilege)
+        client.show()
+        # Сохраняем параметры данных об уже существующем клиенте
+        System.client_update = 1
+        logger.info('Обновляем инф. клиента %s' % System.client_update)
+        logger.debug('id клиента %s' % System.client_id)
+        client.exec_()
 
     def main_filter_clear(self):
-        """
-        Передаем значение пользовательского
-        фильтра в модель QSqlTableModel
-        """
-        pass
+        """Функция очищает строку поиска (lineEdit)"""
+        logger.info("Запуск функции check_filter_update")
+        self.ui.lineEdit_2.clear()
 
     def main_search_selected_sale(self):
         """
@@ -1253,20 +1398,101 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         pass
 
     def main_button_all_sales(self):
-        """Фильтр продаж в tableWidget за 1, 3 и 7 дней"""
-        pass
+        """Функция выводит на форму продаж в соответствии с выбранным пользователем фильтром (за 1, 3 и 7 дней)"""
+        logger.info("Запуск функции main_button_all_sales")
+        filter_day = 0
+        self.ui.tableWidget_2.setRowCount(0)
+        # Фильтр продаж за 1, 3 и 7 дней
+        if self.ui.radioButton.isChecked():
+            filter_day = dt.datetime(dt.datetime.today().year, dt.datetime.today().month, dt.datetime.today().day)
+        elif self.ui.radioButton_2.isChecked():
+            filter_day = dt.datetime.today() - timedelta(days=3)
+        elif self.ui.radioButton_3.isChecked():
+            filter_day = dt.datetime.today() - timedelta(days=7)
+        with Session(engine) as session:
+            sales = session.query(Sale).filter(Sale.datetime >= filter_day).order_by(desc(Sale.id))
+        if sales:
+            for sale in sales:
+                row = self.ui.tableWidget_2.rowCount()
+                self.ui.tableWidget_2.insertRow(row)
+                self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{sale.id}"))
+                self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{sale.id_client}"))
+                self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{sale.price}"))
+                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.datetime}"))
+                if sale.status == 0:
+                    status_type = 'создана'
+                elif sale.status == 1:
+                    status_type = 'оплачена'
+                elif sale.status == 2:
+                    status_type = 'возврат'
+                self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{status_type}"))
+                self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{sale.discount}"))
+                self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{sale.pc_name}"))
+                if sale.payment_type == 1:
+                    payment_type = 'карта'
+                elif sale.payment_type == 2:
+                    payment_type = 'наличные'
+                elif sale.payment_type == 3:
+                    payment_type = 'карта offline'
+                else:
+                    payment_type = '-'
+                self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(f"{payment_type}"))
 
     def main_open_client(self):
-        """Открываем форму с данными клиента"""
+        """Функция открывает форму с данными клиента"""
         client = ClientForm()
         client.show()
         client.exec()
 
     def main_open_sale(self):
-        """Открываем форму с продажей"""
+        """Функция открывает форму продажи"""
+        logger.info("Запуск функции main_open_sale")
         sale = SaleForm()
         sale.show()
-        sale.exec()
+        # кнопка сохранить
+        sale.ui.pushButton_3.setEnabled(True)
+        # кнопка оплатить
+        sale.ui.pushButton_5.setEnabled(True)
+        # кнопка обновить
+        sale.ui.pushButton_10.setEnabled(True)
+        # кнопка возврат
+        sale.ui.pushButton_6.setEnabled(False)
+        # кнопка печать билетов
+        sale.ui.pushButton_7.setEnabled(False)
+        # кнопка просмотр билетов
+        sale.ui.pushButton_8.setEnabled(False)
+        # дата посещения
+        sale.ui.dateEdit.setEnabled(True)
+        # время посещения
+        sale.ui.comboBox.setEnabled(True)
+        # клиенты в заказе
+        sale.ui.tableWidget_2.setEnabled(True)
+        # поле скидка
+        sale.ui.checkBox_2.setEnabled(True)
+        System.sale_discount = 0
+        # сбрасываем номер строки QCheckBox для исключения из продажи
+        System.sale_checkbox_row = None
+        # флаг состояния QCheckBox для исключения из продажи 0 - не активен
+        System.exclude_from_sale = 0
+        # флаг состояния особенной (бесплатной) продажи
+        System.sale_special = None
+        # Обновляем System.sale_dict
+        System.sale_dict['kol_adult'] = 0
+        System.sale_dict['price_adult'] = 0
+        System.sale_dict['kol_child'] = 0
+        System.sale_dict['price_child'] = 0
+        System.sale_dict['detail'][0] = 0
+        System.sale_dict['detail'][1] = 0
+        System.sale_dict['detail'][2] = 0
+        System.sale_dict['detail'][3] = 0
+        System.sale_dict['detail'][4] = 0
+        System.sale_dict['detail'][5] = 0
+        System.sale_dict['detail'][6] = 0
+        System.sale_dict['detail'][7] = 0
+        # сбрасываем id и статус продажи
+        System.sale_id = None
+        System.sale_status = None
+        sale.exec_()
 
     def main_get_statistic(self):
         """Генерация сводной информации о продажах и билетах"""
@@ -1282,42 +1508,42 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 class Payment:
-    """Тип платежа (перечисление)"""
+    """Класс типов платежа (перечисление)"""
     Card: int = 101
     Cash: int = 102
     Offline: int = 100
 
 
 class System:
-    """Системная информация"""
-    # данные успешно авторизованного пользователя
+    """Класс для хранения системной информации и функций"""
+    # Данные успешно авторизованного пользователя
     user = None
-    # флаг для обновления клиента
+    # Флаг для обновления клиента
     client_id: int = None
     client_update = None
     all_clients = None
-    # сохраняем фамилию нового клиента
+    # Сохраняем фамилию нового клиента
     last_name: str = ''
-    # статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
+    # Статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
     sale_status: int = None
     sale_id: int | None = None
     sale_discount: int = None
     sale_tickets: tuple = ()
     sale_tuple: tuple = ()
     sale_special: int = None
-    # номер строки с активным CheckBox для исключения взрослого из продажи
+    # Номер строки с активным CheckBox для исключения взрослого из продажи
     sale_checkbox_row: int = None
-    # состояние CheckBox для искл. взрослого из продажи: 0 - есть, 1 - нет
+    # Состояние CheckBox для искл. взрослого из продажи: 0 - есть, 1 - нет
     exclude_from_sale: int = 0
-    # какой сегодня день: 0 - будний, 1 - выходной
+    # Какой сегодня день: 0 - будний, 1 - выходной
     what_a_day: int = None
-    # первое воскресенье месяца: 0 - нет, 1 - да
+    # Первое воскресенье месяца: 0 - нет, 1 - да
     sunday: int = None
     today: date = date.today()
-    # номер дня недели
+    # Номер дня недели
     mumber_day_of_the_week: int = 0
     pc_name: str = socket.gethostname()
-    # стоимость билетов
+    # Стоимость билетов
     ticket_child_1: int = 300
     ticket_child_2: int = 600
     ticket_child_3: int = 900
@@ -1328,14 +1554,14 @@ class System:
     ticket_adult_2: int = 200
     ticket_adult_3: int = 250
     ticket_free: int = 0
-    # количество начисляемых талантов
+    # Количество начисляемых талантов
     talent_1: int = 25
     talent_2: int = 35
     talent_3: int = 50
-    # возраст посетителей
+    # Возраст посетителей
     age_min: int = 5
     age_max: int = 15
-    # информация о РМ
+    # Информация о РМ
     kol_pc: int = 0
     pc_1: str = ''
     pc_2: str = ''
@@ -1358,15 +1584,15 @@ class System:
             query = select(User).where(User.login == login, User.password == password)
             kassir: User | None = session.execute(query).scalars().first()
         if kassir:
-            # если авторизация прошла успешно - сохраняем данные пользователя
+            # Если авторизация прошла успешно - сохраняем данные пользователя
             System.user = kassir
             return 1
 
     def check_day(self) -> int:
-        """Проверяем статус дня: выходной ли это"""
+        """Функция проверяет статус текущего дня (выходной или нет)"""
         logger.info('Запуск функции check_day')
-        day = dt.datetime.now().strftime('%Y-%m-%d')
-        # проверяем есть ли текущая дата в списке дополнительных рабочих дней
+        day: list[str] = dt.datetime.now().strftime('%Y-%m-%d')
+        # Проверяем есть ли текущая дата в списке дополнительных рабочих дней
         with Session(engine) as session:
             query = select(Workday).where(Workday.date == day)
             check_day: Workday | None = session.execute(query).scalars().first()
@@ -1374,18 +1600,18 @@ class System:
             logger.info('Сегодня дополнительный рабочий день')
             status_day: int = 0
         else:
-            # преобразуем текущую дату в список
+            # Преобразуем текущую дату в список
             day: list[str] = day.split('-')
-            # вычисляем день недели
+            # Вычисляем день недели
             number_day: int = calendar.weekday(int(day[0]), int(day[1]), int(day[2]))
-            # проверяем день недели равен 5 или 6
+            # Проверяем день недели равен 5 или 6
             if number_day >= 5:
                 status_day: int = 1
                 # System.what_a_day = 1 TODO: нужно ли
                 logger.info('Сегодня выходной день')
             else:
                 day: str = '-'.join(day)
-                # проверяем есть ли текущая дата в списке дополнительных праздничных дней
+                # Проверяем есть ли текущая дата в списке дополнительных праздничных дней
                 with Session(engine) as session:
                     query = select(Holiday).where(Holiday.date == day)
                     check_day: Holiday | None = session.execute(query).scalars().first()
