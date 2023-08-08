@@ -295,21 +295,21 @@ class SaleForm(QDialog):
         # Определяем тип билета и цену
         time: int = int(self.ui.comboBox.currentText())
         if type_ticket == 'бесплатный':
-            price = System.ticket_free
+            price = System.price['ticket_free']
         elif type_ticket == 'взрослый':
             if time == 1:
-                price = System.ticket_adult_1
+                price = System.price['ticket_adult_1']
             elif time == 2:
-                price = System.ticket_adult_2
+                price = System.price['ticket_adult_2']
             else:
-                price = System.ticket_adult_3
+                price = System.price['ticket_adult_3']
         else:
             if time == 1:
-                price = System.ticket_child_1
+                price = System.price['ticket_child_1']
             elif time == 2:
-                price = System.ticket_child_2
+                price = System.price['ticket_child_2']
             else:
-                price = System.ticket_child_3
+                price = System.price['ticket_child_3']
         # Создаем виджет checkbox
         widget = QWidget()
         checkbox = QCheckBox()
@@ -694,13 +694,13 @@ class SaleForm(QDialog):
         # Устанавливаем время и количество талантов
         if time_ticket == 1:
             System.sale_dict['detail'][6] = 1
-            talent: int = System.talent_1
+            talent: int = System.talent['1_hour']
         elif time_ticket == 2:
             System.sale_dict['detail'][6] = 2
-            talent: int = System.talent_2
+            talent: int = System.talent['2_hour']
         elif time_ticket == 3:
             System.sale_dict['detail'][6] = 3
-            talent: int = System.talent_3
+            talent: int = System.talent['3_hour']
         # Записываем в sale_dict время посещения
         date_time: str = self.ui.dateEdit.date().toString("yyyy-MM-dd")
         # Анализируем таблицу с заказом
@@ -769,11 +769,11 @@ class SaleForm(QDialog):
                 # Если продолжительность посещения 1 час
                 if System.sale_dict['detail'][6] == 1:
                     # Сохраняем цену билета
-                    price: int = System.ticket_adult_1
+                    price: int = System.price['ticket_adult_1']
                 elif System.sale_dict['detail'][6] == 2:
                     # Если день многодетных
                     if many_child == 1:
-                        price: int = System.ticket_free
+                        price: int = System.price['ticket_free']
                         kol_adult_many_child += 1
                         # Изменяем цену и записываем размер скидки
                         logger.debug('Добавляем взрослого мног-го в sale_dict[detail]')
@@ -781,12 +781,12 @@ class SaleForm(QDialog):
                         System.sale_dict['detail'][1] = price
                     # Если обычный день
                     else:
-                        price: int = System.ticket_adult_2
+                        price: int = System.price['ticket_adult_2']
                 else:
                     # Если продолжительность 3 часа
                     # Если в продаже инвалид
                     if invalid == 1:
-                        price: int = System.ticket_free
+                        price: int = System.price['ticket_free']
                         kol_adult_invalid += 1
                         # Изменяем цену и записываем размер скидки
                         System.sale_dict['detail'][0] = kol_adult_invalid
@@ -794,7 +794,7 @@ class SaleForm(QDialog):
                         # Меняем категорию билета на 'c' - сопровождающий
                         self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem('с'))
                     else:
-                        price: int = System.ticket_adult_3
+                        price: int = System.price['ticket_adult_3']
                 # Привязываем продажу ко взрослому
                 if id_adult == 0:
                     System.sale_dict['detail'][5] = self.ui.tableWidget_2.item(row, 5).text()
@@ -844,13 +844,13 @@ class SaleForm(QDialog):
                 if System.sale_dict['detail'][6] == 1:
                     # Проверяем текущий день является выходным
                     if System.what_a_day == 0:
-                        price: int = System.ticket_child_1
+                        price: int = System.price['ticket_child_1']
                     else:
-                        price: int = System.ticket_child_week_1
+                        price: int = System.price['ticket_child_week_1']
                 elif System.sale_dict['detail'][6] == 2:
                     # если день многодетных
                     if many_child == 1:
-                        price: int = System.ticket_free
+                        price: int = System.price['ticket_free']
                         kol_child_many_child += 1
                         # Применяем сидку
                         System.sale_dict['detail'][2] = kol_child_many_child
@@ -859,28 +859,28 @@ class SaleForm(QDialog):
                     else:
                         # Проверяем текущий день является выходным
                         if System.what_a_day == 0:
-                            price: int = System.ticket_child_2
+                            price: int = System.price['ticket_child_2']
                         else:
-                            price: int = System.ticket_child_week_2
+                            price: int = System.price['ticket_child_week_2']
                 else:
                     # Если продолжительность посещения 3 часа
                     # Если в продаже инвалид
                     if invalid == 1:
-                        price: int = System.ticket_free
+                        price: int = System.price['ticket_free']
                         kol_child_invalid += 1
                         # Изменяем цену и записываем размер скидки
                         System.sale_dict['detail'][2] = kol_child_invalid
                         System.sale_dict['detail'][3] = price
                     elif System.what_a_day == 0:
-                        price: int = System.ticket_child_3
+                        price: int = System.price['ticket_child_3']
                     else:
-                        price: int = System.ticket_child_week_3
+                        price: int = System.price['ticket_child_week_3']
                 kol_child += 1
                 System.sale_dict['kol_child'] = kol_child
                 System.sale_dict['price_child'] = price
             # Считаем бесплатные билеты
             else:
-                price: int = System.ticket_free
+                price: int = System.price['ticket_free']
             # Устанавливаем цену в таблицу и пересчитываем
             self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{price}"))
             # Применяем скидку
@@ -888,7 +888,7 @@ class SaleForm(QDialog):
             # В день многодетных
             if many_child == 1:
                 logger.info('Скидка 100% в день многодетных')
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.ticket_free}"))
+                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
                 logger.debug("В продаже многодетные")
                 # Помечаем продажу как "особенную"
                 System.sale_special = 1
@@ -902,7 +902,7 @@ class SaleForm(QDialog):
             # Скидка инвалидам
             elif invalid == 1:
                 logger.info('Скидка 100% инвалидам')
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.ticket_free}"))
+                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
                 logger.debug("В продаже инвалид")
                 # Помечаем продажу как "особенную"
                 System.sale_special = 1
@@ -955,7 +955,7 @@ class SaleForm(QDialog):
             if self.ui.tableWidget_2.item(row, 4).text() == 'н':
                 # Изменяем цену
                 logger.debug('Изменяем цену в билете посетителя!')
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f'{System.ticket_free}'))
+                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
             tickets.append(
                 (
                     # Фамилия
@@ -1544,23 +1544,13 @@ class System:
     mumber_day_of_the_week: int = 0
     pc_name: str = socket.gethostname()
     # Стоимость билетов
-    ticket_child_1: int = 300
-    ticket_child_2: int = 600
-    ticket_child_3: int = 900
-    ticket_child_week_1: int = 300
-    ticket_child_week_2: int = 600
-    ticket_child_week_3: int = 900
-    ticket_adult_1: int = 150
-    ticket_adult_2: int = 200
-    ticket_adult_3: int = 250
-    ticket_free: int = 0
+    price: dict = {'ticket_child_1': 300, 'ticket_child_2': 600, 'ticket_child_3': 900, 'ticket_child_week_1': 300,
+                   'ticket_child_week_2': 600, 'ticket_child_week_3': 900, 'ticket_adult_1':150, 'ticket_adult_2': 200,
+                   'ticket_adult_3': 250, 'ticket_free': 0}
     # Количество начисляемых талантов
-    talent_1: int = 25
-    talent_2: int = 35
-    talent_3: int = 50
+    talent: dict = {'1_hour': 25, '2_hour': 35, '3_hour': 50}
     # Возраст посетителей
-    age_min: int = 5
-    age_max: int = 15
+    age: dict = {'min': 5, 'max': 15}
     # Информация о РМ
     kol_pc: int = 0
     pc_1: str = ''
@@ -1630,11 +1620,11 @@ class System:
 
     @staticmethod
     def calculate_ticket_type(age: int) -> str:
-        if age < System.age_min:
+        if age < System.age['min']:
             return 'бесплатный'
-        if System.age_min <= age < System.age_max:
+        if System.age['min'] <= age < System.age['max']:
             return 'детский'
-        elif age >= System.age_max:
+        elif age >= System.age['max']:
             return 'взрослый'
 
 
