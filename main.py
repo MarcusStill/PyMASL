@@ -8,10 +8,10 @@ from configparser import ConfigParser
 from datetime import date, timedelta
 from design.main_form import Ui_MainWindow
 
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import QApplication, QCheckBox, QDialog
 from PySide6.QtCore import Qt, Signal
-from typing import Type, Any
+from typing import Any, Type
 from design.pay import Ui_Dialog_Pay
 
 from design.sale import Ui_Dialog_Sale
@@ -28,6 +28,7 @@ from db.models import Sale
 from db.models import Ticket
 from db.models import Workday
 from db.models.user import User
+from db.models.price import Price
 from db.models.sale_service import SaleService
 from sqlalchemy import engine, and_, select, func, update, desc
 from PySide6.QtGui import QPixmap
@@ -38,7 +39,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QHBoxLayout
 from PySide6.QtWidgets import QMainWindow, QTableWidgetItem, QWidget
-from PySide6 import QtCore  # , QtSql
+
 
 # Чтение параметров из файла конфигурации
 config = ConfigParser()
@@ -90,6 +91,7 @@ class AuthForm(QDialog):
             # Устанавливаем размер окна
             window = MainWindow()
             window.showMaximized()
+            System.get_price(self)
             # Добавляем в заголовок дополнительную информацию
             window.setWindowTitle('PyMASL ver. ' + software_version + '. Пользователь: ' +
                                   str(System.user.first_name) + ' ' + str(System.user.last_name) + '. БД: ' + database)
@@ -1276,9 +1278,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     @logger_wraps()
     def main_search_clients(self) -> None:
-        """
-        Выводим в tableWidget (вкладка "посетители") отфильтрованный список клиентов
-        """
+        """ Функция выводит в tableWidget (вкладка "посетители") отфильтрованный список клиентов """
         logger.info("Запуск функции main_search_clients")
         user_filter: str = '%' + self.ui.lineEdit_2.text() + '%'
         # Вычисляем индекс значения
@@ -1349,7 +1349,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     client.phone, client.email, client.privilege, str(client.id)
                 )
 
-    def main_edit_client(self):
+    def main_edit_client(self) -> None:
         """Функция ищет выделенную строку в таблице клиентов и открывает форму для редактирования данных"""
         logger.info("Запуск функции edit_client_in_sale")
         # Ищем индекс и значение ячейки
@@ -1381,23 +1381,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         client.show()
         # Сохраняем параметры данных об уже существующем клиенте
         System.client_update = 1
-        logger.info('Обновляем инф. клиента %s' % System.client_update)
+        logger.info('Обновляем информацию о клиенте %s' % System.client_update)
         logger.debug('id клиента %s' % System.client_id)
         client.exec_()
 
-    def main_filter_clear(self):
+    def main_filter_clear(self) -> None:
         """Функция очищает строку поиска (lineEdit)"""
         logger.info("Запуск функции check_filter_update")
         self.ui.lineEdit_2.clear()
 
-    def main_search_selected_sale(self):
-        """
-        Поиск выделенной строки в таблице продаж
-        и открытие формы с полученными данными
-        """
+    def main_search_selected_sale(self) -> None:
+        """ Поиск выделенной строки в таблице продаж и открытие формы с полученными данными """
         pass
 
-    def main_button_all_sales(self):
+    def main_button_all_sales(self) -> None:
         """Функция выводит на форму продаж в соответствии с выбранным пользователем фильтром (за 1, 3 и 7 дней)"""
         logger.info("Запуск функции main_button_all_sales")
         filter_day = 0
@@ -1438,13 +1435,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     payment_type = '-'
                 self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(f"{payment_type}"))
 
-    def main_open_client(self):
+    def main_open_client(self) -> None:
         """Функция открывает форму с данными клиента"""
         client = ClientForm()
         client.show()
         client.exec()
 
-    def main_open_sale(self):
+    def main_open_sale(self) -> None:
         """Функция открывает форму продажи"""
         logger.info("Запуск функции main_open_sale")
         sale = SaleForm()
@@ -1494,15 +1491,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         System.sale_status = None
         sale.exec_()
 
-    def main_get_statistic(self):
+    def main_get_statistic(self) -> None:
         """Генерация сводной информации о продажах и билетах"""
         pass
 
-    def main_otchet_administratora(self):
+    def main_otchet_administratora(self) -> None:
         """Формирование отчета администратора"""
         pass
 
-    def main_otchet_kassira(self):
+    def main_otchet_kassira(self) -> None:
         """Формирование отчета кассира"""
         pass
 
@@ -1517,36 +1514,37 @@ class Payment:
 class System:
     """Класс для хранения системной информации и функций"""
     # Данные успешно авторизованного пользователя
-    user = None
+    user: User | None = None
     # Флаг для обновления клиента
-    client_id: int = None
-    client_update = None
-    all_clients = None
+    client_id: int | None = None
+    client_update: int | None = None
+    #all_clients = None # TODO: необходимо?
     # Сохраняем фамилию нового клиента
     last_name: str = ''
     # Статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
-    sale_status: int = None
+    sale_status: int | None = None
     sale_id: int | None = None
-    sale_discount: int = None
+    sale_discount: int | None = None
     sale_tickets: tuple = ()
     sale_tuple: tuple = ()
-    sale_special: int = None
+    sale_special: int | None = None
     # Номер строки с активным CheckBox для исключения взрослого из продажи
-    sale_checkbox_row: int = None
+    sale_checkbox_row: int | None = None
     # Состояние CheckBox для искл. взрослого из продажи: 0 - есть, 1 - нет
     exclude_from_sale: int = 0
     # Какой сегодня день: 0 - будний, 1 - выходной
-    what_a_day: int = None
+    what_a_day: int | None = None
     # Первое воскресенье месяца: 0 - нет, 1 - да
-    sunday: int = None
+    sunday: int | None = None
     today: date = date.today()
     # Номер дня недели
-    mumber_day_of_the_week: int = 0
+    num_of_week: int = 0
     pc_name: str = socket.gethostname()
-    # Стоимость билетов
-    price: dict = {'ticket_child_1': 300, 'ticket_child_2': 600, 'ticket_child_3': 900, 'ticket_child_week_1': 300,
-                   'ticket_child_week_2': 600, 'ticket_child_week_3': 900, 'ticket_adult_1':150, 'ticket_adult_2': 200,
-                   'ticket_adult_3': 250, 'ticket_free': 0}
+    # Прайс-лист основных услуг
+    price: dict = {'ticket_child_1': 0, 'ticket_child_2': 0, 'ticket_child_3': 0, 'ticket_child_week_1': 0,
+                   'ticket_child_week_2': 0, 'ticket_child_week_3': 0, 'ticket_adult_1': 0,
+                   'ticket_adult_2': 0, 'ticket_adult_3': 0, 'ticket_free': 0}
+    price_service: dict = {}
     # Количество начисляемых талантов
     talent: dict = {'1_hour': 25, '2_hour': 35, '3_hour': 50}
     # Возраст посетителей
@@ -1558,17 +1556,15 @@ class System:
     sale_dict: dict = {'kol_adult': 0, 'price_adult': 0,
                        'kol_child': 0, 'price_child': 0,
                        'detail': [0, 0, 0, 0, 0, 0, 0, 0]}
+    # Содержание detail: [kol_adult, price_adult, kol_child, price_child, discount, id_adult, time, sum]
 
-    # 'detail': [kol_adult, price_adult, kol_child, price_child,
-    #            discount, id_adult, time, sum]
-
-    # храним id нового клиента
+    # Храним id нового клиента
     id_new_client_in_sale: int = 0
-    # флаг печати кассовых и банковских чеков
+    # Флаг печати кассовых и банковских чеков
     print_check: int = 1
 
     def user_authorization(self, login, password) -> int:
-        """Функция проверяет есть ли пользователь, данные которого указаны на форме авторизации, в БД"""
+        """Функция проверяет есть ли пользователь в БД с данными, указанными на форме авторизации"""
         logger.info('Запуск функции user_authorization')
         with Session(engine) as session:
             query = select(User).where(User.login == login, User.password == password)
@@ -1576,10 +1572,31 @@ class System:
         if kassir:
             # Если авторизация прошла успешно - сохраняем данные пользователя
             System.user = kassir
+            logger.info('kassir: %s' % kassir)
             return 1
+        else:
+            return 0
+
+    @staticmethod
+    def get_price(self) -> None:
+        """ Функция загружает прайс-лист основных услуг из БД """
+        logger.info('Запуск функции get_price')
+        with Session(engine) as session:
+            result = session.query(Price).all()
+        if result is not None:
+            System.price['ticket_child_1'] = result[0]
+            System.price['ticket_child_2'] = result[1]
+            System.price['ticket_child_3'] = result[2]
+            System.price['ticket_child_week_1'] = result[3]
+            System.price['ticket_child_week_2'] = result[4]
+            System.price['ticket_child_week_3'] = result[5]
+            System.price['ticket_adult_1'] = result[6]
+            System.price['ticket_adult_2'] = result[7]
+            System.price['ticket_adult_3'] = result[8]
+            logger.debug('System.price: %s' % System.price)
 
     def check_day(self) -> int:
-        """Функция проверяет статус текущего дня (выходной или нет)"""
+        """Функция проверяет статус текущего дня (выходной (1) или нет (0))"""
         logger.info('Запуск функции check_day')
         day: list[str] = dt.datetime.now().strftime('%Y-%m-%d')
         # Проверяем есть ли текущая дата в списке дополнительных рабочих дней
@@ -1615,14 +1632,16 @@ class System:
 
     @staticmethod
     def calculate_age(born: date) -> int:
+        """Функция вычисляет возраст посетителя"""
         today: date = date.today()
         return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
     @staticmethod
     def calculate_ticket_type(age: int) -> str:
+        """Функция определяет тип входного билета"""
         if age < System.age['min']:
             return 'бесплатный'
-        if System.age['min'] <= age < System.age['max']:
+        elif System.age['min'] <= age < System.age['max']:
             return 'детский'
         elif age >= System.age['max']:
             return 'взрослый'

@@ -6,10 +6,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.models.base import Base
 
 
-class Price(Base):
-    __tablename__ = 'price'
+class PriceService(Base):
+    __tablename__ = 'price_service'
     __tableargs__ = {
-        'comment': 'Информация о ценах'
+        'comment': 'Информация о ценах на доп. услуги'
     }
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, unique=True)
@@ -18,7 +18,7 @@ class Price(Base):
     update: Mapped[date] = mapped_column(Date, nullable=False, comment='Дата изменения')
 
     def __str__(self) -> str:
-        return f'price={self.price}'
+        return f'id={self.id}, name={self.name}, price={self.price}'
 
     def __repr__(self) -> str:
         return str(self)
