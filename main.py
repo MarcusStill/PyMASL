@@ -76,10 +76,15 @@ class AuthForm(QDialog):
 
     def starting_the_main_form(self) -> None:
         """
-        Функция выполняет следующее:
+        Функция запускает предпродажные проверки и устанавливает системные параметры.
+        Она выполняет следующее:
         - проверяет правильность ввода пользователем данных на форме авторизации;
         - проверяет статус текущего дня (обычный день, праздничный, день многодетных);
         - устанавливает параметров главной формы (размер окна, отображение списка продаж, загрузка доп. параметров).
+
+        Параметры:
+
+        Возвращаемое значение:
         """
         logger.info("Запуск функции starting_the_main_form")
         login: str = self.ui.lineEdit.text()
@@ -151,14 +156,24 @@ class ClientForm(QDialog):
 
     def client_data_paste(self):
         """
-        Функция вставляет в соответствующее поле заранее сохраненную фамилию клиента,
-        внесенного в БД в предыдущий раз
+        Функция вставляет в соответствующее поле фамилию клиента,
+        внесенного в БД в последний раз.
+
+        Параметры:
+
+        Возвращаемое значение:
         """
         logger.info("Запуск функции client_data_paste")
         self.ui.lineEdit.setText(System.last_name)
 
     def client_data_save(self):
-        """Функция сохраняет в БД сведения о новом клиенте"""
+        """
+        Функция сохраняет в БД сведения о новом клиенте.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции client_data_save")
         # сбрасываем id последнего добавленного клиента
         System.add_new_client_in_sale = 0
@@ -249,7 +264,13 @@ class SaleForm(QDialog):
         self.ui.pushButton_12.clicked.connect(self.clearing_client_list)
 
     def edit_client_in_sale(self) -> None:
-        """Функция ищет выделенную строку в таблице клиентов и открывает форму для редактирования данных"""
+        """
+        Функция ищет выделенную строку в таблице клиентов и открывает форму для редактирования данных.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции edit_client_in_sale")
         # Ищем индекс и значение ячейки
         row_number: int = self.ui.tableWidget.currentRow()
@@ -284,7 +305,13 @@ class SaleForm(QDialog):
         client.exec_()
 
     def adding_new_client_to_sale(self) -> None:
-        """Функция добавляет в окно продажи только что созданного клиента"""
+        """
+        Функция добавляет в окно продажи только что созданного клиента.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции adding_new_client_to_sale")
         # Запрашиваем данные нового клиента
         with Session(engine) as session:
@@ -338,7 +365,13 @@ class SaleForm(QDialog):
                                            search_client.privilege, search_client.id, age)
 
     def tracking_button_pressing(self, event) -> None:
-        """Функция отслеживает нажатия клавиш Delete и Backspace"""
+        """
+        Функция отслеживает нажатия клавиш Delete и Backspace.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции tracking_button_pressing")
         if event.key() == QtCore.Qt.Key_Delete:
             self.deleting_selected_record()
@@ -346,7 +379,13 @@ class SaleForm(QDialog):
             self.deleting_selected_record()
 
     def deleting_selected_record(self) -> None:
-        """Функция Удаляет запись из таблицы при нажатии кнопки в tracking_button_pressing"""
+        """
+        Функция Удаляет запись из таблицы при нажатии кнопки в tracking_button_pressing.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции deleting_selected_record")
         if self.ui.tableWidget_2.rowCount() > 0:
             current_row: int = self.ui.tableWidget_2.currentRow()
@@ -403,12 +442,25 @@ class SaleForm(QDialog):
             self.sale_update()
 
     def check_filter_update(self) -> None:
-        """Функция очищает строку поиска (lineEdit)"""
+        """
+        Функция очищает строку поиска (lineEdit).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции check_filter_update")
         self.ui.lineEdit.clear()
 
     def changing_color_of_calendar(self) -> None:
-        """Функция изменяет цвет календаря. Если текущий день праздничный или выходной - dateEdit становится красным"""
+        """
+        Функция изменяет цвет календаря.
+        Если текущий день праздничный или выходной - dateEdit становится красным.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции changing_color_of_calendar")
         get_date: str = str(self.ui.dateEdit.date())
         date_slice: str = get_date[21:(len(get_date) - 1)]
@@ -420,7 +472,13 @@ class SaleForm(QDialog):
             self.ui.dateEdit.setStyleSheet('background-color: white;')
 
     def checking_status_discounted_field(self) -> None:
-        """Функция проверяет активность поля со скидкой"""
+        """
+        Функция проверяет активность поля со скидкой.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции checking_status_discounted_field")
         if self.ui.checkBox_2.isChecked():
             self.ui.comboBox_2.setEnabled(True)
@@ -439,7 +497,13 @@ class SaleForm(QDialog):
 
     def filling_client_table_widget(self, last_name: str, first_name: str, age: int, privilege: str, phone: str,
                                     id: int) -> None:
-        """Функция заполняет полученными данными tableWidget (список посетителей)"""
+        """
+        Функция заполняет полученными данными tableWidget (список посетителей).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         row = self.ui.tableWidget.rowCount()
         self.ui.tableWidget.insertRow(row)
         self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(last_name))
@@ -452,7 +516,13 @@ class SaleForm(QDialog):
 
     def filling_client_table_widget_2(self, row: int, last_name: str, first_name: str, type_ticket: str, price: int,
                                       privilege: str, id: int, age: int) -> None:
-        """Функция заполняет полученными данными tableWidget_2 (перечень клиентов в продаже)"""
+        """
+        Функция заполняет полученными данными tableWidget_2 (перечень клиентов в продаже).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(last_name))
         self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(first_name))
         self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(type_ticket))
@@ -464,7 +534,13 @@ class SaleForm(QDialog):
 
     def filling_client_table_widget_3(self, row: int, last_name: str, first_name: str, age: int,
                                       privilege: str, id: int) -> None:
-        """Функция заполняет полученными данными tableWidget_3 (список связанных с выбранным клиентом посетителей)"""
+        """
+        Функция заполняет полученными данными tableWidget_3 (список связанных с выбранным клиентом посетителей).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         self.ui.tableWidget_3.insertRow(row)
         self.ui.tableWidget_3.setItem(row, 0, QTableWidgetItem(last_name))
         self.ui.tableWidget_3.setItem(row, 1, QTableWidgetItem(first_name))
@@ -475,7 +551,13 @@ class SaleForm(QDialog):
 
     @logger_wraps()
     def sale_search_clients(self) -> None:
-        """Функция Выводит в tableWidget список найденных клиентов"""
+        """
+        Функция Выводит в tableWidget список найденных клиентов.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции sale_search_clients")
         if System.what_a_day == 1:
             self.ui.dateEdit.setStyleSheet('background-color: red;')
@@ -545,14 +627,26 @@ class SaleForm(QDialog):
                 )
 
     def clearing_client_list(self) -> None:
-        """Функция очищает список клиентов (tableWidget)"""
+        """
+        Функция очищает список клиентов (tableWidget).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции check_filter_update")
         self.ui.tableWidget.clearContents()
         self.ui.tableWidget.setRowCount(0)
 
     @logger_wraps()
     def adding_client_to_sale(self, *args, **kwargs) -> None:
-        """Функция ищет выделенную строку в таблице клиентов и передает ее в таблицу заказа"""
+        """
+        Функция ищет выделенную строку в таблице клиентов и передает ее в таблицу заказа.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции adding_client_to_sale")
         # Изменяем ширину столбцов
         self.ui.tableWidget_2.setColumnWidth(3, 5)
@@ -627,7 +721,11 @@ class SaleForm(QDialog):
     def adding_related_client_to_sale(self, *args, **kwargs) -> None:
         """
         Функция ищет выделенную строку в таблице клиентов, которые были ранее в одной продаже,
-        и передает данные об этом посетителе в таблицу заказа
+        и передает данные об этом посетителе в таблицу заказа.
+
+        Параметры:
+
+        Возвращаемое значение:
         """
         logger.info("Запуск функции adding_related_client_to_sale")
         row_number: int = self.ui.tableWidget_3.currentRow()
@@ -669,7 +767,13 @@ class SaleForm(QDialog):
         self.sale_update()
 
     def sale_update(self) -> None:
-        """Функция обновляет позиции в заказе, генерирует информацию о продаже и список билетов"""
+        """
+        Функция обновляет позиции в заказе, генерирует информацию о продаже и список билетов.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функцию sale_update")
         # Используем для подсчета количества посетителей
         kol_adult: int = 0
@@ -988,7 +1092,13 @@ class SaleForm(QDialog):
             self.ui.pushButton_5.setEnabled(False)
 
     def save_sale(self) -> None:
-        """Функция сохраняет в БД информацию о продаже, а так же билеты посетителей """
+        """
+        Функция сохраняет в БД информацию о продаже, а так же билеты посетителей.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции save_sale")
         logger.debug('Статус сохраняемой продажи %s' % System.sale_status)
         # Если продажа особенная - сохраним ее статус оплаченной
@@ -1045,7 +1155,13 @@ class SaleForm(QDialog):
 
     @logger.catch()
     def sale_transaction(self, payment_type, print_check) -> None:
-        """Функция осуществляет оплату ранее сохраненной продажи"""
+        """
+        Функция осуществляет оплату ранее сохраненной продажи.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции sale_transaction")
         logger.debug('System.sale_status: %s' % System.sale_status)
         logger.debug('System.sale_id: %s' % System.sale_id)
@@ -1097,7 +1213,13 @@ class SaleForm(QDialog):
 
     @logger.catch()
     def sale_return(self):
-        """Функция осуществляет операцию возврата продажи"""
+        """
+        Функция осуществляет операцию возврата продажи.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции sale_return")
         # Обновляем данные о продаже
         self.sale_update()
@@ -1141,7 +1263,13 @@ class SaleForm(QDialog):
 
     @logger.catch()
     def sale_generate_saved_tickets(self):
-        """Функция генерирует список с ранее сохраненными билетами"""
+        """
+        Функция генерирует список с ранее сохраненными билетами.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info('Запуск функции sale_generate_saved_tickets')
         logger.info('Список билетов %s' % System.sale_tickets)
         client_in_sale: tuple = System.sale_tickets
@@ -1156,7 +1284,13 @@ class SaleForm(QDialog):
         System.sale_tickets = []
 
     def open_pay_form(self, txt):
-        """Функция открывает форму оплаты"""
+        """
+        Функция открывает форму оплаты.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции open_pay_form")
         pay = PayForm()
         # Передаем текст в форму PayForm
@@ -1208,14 +1342,26 @@ class PayForm(QDialog):
         self.ui.pushButton_3.clicked.connect(lambda: self.done(Payment.Offline))
 
     def setText(self, txt) -> None:
-        """Функция устанавливает текстовое значение в метку"""
+        """
+        Функция устанавливает текстовое значение в метку.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции setText")
         self.ui.label_2.setText(txt)
         # По умолчанию печатаем чек
         System.print_check = 1
 
     def check_print(self) -> None:
-        """Функция печатает кассовый чек, если checkBox на форме оплаты был активен"""
+        """
+        Функция печатает кассовый чек, если checkBox на форме оплаты был активен.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции check_print")
         if self.ui.checkBox.isChecked():
             System.print_check = 1
@@ -1262,7 +1408,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def filling_client_table_widget_main_form(self, last_name: str, first_name: str, middle_name: str, birth_date: date,
                                     gender: str, phone: str, email: str,privilege: str, id: int) -> None:
-        """Функция заполняет полученными данными tableWidget (список посетителей)"""
+        """
+        Функция заполняет полученными данными tableWidget (список посетителей).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         row = self.ui.tableWidget.rowCount()
         self.ui.tableWidget.insertRow(row)
         self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(last_name))
@@ -1278,7 +1430,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     @logger_wraps()
     def main_search_clients(self) -> None:
-        """ Функция выводит в tableWidget (вкладка "посетители") отфильтрованный список клиентов """
+        """
+        Функция выводит в tableWidget (вкладка "посетители") отфильтрованный список клиентов.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции main_search_clients")
         user_filter: str = '%' + self.ui.lineEdit_2.text() + '%'
         # Вычисляем индекс значения
@@ -1291,6 +1449,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.tableWidget.setColumnWidth(7, 200)
         if index == 2:
             # Поиск по номеру телефона
+            self.ui.tableWidget.setRowCount(0)
             with Session(engine) as session:
                 search: list[Type[Client]] = session.query(Client).filter(Client.phone.ilike(user_filter)).all()
             for client in search:
@@ -1350,7 +1509,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 )
 
     def main_edit_client(self) -> None:
-        """Функция ищет выделенную строку в таблице клиентов и открывает форму для редактирования данных"""
+        """
+        Функция ищет выделенную строку в таблице клиентов и открывает форму для редактирования данных.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции edit_client_in_sale")
         # Ищем индекс и значение ячейки
         row_number: int = self.ui.tableWidget.currentRow()
@@ -1368,8 +1533,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         client.ui.lineEdit_3.setText(search_client.middle_name)
         client.ui.dateEdit.setDate(search_client.birth_date)
         # Поиск значения для установки в ComboBox gender
-        index_gender: int = client.ui.comboBox.findText(
-            search_client.gender, Qt.MatchFixedString)
+        index_gender: int = client.ui.comboBox.findText(search_client.gender, Qt.MatchFixedString)
         if index_gender >= 0:
             client.ui.comboBox.setCurrentIndex(index_gender)
         client.ui.lineEdit_4.setText(search_client.phone)
@@ -1386,16 +1550,159 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         client.exec_()
 
     def main_filter_clear(self) -> None:
-        """Функция очищает строку поиска (lineEdit)"""
+        """
+        Функция очищает строку поиска (lineEdit).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции check_filter_update")
         self.ui.lineEdit_2.clear()
 
     def main_search_selected_sale(self) -> None:
-        """ Поиск выделенной строки в таблице продаж и открытие формы с полученными данными """
-        pass
+        """
+        Поиск выделенной строки в таблице продаж и открытие формы с полученными данными.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
+        logger.info("Запуск функции mail_search_selected_sale")
+        kol_adult: int = 0
+        kol_child: int = 0
+        summ: int = 0
+        for idx in self.ui.tableWidget_2.selectionModel().selectedIndexes():
+            # Номер строки найден
+            row_number: int = idx.row()
+            # Получаем содержимое ячейки
+            sale_number: str = self.ui.tableWidget_2.item(row_number, 0).text()
+            with Session(engine) as session:
+                query = select(Client.first_name, Client.last_name, Client.middle_name, Ticket.ticket_type,
+                               Ticket.price, Ticket.description, Client.id, Ticket.print, Ticket.client_age,
+                               Ticket.arrival_time, Ticket.talent, Ticket.datetime).join(Ticket).where(
+                    and_(Client.id == Ticket.id_client, Ticket.id_sale == sale_number)
+                )
+                client_in_sale = session.execute(query).all()
+                # Запрашиваем статус продажи
+                sale_status: Any = (
+                    session.query(Sale.status).where(Sale.id == sale_number).one_or_none()
+                )._asdict().get("status")
+            logger.info("client_in_sale %s" % client_in_sale)
+            logger.info("sale_status %s" % sale_status)
+            # Передаем в форму данные клиента
+            sale: SaleForm = SaleForm()
+            sale.ui.tableWidget_2.setRowCount(0)
+            sale.ui.dateEdit.setDate(client_in_sale[0][11])
+            sale.ui.comboBox.setCurrentText(str(client_in_sale[0][9]))
+            # Если продажа оплачена
+            if sale_status == 1 or sale_status == 2:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(True)
+                # Кнопка печать билетов
+                sale.ui.pushButton_7.setEnabled(True)
+                # Кнопка просмотр билетов
+                sale.ui.pushButton_8.setEnabled(True)
+                # Дата посещения
+                sale.ui.dateEdit.setEnabled(False)
+                # Время посещения
+                sale.ui.comboBox.setEnabled(False)
+                # Клиенты в заказе
+                sale.ui.tableWidget_2.setEnabled(False)
+                # Поле скидка
+                sale.ui.checkBox_2.setEnabled(False)
+            # Если продажа не оплачена
+            elif sale_status == 0:
+                sale.ui.pushButton_3.setEnabled(False)
+                sale.ui.pushButton_5.setEnabled(True)
+                sale.ui.pushButton_10.setEnabled(True)
+                sale.ui.pushButton_6.setEnabled(False)
+                sale.ui.pushButton_7.setEnabled(False)
+                sale.ui.pushButton_8.setEnabled(False)
+                sale.ui.dateEdit.setEnabled(True)
+                sale.ui.comboBox.setEnabled(True)
+                sale.ui.tableWidget_2.setEnabled(True)
+                sale.ui.checkBox_2.setEnabled(True)
+            for search_client in client_in_sale:
+                logger.debug(search_client)
+                if search_client[8] >= System.age['max']:
+                    type_ticket = 'взрослый'
+                    kol_adult += 1
+                else:
+                    type_ticket = 'детский'
+                    kol_child += 1
+                # Изменяем ширину столбцов
+                sale.ui.tableWidget_2.setColumnWidth(3, 5)
+                sale.ui.tableWidget_2.setColumnWidth(4, 5)
+                sale.ui.tableWidget_2.setColumnWidth(7, 40)
+                sale.ui.tableWidget_2.setColumnWidth(8, 5)
+                # Создаем виджет checkbox для скидки
+                widget = QWidget()
+                checkbox = QCheckBox()
+                checkbox.setCheckState(Qt.Unchecked)
+                layoutH = QHBoxLayout(widget)
+                layoutH.addWidget(checkbox)
+                layoutH.setAlignment(Qt.AlignCenter)
+                layoutH.setContentsMargins(0, 0, 0, 0)
+                # Создаем виджет checkbox для исключения из продажи
+                widget_1 = QWidget()
+                checkbox_1 = QCheckBox()
+                checkbox.setCheckState(Qt.Unchecked)
+                layoutH = QHBoxLayout(widget_1)
+                layoutH.addWidget(checkbox_1)
+                layoutH.setAlignment(Qt.AlignCenter)
+                layoutH.setContentsMargins(0, 0, 0, 0)
+                row = sale.ui.tableWidget_2.rowCount()
+                sale.ui.tableWidget_2.insertRow(row)
+                # Добавляем checkbox скидки
+                sale.ui.tableWidget_2.setCellWidget(row, 7, widget)
+                # Добавляем checkbox "присутствия" в продаже
+                sale.ui.tableWidget_2.setCellWidget(row, 8, widget_1)
+                # Имя
+                sale.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{search_client[1]}"))
+                # Фамилия
+                sale.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{search_client[0]}"))
+                # Тип билета
+                sale.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(type_ticket))
+                # Цена
+                sale.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{search_client[4]}"))
+                # Примечание
+                sale.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{search_client[5]}"))
+                # id клиента
+                sale.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client[6]}"))
+                sale.ui.tableWidget_2.setColumnHidden(5, True)
+                # Возраст
+                sale.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client[8]}"))
+                summ += int(search_client[4])
+            logger.info("Статус продажи %s" % sale_status)
+            sale.ui.label_5.setText(str(kol_adult))
+            sale.ui.label_7.setText(str(kol_child))
+            sale.ui.label_8.setText(str(summ))
+            sale.show()
+            windows.info_window("Внимание",
+                                'Перед проведением оплаты нажмите на кнопку обновить',
+                                "")
+            # Передаем сведения о сохраненной продаже
+            System.sale_status = sale_status
+            System.sale_id = sale_number
+            System.sale_tickets = client_in_sale
+            logger.debug("Билеты сохраненной продажи %s" % System.sale_tickets)
+            sale.exec_()
 
     def main_button_all_sales(self) -> None:
-        """Функция выводит на форму продаж в соответствии с выбранным пользователем фильтром (за 1, 3 и 7 дней)"""
+        """
+        Функция выводит на форму продаж в соответствии с выбранным пользователем фильтром (за 1, 3 и 7 дней).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции main_button_all_sales")
         filter_day = 0
         self.ui.tableWidget_2.setRowCount(0)
@@ -1436,13 +1743,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(f"{payment_type}"))
 
     def main_open_client(self) -> None:
-        """Функция открывает форму с данными клиента"""
+        """
+        Функция открывает форму с данными клиента.
+
+        Параметры: None
+
+        Возвращаемое значение: None
+        """
         client = ClientForm()
         client.show()
         client.exec()
 
     def main_open_sale(self) -> None:
-        """Функция открывает форму продажи"""
+        """
+        Функция открывает форму продажи.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info("Запуск функции main_open_sale")
         sale = SaleForm()
         sale.show()
@@ -1492,15 +1811,33 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         sale.exec_()
 
     def main_get_statistic(self) -> None:
-        """Генерация сводной информации о продажах и билетах"""
+        """
+        Функция генерирует сводную информацию о продажах и билетах.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         pass
 
     def main_otchet_administratora(self) -> None:
-        """Формирование отчета администратора"""
+        """
+        Функция формирует отчет администратора.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         pass
 
     def main_otchet_kassira(self) -> None:
-        """Формирование отчета кассира"""
+        """
+        Функция формирует отчет кассира.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         pass
 
 
@@ -1564,7 +1901,13 @@ class System:
     print_check: int = 1
 
     def user_authorization(self, login, password) -> int:
-        """Функция проверяет есть ли пользователь в БД с данными, указанными на форме авторизации"""
+        """
+        Функция проверяет есть ли пользователь в БД с данными, указанными на форме авторизации.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info('Запуск функции user_authorization')
         with Session(engine) as session:
             query = select(User).where(User.login == login, User.password == password)
@@ -1579,7 +1922,13 @@ class System:
 
     @staticmethod
     def get_price(self) -> None:
-        """ Функция загружает прайс-лист основных услуг из БД """
+        """
+        Функция загружает прайс-лист основных услуг из БД.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         logger.info('Запуск функции get_price')
         with Session(engine) as session:
             result = session.query(Price).all()
@@ -1596,7 +1945,13 @@ class System:
             logger.debug('System.price: %s' % System.price)
 
     def check_day(self) -> int:
-        """Функция проверяет статус текущего дня (выходной (1) или нет (0))"""
+        """
+        Функция проверяет статус текущего дня.
+
+        Параметры:
+
+        Возвращаемое значение: 1 (выходной), 0 (будний день).
+        """
         logger.info('Запуск функции check_day')
         day: list[str] = dt.datetime.now().strftime('%Y-%m-%d')
         # Проверяем есть ли текущая дата в списке дополнительных рабочих дней
@@ -1632,13 +1987,25 @@ class System:
 
     @staticmethod
     def calculate_age(born: date) -> int:
-        """Функция вычисляет возраст посетителя"""
+        """
+        Функция вычисляет возраст посетителя.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         today: date = date.today()
         return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
     @staticmethod
     def calculate_ticket_type(age: int) -> str:
-        """Функция определяет тип входного билета"""
+        """
+        Функция определяет тип входного билета.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
         if age < System.age['min']:
             return 'бесплатный'
         elif System.age['min'] <= age < System.age['max']:
