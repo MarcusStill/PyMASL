@@ -18,7 +18,7 @@ class Price(Base):
     update: Mapped[date] = mapped_column(Date, nullable=False, comment='Дата изменения')
 
     def __str__(self) -> str:
-        return f'price={self.price}'
+        return f'{self.price}'
 
     def __repr__(self) -> str:
         return str(self)
