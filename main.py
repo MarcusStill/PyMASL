@@ -1980,7 +1980,86 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         Возвращаемое значение:
         """
-        pass
+        logger.info("Запуск функции main_otchet_administratora")
+        path = "./otchet.pdf"
+        path = os.path.realpath(path)
+        row = self.ui.tableWidget_3.rowCount()
+        if row >= 1:
+            type_ticket = ['Взрослый, 1 ч.', 'Взрослый, 2 ч.', 'Взрослый, 3 ч.',
+                           'Детский, 1 ч.', 'Детский, 2 ч.', 'Детский, 3 ч.',
+                           'Мног-й взр., 1 ч.', 'Мног-й взр., 2 ч.', 'Мног-й взр., 3 ч.',
+                           'Мног-й дет., 1 ч.', 'Мног-й дет., 2 ч.', 'Мног-й дет., 3 ч.',
+                           'Инвалид, 3 ч.']
+            table = [self.ui.tableWidget_3.item(0, 2).text(),  # взр 1
+                     self.ui.tableWidget_3.item(0, 3).text(),  # взр 2
+                     self.ui.tableWidget_3.item(0, 4).text(),  # взр 3
+                     self.ui.tableWidget_3.item(1, 2).text(),  # дет 1
+                     self.ui.tableWidget_3.item(1, 3).text(),  # дет 2
+                     self.ui.tableWidget_3.item(1, 4).text(),  # дет 3
+                     self.ui.tableWidget_3.item(2, 2).text(),  # мн взр 1
+                     self.ui.tableWidget_3.item(2, 3).text(),  # мн взр 2
+                     self.ui.tableWidget_3.item(2, 4).text(),  # мн взр 3
+                     self.ui.tableWidget_3.item(3, 2).text(),  # мн дет 1
+                     self.ui.tableWidget_3.item(3, 3).text(),  # мн дет 2
+                     self.ui.tableWidget_3.item(3, 4).text(),  # мн дет 3
+                     self.ui.tableWidget_3.item(4, 1).text()]  # инв
+            """Удаляем предыдущий файл"""
+            os.system("TASKKILL /F /IM SumatraPDF.exe")
+            if os.path.exists(path):
+                os.remove(path)
+            dt1 = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
+            dt2 = self.ui.dateEdit.date().toString("dd-MM-yyyy")
+            # Промежуточные расчеты
+            adult_1 = System.price['ticket_adult_1'] * int(table[0])
+            adult_2 = System.price['ticket_adult_2'] * int(table[1])
+            adult_3 = System.price['ticket_adult_3'] * int(table[2])
+            kol_adult = int(table[0]) + int(table[1]) + int(table[2])
+            sum_adult = adult_1 + adult_2 + adult_3
+            child_1 = System.price['ticket_child_1'] * int(table[3])
+            child_2 = System.price['ticket_child_2'] * int(table[4])
+            child_3 = System.price['ticket_child_3'] * int(table[5])
+            kol_child = int(table[3]) + int(table[4]) + int(table[5])
+            sum_child = child_1 + child_2 + child_3
+            many_adult_1 = round(System.price['ticket_adult_1'] / 2 * int(table[6]))
+            many_adult_2 = round(System.price['ticket_adult_2'] / 2 * int(table[7]))
+            many_adult_3 = round(System.price['ticket_adult_3'] / 2 * int(table[8]))
+            kol_many_adult = int(table[6]) + int(table[7]) + int(table[8])
+            sum_many_adult = many_adult_1 + many_adult_2 + many_adult_3
+            many_child_1 = round(System.price['ticket_child_1'] / 2 * int(table[9]))
+            many_child_2 = round(System.price['ticket_child_2'] / 2 * int(table[10]))
+            many_child_3 = round(System.price['ticket_child_3'] / 2 * int(table[11]))
+            kol_many_child = int(table[9]) + int(table[10]) + int(table[11])
+            sum_many_child = many_child_1 + many_child_2 + many_child_3
+            # Формируем данные
+            data = [['№ п/п', 'Тип\nбилета', 'Цена, руб.',
+                     'Количество, шт.', 'Стоимость, руб.'],
+                    # Взрослые
+                    ['1', type_ticket[0], System.price['ticket_adult_1'], table[0], adult_1],
+                    ['2', type_ticket[1], System.price['ticket_adult_2'], table[1], adult_2],
+                    ['3', type_ticket[2], System.price['ticket_adult_3'], table[2], adult_3],
+                    # Дети
+                    ['4', 'Всего взрослых билетов', '', kol_adult, sum_adult],
+                    ['5', type_ticket[3], System.price['ticket_child_1'], table[3], child_1],
+                    ['6', type_ticket[4], System.price['ticket_child_2'], table[4], child_2],
+                    ['7', type_ticket[5], System.price['ticket_child_3'], table[5], child_3],
+                    ['8', 'Всего детских билетов', '', kol_child, sum_child],
+                    # Многодетные взрослые
+                    ['9', type_ticket[6], round(System.price['ticket_adult_1'] / 2), table[6], many_adult_1],
+                    ['10', type_ticket[7], round(System.price['ticket_adult_2'] / 2), table[7], many_adult_2],
+                    ['11', type_ticket[8], round(System.price['ticket_adult_3'] / 2), table[8], many_adult_3],
+                    ['12', 'Всего многодетных взрослых билетов', '', kol_many_adult, sum_many_adult],
+                    # Многодетные детские
+                    ['13', type_ticket[9], round(System.price['ticket_child_1'] / 2), table[9], many_child_1],
+                    ['14', type_ticket[10], round(System.price['ticket_child_2'] / 2), table[10], many_child_2],
+                    ['15', type_ticket[11], round(System.price['ticket_child_3'] / 2), table[11], many_child_3],
+                    ['16', 'Всего многодетных детских билетов', '', kol_many_child, sum_many_child],
+                    ['17', type_ticket[12], '-', table[12], '-'],
+                    ['', 'Итого билетов', '',
+                     kol_adult + kol_child + kol_many_adult + kol_many_child,
+                     sum_adult + sum_child + sum_many_adult + sum_many_child]]
+            logger.debug("Сведения для отчета администратора %s" % data)
+            otchet.otchet_administratora(dt1, dt2, data)
+            os.startfile(path)
 
     def main_otchet_kassira(self) -> None:
         """
@@ -1990,7 +2069,31 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         Возвращаемое значение:
         """
-        pass
+        logger.info("Запуск функции main_otchet_kassira")
+        path = "./otchet.pdf"
+        path = os.path.realpath(path)
+        # Удаляем предыдущий файл
+        row_tab_1 = self.ui.tableWidget_3.rowCount()
+        row_tab_2 = self.ui.tableWidget_4.rowCount()
+        if row_tab_1 >= 1 and row_tab_2 >= 1:
+            os.system("TASKKILL /F /IM SumatraPDF.exe")
+            if os.path.exists(path):
+                os.remove(path)
+            dt1 = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
+            dt2 = self.ui.dateEdit.date().toString("dd-MM-yyyy")
+            # Формируем данные
+            logger.info("Формируем сведения для отчета %s"
+                        % self.ui.tableWidget_3.item(0, 0).text())
+            logger.info("Имя ПК %s" % System.pc_name)
+            if System.pc_name == self.ui.tableWidget_4.item(0, 0).text():
+                values = [self.ui.tableWidget_4.item(0, 1).text(),
+                          self.ui.tableWidget_4.item(0, 2).text()]
+            else:
+                values = [self.ui.tableWidget_4.item(1, 1).text(),
+                          self.ui.tableWidget_4.item(1, 2).text()]
+            logger.debug("Сведения для отчета кассира %s" % values)
+            otchet.otchet_kassira(values, dt1, dt2, System.user)
+            os.startfile(path)
 
 
 class Payment:

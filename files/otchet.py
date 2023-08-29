@@ -163,7 +163,6 @@ def otchet_kassira(val, date1, date2, kassir):
     logger.info("Запуск функции otchet_kassira")
     path = "./otchet.pdf"
     values, dt1, dt2, user = val, date1, date2, kassir
-    print('values', values)
     c = canvas.Canvas(path, pagesize=A4)
     c.setLineWidth(.3)
     pdfmetrics.registerFont(TTFont('DejaVuSerif', 'files/DejaVuSerif.ttf'))
@@ -181,7 +180,7 @@ def otchet_kassira(val, date1, date2, kassir):
     c.setLineWidth(1)
     c.line(275, 652, 430, 652)
     # ФИО персонала
-    c.drawString(255, 623, f"{user[0]} {user[1]}")
+    c.drawString(255, 623, f"{user.last_name} {user.first_name} {user.middle_name}")
     c.setLineWidth(1)
     c.line(100, 621, 500, 621)
     c.setFont('DejaVuSerif', 8)
