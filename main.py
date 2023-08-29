@@ -1808,13 +1808,169 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def main_get_statistic(self) -> None:
         """
-        Функция генерирует сводную информацию о продажах и билетах.
+        Функция формирует сводную статистику о продажах и билетах.
 
         Параметры:
 
         Возвращаемое значение:
         """
-        pass
+        logger.info("Запуск функции main_get_statistic")
+        # Устанавливаем временной период
+        start_time = ' 00:00:00'
+        end_time = ' 23:59:59'
+        dt1 = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
+        dt2 = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
+        with Session(engine) as session:
+            query = select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status).where(
+                and_(Sale.status == '1', Sale.datetime.between(dt1, dt2))
+            )
+            sales = session.execute(query).all()
+        logger.debug("Продажи за выбранный период %s" % sales)
+        # Предполагаем что кассовых РМ два
+        pc_1 = {'Name PC': f'{System.pc_1}', 'card': 0, 'cash': 0}
+        pc_2 = {'Name PC': f'{System.pc_2}', 'card': 0, 'cash': 0}
+        # Тип оплаты: 1 - карта, 2 - наличные
+        type_rm = [1, 2]
+        for i in range(len(sales)):
+            if sales[i][0] in pc_1.values():
+                # Если карта
+                if sales[i][1] == type_rm[0]:
+                    pc_1['card'] += sales[i][2]
+                # Если наличные
+                else:
+                    pc_1['cash'] += sales[i][2]
+            else:
+                if sales[i][1] == type_rm[0]:
+                    pc_2['card'] += sales[i][2]
+                else:
+                    pc_2['cash'] += sales[i][2]
+        logger.debug("Данные с pc_1 %s" % pc_1)
+        logger.debug("Данные с pc_2 %s" % pc_2)
+        card = int(pc_1['card']) + int(pc_2['card'])
+        cash = int(pc_1['cash']) + int(pc_2['cash'])
+        summa = card + cash
+        self.ui.tableWidget_4.setRowCount(0)
+        self.ui.tableWidget_4.insertRow(0)
+        self.ui.tableWidget_4.setItem(0, 0, QTableWidgetItem(f"{pc_1['Name PC']}"))
+        self.ui.tableWidget_4.setItem(0, 1, QTableWidgetItem(f"{pc_1['card']}"))
+        self.ui.tableWidget_4.setItem(0, 2, QTableWidgetItem(f"{pc_1['cash']}"))
+        self.ui.tableWidget_4.insertRow(1)
+        self.ui.tableWidget_4.setItem(1, 0, QTableWidgetItem(f"{pc_2['Name PC']}"))
+        self.ui.tableWidget_4.setItem(1, 1, QTableWidgetItem(f"{pc_2['card']}"))
+        self.ui.tableWidget_4.setItem(1, 2, QTableWidgetItem(f"{pc_2['cash']}"))
+        self.ui.tableWidget_4.insertRow(2)
+        self.ui.tableWidget_4.setItem(2, 0, QTableWidgetItem(f"{'Итого'}"))
+        self.ui.tableWidget_4.setItem(2, 1, QTableWidgetItem(f"{card}"))
+        self.ui.tableWidget_4.setItem(2, 2, QTableWidgetItem(f"{cash}"))
+        self.ui.tableWidget_4.setItem(2, 3, QTableWidgetItem(f"{summa}"))
+        # Считаем оплаченные билеты
+        with Session(engine) as session:
+            query = select(Ticket.ticket_type, Ticket.arrival_time, Ticket.description, Sale.status, Sale.id).where(
+                and_(Sale.id == Ticket.id_sale, Sale.status == '1', Ticket.datetime.between(dt1, dt2))
+            )
+            tickets = session.execute(query).all()
+        logger.debug("Билеты %s" % tickets)
+        type_tickets = [0, 1, 'м', 'и', '-']
+        # 0-взрослый, 1-детский, м-многодетный, и-инвалид, с-сопровождающий, н-не идет
+        time_arrival = [1, 2, 3]
+        # child
+        c = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        # adult
+        a = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        # many_child
+        m_c = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        # many_adult
+        m_a = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        # invalid
+        i_ = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        # Считаем количество билетов
+        for i in range(len(tickets)):
+            # Обычный билет - '-'
+            if tickets[i][2] == type_tickets[4]:
+                # Взрослый?
+                if tickets[i][0] == type_tickets[0]:
+                    # Не многодетный
+                    if tickets[i][2] != type_tickets[2]:
+                        a['sum'] += 1
+                        # Проверяем продолжительность времени
+                        if tickets[i][1] == time_arrival[0]:
+                            a['t_1'] += 1
+                        elif tickets[i][1] == time_arrival[1]:
+                            a['t_2'] += 1
+                        elif tickets[i][1] == time_arrival[2]:
+                            a['t_3'] += 1
+                # Детский?
+                elif tickets[i][0] == type_tickets[1]:
+                    # Не многодетный
+                    if tickets[i][2] != type_tickets[2]:
+                        c['sum'] += 1
+                        # Проверяем продолжительность времени
+                        if tickets[i][1] == time_arrival[0]:
+                            c['t_1'] += 1
+                        elif tickets[i][1] == time_arrival[1]:
+                            c['t_2'] += 1
+                        elif tickets[i][1] == time_arrival[2]:
+                            c['t_3'] += 1
+            # Многодетный?
+            elif tickets[i][2] == type_tickets[2]:
+                # Взрослый?
+                if tickets[i][0] == type_tickets[0]:
+                    m_a['sum'] += 1
+                    if tickets[i][1] == time_arrival[0]:
+                        m_a['t_1'] += 1
+                    elif tickets[i][1] == time_arrival[1]:
+                        m_a['t_2'] += 1
+                    elif tickets[i][1] == time_arrival[2]:
+                        m_a['t_3'] += 1
+                elif tickets[i][0] == type_tickets[1]:
+                    m_c['sum'] += 1
+                    if tickets[i][1] == time_arrival[0]:
+                        m_c['t_1'] += 1
+                    elif tickets[i][1] == time_arrival[1]:
+                        m_c['t_2'] += 1
+                    elif tickets[i][1] == time_arrival[2]:
+                        m_c['t_3'] += 1
+            # Инвалид?
+            elif tickets[i][2] == type_tickets[3]:
+                i_['sum'] += 1
+                if tickets[i][1] == time_arrival[0]:
+                    i_['t_1'] += 1
+                elif tickets[i][1] == time_arrival[1]:
+                    i_['t_2'] += 1
+                elif tickets[i][1] == time_arrival[2]:
+                    i_['t_3'] += 1
+        # Выводим обобщенную информацию в таблицу
+        self.ui.tableWidget_3.setRowCount(0)
+        self.ui.tableWidget_3.insertRow(0)
+        self.ui.tableWidget_3.setItem(0, 0, QTableWidgetItem('взрослый'))
+        self.ui.tableWidget_3.setItem(0, 1, QTableWidgetItem(f"{a['sum']}"))
+        self.ui.tableWidget_3.setItem(0, 2, QTableWidgetItem(f"{a['t_1']}"))
+        self.ui.tableWidget_3.setItem(0, 3, QTableWidgetItem(f"{a['t_2']}"))
+        self.ui.tableWidget_3.setItem(0, 4, QTableWidgetItem(f"{a['t_3']}"))
+        self.ui.tableWidget_3.insertRow(1)
+        self.ui.tableWidget_3.setItem(1, 0, QTableWidgetItem('детский'))
+        self.ui.tableWidget_3.setItem(1, 1, QTableWidgetItem(f"{c['sum']}"))
+        self.ui.tableWidget_3.setItem(1, 2, QTableWidgetItem(f"{c['t_1']}"))
+        self.ui.tableWidget_3.setItem(1, 3, QTableWidgetItem(f"{c['t_2']}"))
+        self.ui.tableWidget_3.setItem(1, 4, QTableWidgetItem(f"{c['t_3']}"))
+        self.ui.tableWidget_3.insertRow(2)
+        self.ui.tableWidget_3.setItem(2, 0, QTableWidgetItem('мног-й взр.'))
+        self.ui.tableWidget_3.setItem(2, 1, QTableWidgetItem(f"{m_a['sum']}"))
+        self.ui.tableWidget_3.setItem(2, 2, QTableWidgetItem(f"{m_a['t_1']}"))
+        self.ui.tableWidget_3.setItem(2, 3, QTableWidgetItem(f"{m_a['t_2']}"))
+        self.ui.tableWidget_3.setItem(2, 4, QTableWidgetItem(f"{m_a['t_3']}"))
+        self.ui.tableWidget_3.insertRow(3)
+        self.ui.tableWidget_3.setItem(3, 0, QTableWidgetItem('мног-й дет.'))
+        self.ui.tableWidget_3.setItem(3, 1, QTableWidgetItem(f"{m_c['sum']}"))
+        self.ui.tableWidget_3.setItem(3, 2, QTableWidgetItem(f"{m_c['t_1']}"))
+        self.ui.tableWidget_3.setItem(3, 3, QTableWidgetItem(f"{m_c['t_2']}"))
+        self.ui.tableWidget_3.setItem(3, 4, QTableWidgetItem(f"{m_c['t_3']}"))
+        self.ui.tableWidget_3.insertRow(4)
+        self.ui.tableWidget_3.setItem(4, 0, QTableWidgetItem('инвалид'))
+        self.ui.tableWidget_3.setItem(4, 1, QTableWidgetItem(f"{i_['sum']}"))
+        self.ui.tableWidget_3.setItem(4, 2, QTableWidgetItem(f"{i_['t_1']}"))
+        self.ui.tableWidget_3.setItem(4, 3, QTableWidgetItem(f"{i_['t_2']}"))
+        self.ui.tableWidget_3.setItem(4, 4, QTableWidgetItem(f"{i_['t_3']}"))
 
     def main_otchet_administratora(self) -> None:
         """
