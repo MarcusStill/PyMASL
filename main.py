@@ -1036,16 +1036,12 @@ class SaleForm(QDialog):
                                 System.sale_dict['detail'][3] = new_price
                             self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
         logger.debug('System.sale_dict %s' % System.sale_dict)
-        itog: Any = ((System.sale_dict['kol_adult'] -
-                      System.sale_dict['detail'][0]) *
-                     System.sale_dict['price_adult']) + (
-                            (System.sale_dict['kol_child'] -
-                             System.sale_dict['detail'][2]) *
-                            System.sale_dict['price_child']) + (
-                            System.sale_dict['detail'][0] *
-                            System.sale_dict['detail'][1]) + (
-                            System.sale_dict['detail'][2] *
-                            System.sale_dict['detail'][3])
+        itog = (
+                ((System.sale_dict['kol_adult'] - System.sale_dict['detail'][0]) * System.sale_dict['price_adult']) +
+                ((System.sale_dict['kol_child'] - System.sale_dict['detail'][2]) * System.sale_dict['price_child']) +
+                (System.sale_dict['detail'][0] * System.sale_dict['detail'][1]) +
+                (System.sale_dict['detail'][2] * System.sale_dict['detail'][3])
+        )
         logger.debug('Итого %s' % itog)
         self.ui.label_8.setText(str(itog))
         System.sale_dict['detail'][7] = itog
@@ -1933,15 +1929,16 @@ class System:
         with Session(engine) as session:
             result = session.query(Price).all()
         if result is not None:
-            System.price['ticket_child_1'] = result[0]
-            System.price['ticket_child_2'] = result[1]
-            System.price['ticket_child_3'] = result[2]
-            System.price['ticket_child_week_1'] = result[3]
-            System.price['ticket_child_week_2'] = result[4]
-            System.price['ticket_child_week_3'] = result[5]
-            System.price['ticket_adult_1'] = result[6]
-            System.price['ticket_adult_2'] = result[7]
-            System.price['ticket_adult_3'] = result[8]
+            # TODO: исправить преобразование типов
+            System.price['ticket_child_1'] = int(str(result[0]))
+            System.price['ticket_child_2'] = int(str(result[1]))
+            System.price['ticket_child_3'] = int(str(result[2]))
+            System.price['ticket_child_week_1'] = int(str(result[3]))
+            System.price['ticket_child_week_2'] = int(str(result[4]))
+            System.price['ticket_child_week_3'] = int(str(result[5]))
+            System.price['ticket_adult_1'] = int(str(result[6]))
+            System.price['ticket_adult_2'] = int(str(result[7]))
+            System.price['ticket_adult_3'] = int(str(result[8]))
             logger.debug('System.price: %s' % System.price)
 
     def check_day(self) -> int:
