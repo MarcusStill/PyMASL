@@ -1686,7 +1686,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                 "")
             # Передаем сведения о сохраненной продаже
             System.sale_status = sale_status
-            System.sale_id = sale_number
+            System.sale_id = int(sale_number)
             System.sale_tickets = client_in_sale
             logger.debug("Билеты сохраненной продажи %s" % System.sale_tickets)
             sale.exec_()
@@ -1746,7 +1746,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         Возвращаемое значение: None
         """
-        client = ClientForm()
+        client: ClientForm = ClientForm()
         client.show()
         client.exec()
 
@@ -1759,7 +1759,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Возвращаемое значение:
         """
         logger.info("Запуск функции main_open_sale")
-        sale = SaleForm()
+        sale: SaleForm = SaleForm()
         sale.show()
         # кнопка сохранить
         sale.ui.pushButton_3.setEnabled(True)
@@ -1816,10 +1816,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         logger.info("Запуск функции main_get_statistic")
         # Устанавливаем временной период
-        start_time = ' 00:00:00'
-        end_time = ' 23:59:59'
-        dt1 = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
-        dt2 = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
+        start_time: str = ' 00:00:00'
+        end_time: str = ' 23:59:59'
+        dt1: str = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
+        dt2: str = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
         with Session(engine) as session:
             query = select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status).where(
                 and_(Sale.status == '1', Sale.datetime.between(dt1, dt2))
@@ -1827,10 +1827,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             sales = session.execute(query).all()
         logger.debug("Продажи за выбранный период %s" % sales)
         # Предполагаем что кассовых РМ два
-        pc_1 = {'Name PC': f'{System.pc_1}', 'card': 0, 'cash': 0}
-        pc_2 = {'Name PC': f'{System.pc_2}', 'card': 0, 'cash': 0}
+        pc_1: dict[str, int | str] = {'Name PC': f'{System.pc_1}', 'card': 0, 'cash': 0}
+        pc_2: dict[str, int | str] = {'Name PC': f'{System.pc_2}', 'card': 0, 'cash': 0}
         # Тип оплаты: 1 - карта, 2 - наличные
-        type_rm = [1, 2]
+        type_rm: list[int] = [1, 2]
         for i in range(len(sales)):
             if sales[i][0] in pc_1.values():
                 # Если карта
@@ -1846,9 +1846,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     pc_2['cash'] += sales[i][2]
         logger.debug("Данные с pc_1 %s" % pc_1)
         logger.debug("Данные с pc_2 %s" % pc_2)
-        card = int(pc_1['card']) + int(pc_2['card'])
-        cash = int(pc_1['cash']) + int(pc_2['cash'])
-        summa = card + cash
+        card: int = int(pc_1['card']) + int(pc_2['card'])
+        cash: int = int(pc_1['cash']) + int(pc_2['cash'])
+        summa: int = card + cash
         self.ui.tableWidget_4.setRowCount(0)
         self.ui.tableWidget_4.insertRow(0)
         self.ui.tableWidget_4.setItem(0, 0, QTableWidgetItem(f"{pc_1['Name PC']}"))
@@ -1870,19 +1870,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             )
             tickets = session.execute(query).all()
         logger.debug("Билеты %s" % tickets)
-        type_tickets = [0, 1, 'м', 'и', '-']
+        type_tickets: list[int | str] = [0, 1, 'м', 'и', '-']
         # 0-взрослый, 1-детский, м-многодетный, и-инвалид, с-сопровождающий, н-не идет
-        time_arrival = [1, 2, 3]
+        time_arrival: list[int] = [1, 2, 3]
         # child
-        c = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        c: dict[str, int] = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # adult
-        a = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        a: dict[str, int] = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # many_child
-        m_c = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        m_c: dict[str, int] = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # many_adult
-        m_a = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        m_a: dict[str, int] = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # invalid
-        i_ = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
+        i_: dict[str, int] = {'sum': 0, 't_1': 0, 't_2': 0, 't_3': 0}
         # Считаем количество билетов
         for i in range(len(tickets)):
             # Обычный билет - '-'
@@ -1981,16 +1981,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Возвращаемое значение:
         """
         logger.info("Запуск функции main_otchet_administratora")
-        path = "./otchet.pdf"
+        path: str = "./otchet.pdf"
         path = os.path.realpath(path)
-        row = self.ui.tableWidget_3.rowCount()
+        row:int = self.ui.tableWidget_3.rowCount()
         if row >= 1:
-            type_ticket = ['Взрослый, 1 ч.', 'Взрослый, 2 ч.', 'Взрослый, 3 ч.',
+            type_ticket: list[str] = ['Взрослый, 1 ч.', 'Взрослый, 2 ч.', 'Взрослый, 3 ч.',
                            'Детский, 1 ч.', 'Детский, 2 ч.', 'Детский, 3 ч.',
                            'Мног-й взр., 1 ч.', 'Мног-й взр., 2 ч.', 'Мног-й взр., 3 ч.',
                            'Мног-й дет., 1 ч.', 'Мног-й дет., 2 ч.', 'Мног-й дет., 3 ч.',
                            'Инвалид, 3 ч.']
-            table = [self.ui.tableWidget_3.item(0, 2).text(),  # взр 1
+            table: list[str] = [self.ui.tableWidget_3.item(0, 2).text(),  # взр 1
                      self.ui.tableWidget_3.item(0, 3).text(),  # взр 2
                      self.ui.tableWidget_3.item(0, 4).text(),  # взр 3
                      self.ui.tableWidget_3.item(1, 2).text(),  # дет 1
@@ -2007,31 +2007,31 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             if os.path.exists(path):
                 os.remove(path)
-            dt1 = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
-            dt2 = self.ui.dateEdit.date().toString("dd-MM-yyyy")
+            dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
+            dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
             # Промежуточные расчеты
-            adult_1 = System.price['ticket_adult_1'] * int(table[0])
-            adult_2 = System.price['ticket_adult_2'] * int(table[1])
-            adult_3 = System.price['ticket_adult_3'] * int(table[2])
-            kol_adult = int(table[0]) + int(table[1]) + int(table[2])
-            sum_adult = adult_1 + adult_2 + adult_3
-            child_1 = System.price['ticket_child_1'] * int(table[3])
-            child_2 = System.price['ticket_child_2'] * int(table[4])
-            child_3 = System.price['ticket_child_3'] * int(table[5])
-            kol_child = int(table[3]) + int(table[4]) + int(table[5])
-            sum_child = child_1 + child_2 + child_3
-            many_adult_1 = round(System.price['ticket_adult_1'] / 2 * int(table[6]))
-            many_adult_2 = round(System.price['ticket_adult_2'] / 2 * int(table[7]))
-            many_adult_3 = round(System.price['ticket_adult_3'] / 2 * int(table[8]))
-            kol_many_adult = int(table[6]) + int(table[7]) + int(table[8])
-            sum_many_adult = many_adult_1 + many_adult_2 + many_adult_3
-            many_child_1 = round(System.price['ticket_child_1'] / 2 * int(table[9]))
-            many_child_2 = round(System.price['ticket_child_2'] / 2 * int(table[10]))
-            many_child_3 = round(System.price['ticket_child_3'] / 2 * int(table[11]))
-            kol_many_child = int(table[9]) + int(table[10]) + int(table[11])
-            sum_many_child = many_child_1 + many_child_2 + many_child_3
+            adult_1: int = System.price['ticket_adult_1'] * int(table[0])
+            adult_2: int = System.price['ticket_adult_2'] * int(table[1])
+            adult_3: int = System.price['ticket_adult_3'] * int(table[2])
+            kol_adult: int = int(table[0]) + int(table[1]) + int(table[2])
+            sum_adult: int = adult_1 + adult_2 + adult_3
+            child_1: int = System.price['ticket_child_1'] * int(table[3])
+            child_2: int = System.price['ticket_child_2'] * int(table[4])
+            child_3: int = System.price['ticket_child_3'] * int(table[5])
+            kol_child: int = int(table[3]) + int(table[4]) + int(table[5])
+            sum_child: int = child_1 + child_2 + child_3
+            many_adult_1: int = round(System.price['ticket_adult_1'] / 2 * int(table[6]))
+            many_adult_2: int = round(System.price['ticket_adult_2'] / 2 * int(table[7]))
+            many_adult_3: int = round(System.price['ticket_adult_3'] / 2 * int(table[8]))
+            kol_many_adult: int = int(table[6]) + int(table[7]) + int(table[8])
+            sum_many_adult: int = many_adult_1 + many_adult_2 + many_adult_3
+            many_child_1: int = round(System.price['ticket_child_1'] / 2 * int(table[9]))
+            many_child_2: int = round(System.price['ticket_child_2'] / 2 * int(table[10]))
+            many_child_3: int = round(System.price['ticket_child_3'] / 2 * int(table[11]))
+            kol_many_child: int = int(table[9]) + int(table[10]) + int(table[11])
+            sum_many_child: int = many_child_1 + many_child_2 + many_child_3
             # Формируем данные
-            data = [['№ п/п', 'Тип\nбилета', 'Цена, руб.',
+            data: list[list[str] | list[str | int] | list[str | int]] = [['№ п/п', 'Тип\nбилета', 'Цена, руб.',
                      'Количество, шт.', 'Стоимость, руб.'],
                     # Взрослые
                     ['1', type_ticket[0], System.price['ticket_adult_1'], table[0], adult_1],
@@ -2070,26 +2070,26 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Возвращаемое значение:
         """
         logger.info("Запуск функции main_otchet_kassira")
-        path = "./otchet.pdf"
+        path: str = "./otchet.pdf"
         path = os.path.realpath(path)
         # Удаляем предыдущий файл
-        row_tab_1 = self.ui.tableWidget_3.rowCount()
-        row_tab_2 = self.ui.tableWidget_4.rowCount()
+        row_tab_1: int = self.ui.tableWidget_3.rowCount()
+        row_tab_2: int = self.ui.tableWidget_4.rowCount()
         if row_tab_1 >= 1 and row_tab_2 >= 1:
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             if os.path.exists(path):
                 os.remove(path)
-            dt1 = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
-            dt2 = self.ui.dateEdit.date().toString("dd-MM-yyyy")
+            dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
+            dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
             # Формируем данные
             logger.info("Формируем сведения для отчета %s"
                         % self.ui.tableWidget_3.item(0, 0).text())
             logger.info("Имя ПК %s" % System.pc_name)
             if System.pc_name == self.ui.tableWidget_4.item(0, 0).text():
-                values = [self.ui.tableWidget_4.item(0, 1).text(),
+                values: list[str] = [self.ui.tableWidget_4.item(0, 1).text(),
                           self.ui.tableWidget_4.item(0, 2).text()]
             else:
-                values = [self.ui.tableWidget_4.item(1, 1).text(),
+                values: list[str] = [self.ui.tableWidget_4.item(1, 1).text(),
                           self.ui.tableWidget_4.item(1, 2).text()]
             logger.debug("Сведения для отчета кассира %s" % values)
             otchet.otchet_kassira(values, dt1, dt2, System.user)
@@ -2117,7 +2117,7 @@ class System:
     sale_status: int | None = None
     sale_id: int | None = None
     sale_discount: int | None = None
-    sale_tickets: tuple = ()
+    sale_tickets = ()
     sale_tuple: tuple = ()
     sale_special: int | None = None
     # Номер строки с активным CheckBox для исключения взрослого из продажи
