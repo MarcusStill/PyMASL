@@ -1985,25 +1985,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         path = os.path.realpath(path)
         row:int = self.ui.tableWidget_3.rowCount()
         if row >= 1:
-            type_ticket: list[str] = ['Взрослый, 1 ч.', 'Взрослый, 2 ч.', 'Взрослый, 3 ч.',
-                           'Детский, 1 ч.', 'Детский, 2 ч.', 'Детский, 3 ч.',
-                           'Мног-й взр., 1 ч.', 'Мног-й взр., 2 ч.', 'Мног-й взр., 3 ч.',
-                           'Мног-й дет., 1 ч.', 'Мног-й дет., 2 ч.', 'Мног-й дет., 3 ч.',
-                           'Инвалид, 3 ч.']
-            table: list[str] = [self.ui.tableWidget_3.item(0, 2).text(),  # взр 1
-                     self.ui.tableWidget_3.item(0, 3).text(),  # взр 2
-                     self.ui.tableWidget_3.item(0, 4).text(),  # взр 3
-                     self.ui.tableWidget_3.item(1, 2).text(),  # дет 1
-                     self.ui.tableWidget_3.item(1, 3).text(),  # дет 2
-                     self.ui.tableWidget_3.item(1, 4).text(),  # дет 3
-                     self.ui.tableWidget_3.item(2, 2).text(),  # мн взр 1
-                     self.ui.tableWidget_3.item(2, 3).text(),  # мн взр 2
-                     self.ui.tableWidget_3.item(2, 4).text(),  # мн взр 3
-                     self.ui.tableWidget_3.item(3, 2).text(),  # мн дет 1
-                     self.ui.tableWidget_3.item(3, 3).text(),  # мн дет 2
-                     self.ui.tableWidget_3.item(3, 4).text(),  # мн дет 3
-                     self.ui.tableWidget_3.item(4, 1).text()]  # инв
-            """Удаляем предыдущий файл"""
+            type_ticket: list[str] = [
+                'Взрослый, 1 ч.', 'Взрослый, 2 ч.', 'Взрослый, 3 ч.', 'Детский, 1 ч.', 'Детский, 2 ч.', 'Детский, 3 ч.',
+                'Мног-й взр., 1 ч.', 'Мног-й взр., 2 ч.', 'Мног-й взр., 3 ч.', 'Мног-й дет., 1 ч.', 'Мног-й дет., 2 ч.',
+                'Мног-й дет., 3 ч.', 'Инвалид, 3 ч.'
+            ]
+            table: list[str] = [
+                self.ui.tableWidget_3.item(0, 2).text(),  # взр 1
+                self.ui.tableWidget_3.item(0, 3).text(),  # взр 2
+                self.ui.tableWidget_3.item(0, 4).text(),  # взр 3
+                self.ui.tableWidget_3.item(1, 2).text(),  # дет 1
+                self.ui.tableWidget_3.item(1, 3).text(),  # дет 2
+                self.ui.tableWidget_3.item(1, 4).text(),  # дет 3
+                self.ui.tableWidget_3.item(2, 2).text(),  # мн взр 1
+                self.ui.tableWidget_3.item(2, 3).text(),  # мн взр 2
+                self.ui.tableWidget_3.item(2, 4).text(),  # мн взр 3
+                self.ui.tableWidget_3.item(3, 2).text(),  # мн дет 1
+                self.ui.tableWidget_3.item(3, 3).text(),  # мн дет 2
+                self.ui.tableWidget_3.item(3, 4).text(),  # мн дет 3
+                self.ui.tableWidget_3.item(4, 1).text()   # инв
+            ]
+            # Удаляем предыдущий файл
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             if os.path.exists(path):
                 os.remove(path)
