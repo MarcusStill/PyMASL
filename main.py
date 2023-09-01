@@ -530,7 +530,7 @@ class SaleForm(QDialog):
         self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(privilege))
         self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(str(id)))
         self.ui.tableWidget_2.setColumnHidden(5, True)
-        self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(age))
+        self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(str(age)))
 
     def filling_client_table_widget_3(self, row: int, last_name: str, first_name: str, age: int,
                                       privilege: str, id: int) -> None:
@@ -1102,7 +1102,7 @@ class SaleForm(QDialog):
             System.sale_status = 1
         if System.sale_dict['kol_adult'] >= 1:
             add_sale: Sale = Sale(price=System.sale_dict['detail'][7],
-                                  id_user=System.user[3],
+                                  id_user=System.user.id,
                                   id_client=System.sale_dict['detail'][5],
                                   status=System.sale_status,
                                   discount=System.sale_dict['detail'][4],
@@ -1140,7 +1140,6 @@ class SaleForm(QDialog):
                 with Session(engine) as session:
                     session.add(add_ticket)
                     session.commit()
-                logger.info('Сохраненный билет %s' % add_ticket)
             self.close()
         else:
             windows.info_window(
@@ -1168,7 +1167,11 @@ class SaleForm(QDialog):
         if System.sale_special == 1:
             self.sale_generate_saved_tickets()
         else:
-            state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 1, print_check)
+            #state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 1, print_check)
+            state_check = 1
+            payment = 2     # Оплата наличкой
+            print_check = 0
+
             check = None
             # Если прошла оплата
             if state_check == 1:
@@ -1188,13 +1191,19 @@ class SaleForm(QDialog):
                 if payment == 3:  # Если оплата offline банковской картой
                     check = 'offline'
                 # Обновляем информацию о продаже в БД
-                logger.info('Обновляем информацию о продаже в БД')
+                logger.debug('Обновляем информацию в БД о продаже %s' % System.sale_id)
                 with Session(engine) as session:
-                    query = update(Sale).where(Sale.id == System.sale_id).values(
-                        status=1, id_user=System.user[3], pc_name=System.pc_name,
-                        payment_type=payment, bank_pay=check, datetime=dt.datetime.now()
+                    session.execute(
+                        update(Sale).where(Sale.id == System.sale_id).values(
+                            status=1,
+                            id_user=System.user.id,
+                            pc_name=System.pc_name,
+                            payment_type=payment,
+                            bank_pay=check,
+                            datetime=dt.datetime.now()
+                        )
                     )
-                    session.execute(query)
+                    session.commit()
                 # генерируем билеты
                 self.sale_generate_saved_tickets()
                 # Сбрасываем статус продажи
@@ -1223,10 +1232,9 @@ class SaleForm(QDialog):
         with Session(engine) as session:
             query = select(Sale.payment_type).filter(Sale.id == System.sale_id)
             payment_type_sale = session.execute(query).scalars().one()
-            # payment_type_sale = session.execute(query).scalars().one()._asdict()
-        logger.info('payment_type_sale %s' % payment_type_sale)
+        logger.info('Тип оплаты (payment_type_sale): %s' % payment_type_sale)
         # 1 - карта, 2 - наличные
-        if payment_type_sale.get('payment_type') == 1:
+        if payment_type_sale == 1:
             payment_type: int = 101
         else:
             payment_type: int = 102
@@ -1245,7 +1253,7 @@ class SaleForm(QDialog):
             # Записываем информацию о возврате в БД
             with Session(engine) as session:
                 query = update(Sale).where(Sale.id == System.sale_id).values(
-                    status=2, id_user=System.user[3], pc_name=System.pc_name,
+                    status=2, id_user=System.user.id, pc_name=System.pc_name,
                     payment_type=payment, bank_pay=check, datetime=dt.datetime.now()
                 )
                 session.execute(query)
@@ -1288,7 +1296,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
         """
         logger.info("Запуск функции open_pay_form")
-        pay = PayForm()
+        pay: PayForm = PayForm()
         # Передаем текст в форму PayForm
         pay.setText(txt)
 
@@ -2171,7 +2179,7 @@ class System:
             kassir: User | None = session.execute(query).scalars().first()
         if kassir:
             # Если авторизация прошла успешно - сохраняем данные пользователя
-            System.user = kassir
+            System.user: User | None = kassir
             logger.info('kassir: %s' % kassir)
             return 1
         else:
