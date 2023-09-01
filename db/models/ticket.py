@@ -31,10 +31,8 @@ class Ticket(Base):
     sale = relationship('Sale', backref='ticket_sale')
 
     def __str__(self) -> str:
-        return f'id={self.id}, client_age={self.client_age}, datetime={self.datetime}, ' \
-               f'arrival_time={self.arrival_time}, talent={self.talent}, price={self.price}, ' \
-               f'description={self.description}, id_client={self.id_client}, id_sale={self.id_sale}, ' \
-               f'ticket_type={self.ticket_type}, price={self.price}'
+        return (f'{self.id} {self.client_age} {self.datetime} {self.arrival_time} {self.talent} {self.price} '
+                f'{self.description} {self.id_client} {self.id_sale} {self.ticket_type} {self.price}')
 
     def __repr__(self) -> str:
         return str(self)

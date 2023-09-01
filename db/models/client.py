@@ -23,9 +23,8 @@ class Client(Base):
     privilege: Mapped[str | None] = mapped_column(String(2), comment='Наличие льгот')
 
     def __str__(self) -> str:
-        return f'id={self.id}, first_name={self.first_name}, last_name={self.last_name}, ' \
-               f'middle_name={self.middle_name}, gender={self.gender}, phone={self.phone}, email={self.email}, ' \
-               f'privilege={self.privilege}'
+        return (f'{self.id} {self.first_name} {self.last_name} {self.middle_name} {self.birth_date} {self.gender}'
+                f'{self.phone} {self.email} {self.privilege}')
 
     def __repr__(self) -> str:
         return str(self)

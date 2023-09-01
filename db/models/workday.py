@@ -17,7 +17,7 @@ class Workday(Base):
     date: Mapped[date] = mapped_column(Date, nullable=False, comment='Рабочий день')
 
     def __str__(self) -> str:
-        return f'id={self.id}, date={self.date}'
+        return f'{self.id} {self.date}'
 
     def __repr__(self) -> str:
         return str(self)

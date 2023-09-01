@@ -22,8 +22,7 @@ class User(Base):
     inn: Mapped[str | None] = mapped_column(String(12), comment='ИНН')
 
     def __str__(self) -> str:
-        return f'id={self.id}, first_name={self.first_name}, last_name={self.last_name}, ' \
-               f'middle_name={self.middle_name}, login={self.login}, inn={self.inn}'
+        return f'{self.first_name} {self.last_name} {self.middle_name} {self.login}'
 
     def __repr__(self) -> str:
         return str(self)

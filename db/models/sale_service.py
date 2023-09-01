@@ -32,10 +32,9 @@ class SaleService(Base):
     user = relationship('User', backref='sale_service_user')
 
     def __str__(self) -> str:
-        return f'id={self.id}, id_client={self.id_client}, id_user={self.id_user}, price={self.price}, ' \
-               f'datetime={self.datetime}, discount={self.discount}, status={self.status}, pc_name={self.pc_name}, ' \
-               f'payment_type={self.payment_type}, bank_pay={self.bank_pay}, user_return={self.user_return},' \
-               f'datetime_return={self.datetime_return}, bank_return={self.bank_return}'
+        return (f'{self.id} {self.id_client} {self.id_user} {self.price} {self.datetime} {self.discount} {self.status}'
+                f'{self.pc_name} {self.payment_type} {self.bank_pay} {self.user_return} {self.datetime_return}'
+                f'{self.bank_return}')
 
     def __repr__(self) -> str:
         return str(self)
