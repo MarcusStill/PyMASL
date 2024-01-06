@@ -1405,6 +1405,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_17.clicked.connect(self.main_get_statistic)
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
+        self.ui.dateEdit_3.setDate(date.today())
         self.ui.lineEdit_2.returnPressed.connect(self.main_search_clients)
         self.ui.comboBox_3.currentTextChanged.connect(self.main_filter_clear)
         # изменяем ширину столбца
@@ -1709,16 +1710,26 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         logger.info("Запуск функции main_button_all_sales")
         filter_day = 0
+        # Устанавливаем временной период
+        start_time: str = ' 00:00:00'
+        end_time: str = ' 23:59:59'
         self.ui.tableWidget_2.setRowCount(0)
+        # Фильтр продаж определенную дату
+        if self.ui.radioButton_7.isChecked():
+            dt1: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + start_time
+            dt2: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + end_time
+            with Session(engine) as session:
+                sales = session.query(Sale).filter(Sale.datetime.between(dt1, dt2)).order_by(desc(Sale.id))
         # Фильтр продаж за 1, 3 и 7 дней
-        if self.ui.radioButton.isChecked():
-            filter_day = dt.datetime(dt.datetime.today().year, dt.datetime.today().month, dt.datetime.today().day)
-        elif self.ui.radioButton_2.isChecked():
-            filter_day = dt.datetime.today() - timedelta(days=3)
-        elif self.ui.radioButton_3.isChecked():
-            filter_day = dt.datetime.today() - timedelta(days=7)
-        with Session(engine) as session:
-            sales = session.query(Sale).filter(Sale.datetime >= filter_day).order_by(desc(Sale.id))
+        else:
+            if self.ui.radioButton.isChecked():
+                filter_day = dt.datetime(dt.datetime.today().year, dt.datetime.today().month, dt.datetime.today().day)
+            elif self.ui.radioButton_2.isChecked():
+                filter_day = dt.datetime.today() - timedelta(days=3)
+            elif self.ui.radioButton_3.isChecked():
+                filter_day = dt.datetime.today() - timedelta(days=7)
+            with Session(engine) as session:
+                sales = session.query(Sale).filter(Sale.datetime >= filter_day).order_by(desc(Sale.id))
         if sales:
             for sale in sales:
                 row = self.ui.tableWidget_2.rowCount()
