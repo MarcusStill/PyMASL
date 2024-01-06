@@ -1167,10 +1167,7 @@ class SaleForm(QDialog):
         if System.sale_special == 1:
             self.sale_generate_saved_tickets()
         else:
-            #state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 1, print_check)
-            state_check = 1
-            payment = 2     # Оплата наличкой
-            print_check = 0
+            state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 1, print_check, None)
 
             check = None
             # Если прошла оплата
@@ -1228,17 +1225,17 @@ class SaleForm(QDialog):
         logger.info("Запуск функции sale_return")
         # Обновляем данные о продаже
         self.sale_update()
-        logger.info('Запрашиваем метод оплаты в БД')
+        logger.info('Запрашиваем информацию о продаже в БД')
         with Session(engine) as session:
-            query = select(Sale.payment_type).filter(Sale.id == System.sale_id)
-            payment_type_sale = session.execute(query).scalars().one()
-        logger.info('Тип оплаты (payment_type_sale): %s' % payment_type_sale)
+            query = select(Sale).filter(Sale.id == System.sale_id)
+            sale = session.execute(query).scalars().one()
+        logger.info(f'Итоговая сумма: {sale.price}, тип оплаты: {sale.payment_type}')
         # 1 - карта, 2 - наличные
-        if payment_type_sale == 1:
+        if sale.payment_type == 1:
             payment_type: int = 101
         else:
             payment_type: int = 102
-        state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 2, 1)
+        state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 2, 1, sale.price)
         check = None
         # Если возврат прошел
         if state_check == 1:
