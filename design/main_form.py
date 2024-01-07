@@ -392,7 +392,7 @@ class Ui_MainWindow(object):
         ___qtablewidgetitem9 = self.tableWidget_2.horizontalHeaderItem(0)
         ___qtablewidgetitem9.setText(QCoreApplication.translate("MainWindow", u"N \u043f\u0440\u043e\u0434\u0430\u0436\u0438", None));
         ___qtablewidgetitem10 = self.tableWidget_2.horizontalHeaderItem(1)
-        ___qtablewidgetitem10.setText(QCoreApplication.translate("MainWindow", u"N \u043a\u043b\u0438\u0435\u043d\u0442\u0430", None));
+        ___qtablewidgetitem10.setText(QCoreApplication.translate("MainWindow", u"\u0424\u0430\u043c\u0438\u043b\u0438\u044f \u043a\u043b\u0438\u0435\u043d\u0442\u0430", None));
         ___qtablewidgetitem11 = self.tableWidget_2.horizontalHeaderItem(2)
         ___qtablewidgetitem11.setText(QCoreApplication.translate("MainWindow", u"\u0426\u0435\u043d\u0430", None));
         ___qtablewidgetitem12 = self.tableWidget_2.horizontalHeaderItem(3)

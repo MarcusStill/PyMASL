@@ -1749,12 +1749,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         start_time: str = ' 00:00:00'
         end_time: str = ' 23:59:59'
         self.ui.tableWidget_2.setRowCount(0)
-        # Фильтр продаж определенную дату
+        # Фильтр продаж за определенную дату
         if self.ui.radioButton_7.isChecked():
             dt1: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + start_time
             dt2: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + end_time
             with Session(engine) as session:
-                sales = session.query(Sale).filter(Sale.datetime.between(dt1, dt2)).order_by(desc(Sale.id))
+                sales = session.query(Sale.id, Sale.id_client, Sale.price, Sale.datetime,
+                                      Sale.status, Sale.discount, Sale.pc_name, Sale.payment_type,
+                                      Client.last_name).filter(and_(
+                    Sale.id_client == Client.id, Sale.datetime.between(dt1, dt2)
+                )).order_by(desc(Sale.id))
         # Фильтр продаж за 1, 3 и 7 дней
         else:
             if self.ui.radioButton.isChecked():
@@ -1764,33 +1768,39 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             elif self.ui.radioButton_3.isChecked():
                 filter_day = dt.datetime.today() - timedelta(days=7)
             with Session(engine) as session:
-                sales = session.query(Sale).filter(Sale.datetime >= filter_day).order_by(desc(Sale.id))
+                sales = session.query(Sale.id, Sale.id_client, Sale.price, Sale.datetime,
+                                      Sale.status, Sale.discount,Sale.pc_name,
+                                      Sale.payment_type, Client.last_name).filter(and_(
+                    Sale.id_client == Client.id, Sale.datetime >= filter_day
+                )).order_by(desc(Sale.id))
         if sales:
             for sale in sales:
                 row = self.ui.tableWidget_2.rowCount()
                 self.ui.tableWidget_2.insertRow(row)
-                self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(f"{sale.id}"))
-                self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(f"{sale.id_client}"))
-                self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(f"{sale.price}"))
-                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{sale.datetime}"))
-                if sale.status == 0:
-                    status_type = 'создана'
-                elif sale.status == 1:
-                    status_type = 'оплачена'
-                elif sale.status == 2:
-                    status_type = 'возврат'
-                self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{status_type}"))
-                self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{sale.discount}"))
-                self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{sale.pc_name}"))
-                if sale.payment_type == 1:
-                    payment_type = 'карта'
-                elif sale.payment_type == 2:
-                    payment_type = 'наличные'
-                elif sale.payment_type == 3:
-                    payment_type = 'карта offline'
+                self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(str(sale[0])))
+                # Изменяем ширину колонки
+                self.ui.tableWidget_2.setColumnWidth(1, 150)
+                self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(str(sale[8])))
+                self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(str(sale[2])))
+                self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(str(sale[3])))
+                if int(sale[4]) == 0:
+                    status_type: str = 'создана'
+                elif int(sale[4]) == 1:
+                    status_type: str = 'оплачена'
+                elif int(sale[4]) == 2:
+                    status_type: str = 'возврат'
+                self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f'{status_type}'))
+                self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(str(sale[5])))
+                self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(str(sale[6])))
+                if int(sale[7]) == 1:
+                    payment_type: str = 'карта'
+                elif int(sale[7]) == 2:
+                    payment_type: str = 'наличные'
+                elif int(sale[7]) == 3:
+                    payment_type: str = 'карта offline'
                 else:
                     payment_type = '-'
-                self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(f"{payment_type}"))
+                self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(f'{payment_type}'))
 
     def main_open_client(self) -> None:
         """
