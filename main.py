@@ -262,6 +262,7 @@ class SaleForm(QDialog):
         self.ui.pushButton_10.clicked.connect(self.sale_update)
         self.ui.tableWidget_3.doubleClicked.connect(self.adding_related_client_to_sale)
         self.ui.pushButton_12.clicked.connect(self.clearing_client_list)
+        self.ui.pushButton_13.clicked.connect(self.get_slip)
 
     def edit_client_in_sale(self) -> None:
         """
@@ -637,6 +638,42 @@ class SaleForm(QDialog):
         logger.info("Запуск функции check_filter_update")
         self.ui.tableWidget.clearContents()
         self.ui.tableWidget.setRowCount(0)
+
+    def get_slip(self) -> None:
+        """
+        Функция запрашивает банковский слип-чек в БД.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
+        logger.info("Запуск функции get_slip")
+        with Session(engine) as session:
+            query = select(Sale.bank_pay).where(Sale.id == System.sale_id)
+            slip = session.execute(query).scalars().one()
+        words = slip.split()
+        try:
+            rub_position = words.index('(Руб):') or words.index('Руб:')
+        except ValueError:
+            rub_position = '-'
+            logger.warning('В слип-чеке слова <(Руб):> или <Руб:> не найдены.')
+        try:
+            rrn_position = words.index('RRN:')
+        except ValueError:
+            rrn_position = '-'
+            logger.warning('В слип-чеке слово <RRN:> не найдено.')
+        try:
+            pay_position = words.index('ОплатаТ:') or words.index('Оплата:') or words.index('Оплата')
+        except ValueError:
+            pay_position = '-'
+            logger.warning('В слип-чеке слова <ОплатаТ:>, <Оплата:> , <Оплата> не найдены.')
+        windows.info_window(
+            f'Оплата была произведена картой со следующими реквизитами:\n'
+            f'- последние цифры: {words[rub_position - 1][:-5]};\n'
+            f'- мерчант: {words[pay_position + 2]}.\n'
+            f'\nДля возврата платежа терминал попросит ввести номер ссылки.',
+            f'Введите следующие цифры: {words[rrn_position + 1]}',
+            f'Банковский слип-чек:\n{slip}')
 
     @logger_wraps()
     def adding_client_to_sale(self, *args, **kwargs) -> None:
@@ -1619,6 +1656,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.tableWidget_2.setEnabled(False)
                 # Поле скидка
                 sale.ui.checkBox_2.setEnabled(False)
+                # Кнопка просмотр слип-чека
+                if self.ui.tableWidget_2.item(row_number, 7).text() != 'карта':
+                    sale.ui.pushButton_13.setEnabled(False)
             # Если продажа не оплачена
             elif sale_status == 0:
                 sale.ui.pushButton_3.setEnabled(False)
@@ -1632,7 +1672,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.tableWidget_2.setEnabled(True)
                 sale.ui.checkBox_2.setEnabled(True)
             for search_client in client_in_sale:
-                logger.debug(search_client)
                 if search_client[8] >= System.age['max']:
                     type_ticket = 'взрослый'
                     kol_adult += 1
@@ -1682,7 +1721,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # Возраст
                 sale.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client[8]}"))
                 summ += int(search_client[4])
-            logger.info("Статус продажи %s" % sale_status)
             sale.ui.label_5.setText(str(kol_adult))
             sale.ui.label_7.setText(str(kol_child))
             sale.ui.label_8.setText(str(summ))
