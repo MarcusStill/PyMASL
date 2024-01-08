@@ -442,19 +442,18 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     kol_adult_edit = sale_dict['kol_adult'] - sale_dict['detail'][0]
     kol_child_edit = sale_dict['kol_child'] - sale_dict['detail'][2]
     logger.info("Тип оплаты: %s" % payment_type)
-    if type_operation == 1:
-        kkt_type = IFptr.LIBFPTR_RT_SELL
-        logger.info("Тип операции: покупка")
-    elif type_operation == 2:
-        kkt_type = IFptr.LIBFPTR_RT_SELL_RETURN
-        logger.info("Тип операции: возврат")
     # Открытие печатного чека
     logger.info("Открытие печатного чека")
     fptr.open()
     fptr.setParam(1021, f'{user.last_name} {user.first_name}')
     fptr.setParam(1203, user.inn)
     fptr.operatorLogin()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, kkt_type)
+    if type_operation == 1:
+        fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
+        logger.info("Тип операции: покупка")
+    elif type_operation == 2:
+        fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)
+        logger.info("Тип операции: возврат")
     if print_check == 0:
         fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY, True)
         fptr.setParam(1008, EMAIL)
