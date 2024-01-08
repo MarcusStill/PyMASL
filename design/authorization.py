@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
-
-from PySide6.QtCore import (QCoreApplication, QMetaObject, QRect, Qt)
-from PySide6.QtGui import (QFont, QPixmap)
-from PySide6.QtWidgets import (QFrame, QLabel, QLineEdit, QPushButton)
+from PySide6.QtCore import (QCoreApplication, QMetaObject, QRect,
+                            Qt)
+from PySide6.QtGui import (QPixmap)
+from PySide6.QtWidgets import (QFrame, QLabel,
+                               QLineEdit, QPushButton)
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -30,21 +30,17 @@ class Ui_Dialog(object):
         self.pushButton_2.setGeometry(QRect(290, 170, 85, 28))
         self.label_4 = QLabel(Dialog)
         self.label_4.setObjectName(u"label_4")
-        self.label_4.setGeometry(QRect(10, 30, 181, 181))
+        self.label_4.setGeometry(QRect(10, 10, 181, 181))
         self.label_4.setPixmap(QPixmap(u"../../TestProject/files/logo.png"))
         self.label_4.setScaledContents(True)
         self.label_5 = QLabel(Dialog)
         self.label_5.setObjectName(u"label_5")
-        self.label_5.setGeometry(QRect(10, 0, 431, 41))
-        font = QFont()
-        font.setPointSize(10)
-        font.setBold(False)
-        font.setItalic(False)
-        font.setUnderline(False)
-        font.setStrikeOut(False)
-        self.label_5.setFont(font)
+        self.label_5.setGeometry(QRect(90, 10, 301, 21))
         self.label_5.setAlignment(Qt.AlignCenter)
         self.label_5.setWordWrap(True)
+        self.label_3 = QLabel(Dialog)
+        self.label_3.setObjectName(u"label_3")
+        self.label_3.setGeometry(QRect(320, 140, 121, 20))
         self.line = QFrame(Dialog)
         self.line.setObjectName(u"line")
         self.line.setGeometry(QRect(0, 200, 441, 16))
@@ -59,7 +55,10 @@ class Ui_Dialog(object):
         self.label_7.setGeometry(QRect(80, 210, 41, 20))
         self.label_8 = QLabel(Dialog)
         self.label_8.setObjectName(u"label_8")
-        self.label_8.setGeometry(QRect(200, 210, 321, 20))
+        self.label_8.setGeometry(QRect(350, 210, 21, 20))
+        self.label_9 = QLabel(Dialog)
+        self.label_9.setObjectName(u"label_9")
+        self.label_9.setGeometry(QRect(380, 210, 61, 20))
 
         self.retranslateUi(Dialog)
 
@@ -74,8 +73,10 @@ class Ui_Dialog(object):
         self.pushButton_2.setText(QCoreApplication.translate("Dialog", u"\u041e\u0442\u043c\u0435\u043d\u0430", None))
         self.label_4.setText("")
         self.label_5.setText(QCoreApplication.translate("Dialog", u"\u041a\u043e\u0440\u043f\u043e\u0440\u0430\u0442\u0438\u0432\u043d\u0430\u044f \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u043e\u043d\u043d\u0430\u044f \u0441\u0438\u0441\u0442\u0435\u043c\u0430 PyMASL", None))
+        self.label_3.setText("")
         self.label_6.setText(QCoreApplication.translate("Dialog", u"\u0412\u0435\u0440\u0441\u0438\u044f \u041f\u041e:", None))
         self.label_7.setText(QCoreApplication.translate("Dialog", u"0.0.1", None))
-        self.label_8.setText(QCoreApplication.translate("Dialog", u"https://github.com/marcusstill/PyMASL.git", None))
+        self.label_8.setText(QCoreApplication.translate("Dialog", u"\u0411\u0414:", None))
+        self.label_9.setText(QCoreApplication.translate("Dialog", u"-", None))
     # retranslateUi
 
