@@ -263,6 +263,7 @@ class SaleForm(QDialog):
         self.ui.tableWidget_3.doubleClicked.connect(self.adding_related_client_to_sale)
         self.ui.pushButton_12.clicked.connect(self.clearing_client_list)
         self.ui.pushButton_13.clicked.connect(self.get_slip)
+        self.ui.pushButton_14.clicked.connect(self.sale_canceling)
 
     def edit_client_in_sale(self) -> None:
         """
@@ -1317,7 +1318,7 @@ class SaleForm(QDialog):
             sale = session.execute(query).scalars().one()
         # предполагаем что оплата была банковской картой
         payment_type: int = 101
-        state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 3, 1, sale.price)
+        state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 3, 1, sale)
         check = None
         # Если возврат прошел
         if state_check == 1:
@@ -2288,7 +2289,6 @@ class System:
         else:
             return 0
 
-    @staticmethod
     def get_price(self) -> None:
         """
         Функция загружает прайс-лист основных услуг из БД.
@@ -2388,7 +2388,7 @@ if __name__ == "__main__":
 
     auth = AuthForm()
     auth.show()
-    # auth.ui.label_9.setText(database)
+    auth.ui.label_9.setText(database)
     sys.exit(app.exec())
 
     # window = MainWindow()
