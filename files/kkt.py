@@ -4,12 +4,13 @@ from files import windows
 from files.libfptr10 import IFptr
 from files.logger import *
 
+
 try:
     fptr = IFptr('')
 except (Exception,) as e:
     info = 'Не установлен драйвер ККТ!'
     windows.info_window(info, '', '')
-    logger.warning('info')
+    logger.warning(info)
 
 
 GOOD = 'ОДОБРЕНО'
@@ -17,13 +18,14 @@ EMAIL = "test.check@pymasl.ru"
 
 
 @logger_wraps()
-def terminal_oplata(sum):
+def terminal_oplata(amount):
     """Операуия оплаты по банковскому терминалу"""
+    logger.info("Запуск функции terminal_oplata")
     result = ''
     status = 0
-    sum += '00'
+    amount += '00'
     pinpad = 'C:\\sc552\\loadparm.exe'
-    pay_param = ' 1 ' + sum
+    pay_param = ' 1 ' + amount
     pinpad_run = pinpad + pay_param
     # проверяем статус проведения операции по банковскому терминалу
     while status != 1:
@@ -58,18 +60,42 @@ def terminal_oplata(sum):
 
 
 @logger_wraps()
-def terminal_vozvrat(sum):
+def terminal_return(amount):
     """Операуия возврата по банковскому терминалу"""
+    logger.info("Запуск функции terminal_return")
     result = ''
     pinpad_file = r"C:\sc552\p"
-    sum += '00'
+    amount += '00'
     pinpad = 'C:\\sc552\\loadparm.exe'
-    pay_param = ' 8 ' + sum
+    pay_param = ' 3 ' + amount
     pinpad_run = pinpad + pay_param
     subprocess.call(pinpad_run)
-    #  Проверка файла с результатом работы банковского терминала"""
-    logger.info("Proverka file")
-    # Проверяем одобрение операции
+    #  Проверка файла с результатом работы банковского терминала
+    try:
+        with open(pinpad_file, encoding='IBM866') as file:
+            text = file.read()
+        if GOOD in text:
+            logger.info("Проверка файла успешно завершена")
+            result = 1
+    except FileNotFoundError as not_found:
+        print('File not found:', not_found.filename)
+        logger.warning("Проверка файла завершилась с ошибкой")
+        result = 0
+    return result
+
+
+@logger_wraps()
+def terminal_canceling(amount):
+    """Операуия отмены по банковскому терминалу"""
+    logger.info("Запуск функции terminal_canceling")
+    result = ''
+    pinpad_file = r"C:\sc552\p"
+    amount += '00'
+    pinpad = 'C:\\sc552\\loadparm.exe'
+    pay_param = ' 8 ' + amount
+    pinpad_run = pinpad + pay_param
+    subprocess.call(pinpad_run)
+    #  Проверка файла с результатом работы банковского терминала
     try:
         with open(pinpad_file, encoding='IBM866') as file:
             text = file.read()
@@ -86,7 +112,7 @@ def terminal_vozvrat(sum):
 @logger_wraps()
 def terminal_check_itog():
     """Сверка итогов работы банковского терминала"""
-    logger.info("Proverka file")
+    logger.info("Запуск функции terminal_check_itog")
     result = ''
     pinpad_file = r"C:\sc552\p"
     subprocess.call('C:\\sc552\\loadparm.exe 7')
@@ -109,7 +135,7 @@ def terminal_check_itog():
 def terminal_check_itog_window():
     """Сверка итогов работы банковского терминала
 ••••с выводом результата в QMessageBox"""
-    logger.info("Proverka file")
+    logger.info("Запуск функции terminal_check_itog_window")
     pinpad_file = r"C:\sc552\p"
     subprocess.call('C:\\sc552\\loadparm.exe 7')
     logger.debug('Check itog in QMessageBox')
@@ -134,31 +160,30 @@ def terminal_check_itog_window():
 @logger_wraps()
 def terminal_svod_check():
     """Сводный чек без детализации"""
-    logger.info("Proverka file")
-    result = ''
-    pinpad_file = r"C:\sc552\p"
+    logger.info("Запуск функции terminal_svod_check")
     subprocess.call('C:\\sc552\\loadparm.exe 9')
-    logger.debug('Svod itog')
-    file_result = 'совпали'
-    # Выводим результат сверки итогов
     try:
-        with open(pinpad_file, encoding='IBM866') as file:
-            text = file.read()
-        if file_result in text:
-            result = 1
-            print_slip_check(1)
+        print_slip_check(1)
     except FileNotFoundError as not_found:
         logger.warning(not_found.filename)
-        result = 0
-    return result
 
 
 @logger_wraps()
 def terminal_control_lenta():
     """Печать контрольной ленты"""
-    logger.info("Proverka file")
+    logger.info("Запуск функции terminal_control_lenta")
     subprocess.call('C:\\sc552\\loadparm.exe 9 1')
-    logger.debug('Сontrol_cheсk')
+    try:
+        print_slip_check(1)
+    except FileNotFoundError as not_found:
+        logger.warning(not_found.filename)
+
+
+@logger_wraps()
+def terminal_copy_last_check():
+    """Печать копии последнего чека"""
+    logger.info("Запуск функции terminal_copy_last_check")
+    subprocess.call('C:\\sc552\\loadparm.exe 12')
     try:
         print_slip_check(1)
     except FileNotFoundError as not_found:
@@ -168,7 +193,7 @@ def terminal_control_lenta():
 @logger_wraps()
 def read_slip_check():
     """Чтение слип-чека"""
-    logger.info("Чтение слип-чека из файла")
+    logger.info("Запуск функции read_slip_check")
     pinpad_file = r"C:\sc552\p"
     result = ''
     try:
@@ -188,10 +213,11 @@ def read_slip_check():
 @logger_wraps()
 def print_slip_check(kol=2):
     """Печать слип-чека"""
-    logger.info("Функция печати нефискального документа")
-    logger.info("Открываем соединение с ККМ")
+    logger.info("Запуск функции print_slip_check")
+    logger.debug("Функция печати нефискального документа")
+    logger.debug("Открываем соединение с ККМ")
     fptr.open()
-    logger.info("Открытие нефискального документа")
+    logger.debug("Открытие нефискального документа")
     fptr.beginNonfiscalDocument()
     logger.info("Читаем чек из файла")
     line = read_slip_check()
@@ -201,15 +227,15 @@ def print_slip_check(kol=2):
     fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
     # Промотка чековой ленты на одну строку (пустую)
     fptr.printText()
-    logger.info("Закрытие нефискального документа")
+    logger.debug("Закрытие нефискального документа")
     fptr.endNonfiscalDocument()
-    logger.info("Печать документа")
+    logger.debug("Печать документа")
     fptr.report()
     # Частичная отрезка ЧЛ
     fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
-    logger.info("Отрезаем чек")
+    logger.debug("Отрезаем чек")
     fptr.cut()
-    logger.info("Создание копии нефискального документа")
+    logger.debug("Создание копии нефискального документа")
     if kol == 2:
         # Печатаем копию слип-чека
         fptr.beginNonfiscalDocument()
@@ -220,31 +246,31 @@ def print_slip_check(kol=2):
         fptr.printText()
         # Промотка чековой ленты на одну строку (пустую)
         fptr.printText()
-        logger.info("Закрытие нефискального документа")
+        logger.debug("Закрытие нефискального документа")
         fptr.endNonfiscalDocument()
-        logger.info("Печать документа")
+        logger.debug("Печать документа")
         fptr.report()
         # Частичная отрезка ЧЛ
         fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
-        logger.info("Отрезаем чек")
+        logger.debug("Отрезаем чек")
         fptr.cut()
-    logger.info("Закрываем соединение с ККМ")
+    logger.debug("Закрываем соединение с ККМ")
     fptr.close()
 
 
 @logger_wraps()
 def get_info():
     """Запрос информации о ККТ"""
-    logger.info("Inside the function def get_info")
+    logger.info("Запуск функции get_info")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
     fptr.queryData()
     model = fptr.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
     model_name = fptr.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME)
     firmware_version = fptr.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION)
-    logger.info("Номер модели ККТ: %s" % model)
-    logger.info("Наименование ККТ: %s" % model_name)
-    logger.info("Версия ПО ККТ: %s" % firmware_version)
+    logger.debug("Номер модели ККТ: %s" % model)
+    logger.debug("Наименование ККТ: %s" % model_name)
+    logger.debug("Версия ПО ККТ: %s" % firmware_version)
     fptr.close()
     info = "Номер модели ККТ: " + str(model) + ".\nНаименование ККТ: " + str(
         model_name) + ".\nВерсия ПО ККТ: " + str(firmware_version)
@@ -254,7 +280,7 @@ def get_info():
 @logger_wraps()
 def get_status_obmena():
     """Статус информационного обмена"""
-    logger.info("Inside the function def get_status_obmena")
+    logger.info("Запуск функции get_status_obmena")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE,
                   IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS)
@@ -264,11 +290,11 @@ def get_status_obmena():
     first_unsent_number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
     ofd_message_read = fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ)
     date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-    logger.info("ExchangeStatus: %s" % exchange_status)
-    logger.info("UnsentCount: %s" % unsent_count)
-    logger.info("FirstUnsentNumber: %s" % first_unsent_number)
-    logger.info("OfdMessageRead: %s" % ofd_message_read)
-    logger.info("DateTime: %s" % date_time)
+    logger.debug("ExchangeStatus: %s" % exchange_status)
+    logger.debug("UnsentCount: %s" % unsent_count)
+    logger.debug("FirstUnsentNumber: %s" % first_unsent_number)
+    logger.debug("OfdMessageRead: %s" % ofd_message_read)
+    logger.debug("DateTime: %s" % date_time)
     fptr.close()
     info = ("ExchangeStatus: " + str(exchange_status) + ".\nUnsentCount: "
             + str(unsent_count) + ".\nFirstUnsentNumber: "
@@ -280,13 +306,13 @@ def get_status_obmena():
 @logger_wraps()
 def get_time():
     """Запрос текущих даты и времени ККТ"""
-    logger.info("Inside the function def get_time")
+    logger.info("Запуск функции get_time")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
     fptr.queryData()
     # Тип переменной datetime - datetime.datetime
     date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-    logger.info("dateTime: %s" % date_time)
+    logger.debug("Текущие дата и время в ККТ: %s" % date_time)
     windows.info_window(str(date_time), '', '')
     fptr.close()
 
@@ -294,7 +320,7 @@ def get_time():
 @logger_wraps()
 def smena_info():
     """Запрос состояния смены"""
-    logger.info("Inside the function def smena_info")
+    logger.info("Запуск функции smena_info")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
     fptr.queryData()
@@ -302,13 +328,13 @@ def smena_info():
     number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER)
     # Тип переменной datetime - datetime.datetime
     date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-    logger.info("Состояние смены:  %s" % state)
+    logger.debug("Состояние смены:  %s" % state)
     if state == 0:
         result = 'закрыта'
     else:
         result = 'открыта'
-    logger.info("Номер смены: %s" % number)
-    logger.info("Дата и время истечения текущей смены: %s" % date_time)
+    logger.debug("Номер смены: %s" % number)
+    logger.debug("Дата и время истечения текущей смены: %s" % date_time)
     info = ("Состояние смены: " + result + ".\nНомер смены: " + str(number)
             + ".\nДата и время истечения текущей смены: " + str(date_time))
     windows.info_window("Состояние смены: " + result,
@@ -320,7 +346,7 @@ def smena_info():
 @logger_wraps()
 def last_document():
     """Копия последнего документа"""
-    logger.info("Inside the function def last_document")
+    logger.info("Запуск функции last_document")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE,
                   IFptr.LIBFPTR_RT_LAST_DOCUMENT)
@@ -331,7 +357,7 @@ def last_document():
 @logger_wraps()
 def report_payment():
     """Отчет о состоянии расчетов"""
-    logger.info("Inside the function def report_payment")
+    logger.info("Запуск функции report_payment")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE,
                   IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS)
@@ -342,7 +368,7 @@ def report_payment():
 @logger_wraps()
 def report_x():
     """X-отчет"""
-    logger.info("Inside the function def report_x")
+    logger.info("Запуск функции report_x")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
     fptr.report()
@@ -352,19 +378,19 @@ def report_x():
 @logger_wraps()
 def kassir_reg(user):
     """Регистрация кассира"""
-    logger.info("Inside the function def kassir_reg")
+    logger.info("Запуск функции kassir_reg")
     fptr.open()
-    fptr.setParam(1021, f'{user[0]} {user[1]}')
-    fptr.setParam(1203, user[2])
+    fptr.setParam(1021, f'{user.last_name} {user.first_name}')
+    fptr.setParam(1203, user.inn)
     fptr.operatorLogin()
     fptr.close()
 
 
 @logger_wraps()
-def check_open(sale_dict, payment_type, user, type_operation, print_check):
+def check_open(sale_dict, payment_type, user, type_operation, print_check, price):
     """Проведение операции оплаты"""
     logger.info("Запуск функции check_open")
-    logger.debug('В функцию переданы следующие данные %s' % sale_dict)
+    logger.debug(f'В функцию переданы: sale_dict = {sale_dict}, итоговая сумма = {price}')
     time = sale_dict['detail'][6]
     bank, kkt_type, payment = None, None, None
     if print_check == 0:
@@ -374,26 +400,37 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check):
     # если оплата банковской картой
     if payment_type == 101:
         if type_operation == 1:
+            logger.info("Запускаем оплату по банковскому терминалу")
             payment = 1
             # результат операции по терминалу
-            logger.info("Запускаем оплату по банковскому терминалу")
             bank = terminal_oplata(str(sale_dict['detail'][7]))
             logger.debug("BANK: %s" % bank)
             if bank != 1:
-                logger.warning("Оплата по банковскому терминалу завершена с ошибкой")
-                windows.info_window("Оплата по банковскому терминалу завершена с ошибкой",
-                                    '', "")
+                info = "Оплата по банковскому терминалу завершена с ошибкой"
+                logger.warning(info)
+                windows.info_window(info,'', "")
                 return 0, payment
         elif type_operation == 2:
+            logger.info("Запускаем операцию возврата по банковскому терминалу")
             payment = 1
             # результат операции по терминалу
-            logger.info("Запускаем оплату по банковскому терминалу")
-            bank = terminal_vozvrat(str(sale_dict['detail'][7]))
+            bank = terminal_return(str(price))
             logger.debug("BANK: %s" % bank)
             if bank != 1:
-                logger.warning("Оплата по банковскому терминалу завершена с ошибкой")
-                windows.info_window("Оплата по банковскому терминалу завершена с ошибкой",
-                                    '', "")
+                info = "Возврат по банковскому терминалу завершен с ошибкой"
+                logger.warning(info)
+                windows.info_window(info,'', "")
+                return 0, payment
+        elif type_operation == 3:
+            logger.info("Запускаем операцию отмены по банковскому терминалу")
+            payment = 1
+            # результат операции по терминалу
+            bank = terminal_canceling(str(price))
+            logger.debug("BANK: %s" % bank)
+            if bank != 1:
+                info = "Отмена по банковскому терминалу завершена с ошибкой"
+                logger.warning(info)
+                windows.info_window(info,'', "")
                 return 0, payment
     # если offline оплата банковской картой
     elif payment_type == 100:
@@ -414,8 +451,8 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check):
     # Открытие печатного чека
     logger.info("Открытие печатного чека")
     fptr.open()
-    fptr.setParam(1021, f'{user[0]} {user[1]}')
-    fptr.setParam(1203, user[2])
+    fptr.setParam(1021, f'{user.last_name} {user.first_name}')
+    fptr.setParam(1203, user.inn)
     fptr.operatorLogin()
     fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, kkt_type)
     if print_check == 0:
@@ -516,7 +553,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check):
 @logger_wraps()
 def smena_close(user):
     """Закрытие кассовой смены"""
-    logger.info("Inside the function def smena_close")
+    logger.info("Запуск функции smena_close")
     state = smena_info()
     if state != 0:
         res = windows.info_dialog_window('Внимание! Кассовая смена не закрыта',
@@ -527,8 +564,8 @@ def smena_close(user):
             try:
                 if result == 1:
                     fptr.open()
-                    fptr.setParam(1021, f'{user[0]} {user[1]}')
-                    fptr.setParam(1203, user[2])
+                    fptr.setParam(1021, f'{user.last_name} {user.first_name}')
+                    fptr.setParam(1203, user.inn)
                     fptr.operatorLogin()
                     fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE,
                                   IFptr.LIBFPTR_RT_CLOSE_SHIFT)
@@ -549,5 +586,5 @@ def smena_close(user):
 
 def continue_print():
     """Допечатать документ"""
-    logger.info("Inside the function def continue_print")
+    logger.info("Запуск функции continue_print")
     fptr.continuePrint()
