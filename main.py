@@ -1266,13 +1266,58 @@ class SaleForm(QDialog):
         with Session(engine) as session:
             query = select(Sale).filter(Sale.id == System.sale_id)
             sale = session.execute(query).scalars().one()
-        logger.info(f'Итоговая сумма: {sale.price}, тип оплаты: {sale.payment_type}')
+        logger.debug(f'Итоговая сумма: {sale.price}, тип оплаты: {sale.payment_type}')
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
             payment_type: int = 101
         else:
             payment_type: int = 102
         state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 2, 1, sale.price)
+        check = None
+        # Если возврат прошел
+        if state_check == 1:
+            logger.info("Операция возврата прошла успешно")
+            if payment == 1:  # Если оплата банковской картой
+                logger.info("Читаем слип-чек из файла")
+                pinpad_file = r"C:\sc552\p"
+                with open(pinpad_file, 'r', encoding='IBM866') as file:
+                    while line := file.readline().rstrip():
+                        logger.debug(line)
+                check = kkt.read_slip_check()
+            # Записываем информацию о возврате в БД
+            with Session(engine) as session:
+                query = update(Sale).where(Sale.id == System.sale_id).values(
+                    status=2, id_user=System.user.id, pc_name=System.pc_name,
+                    payment_type=payment, bank_pay=check, datetime=dt.datetime.now()
+                )
+                session.execute(query)
+            self.close()
+        else:
+            logger.warning('Операция возврата завершилась с ошибкой')
+            windows.info_window(
+                "Внимание",
+                'Закройте это окно, откройте сохраненную продажу и проведите'
+                'операцию возврата еще раз.', '')
+
+    @logger.catch()
+    def sale_canceling(self):
+        """
+        Функция осуществляет операцию отмены продажи, оплаченной по безналу (для текущей незакрытой смены).
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
+        logger.info("Запуск функции sale_canceling")
+        # Обновляем данные о продаже
+        self.sale_update()
+        logger.info('Запрашиваем информацию о продаже в БД')
+        with Session(engine) as session:
+            query = select(Sale.price).filter(Sale.id == System.sale_id)
+            sale = session.execute(query).scalars().one()
+        # предполагаем что оплата была банковской картой
+        payment_type: int = 101
+        state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 3, 1, sale.price)
         check = None
         # Если возврат прошел
         if state_check == 1:
@@ -1431,6 +1476,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_16.clicked.connect(kkt.terminal_check_itog_window)
         self.ui.pushButton_21.clicked.connect(kkt.terminal_svod_check)
         self.ui.pushButton_22.clicked.connect(kkt.terminal_control_lenta)
+        self.ui.pushButton_12.clicked.connect(kkt.terminal_copy_last_check)
         self.ui.pushButton_23.clicked.connect(self.main_open_sale)
         self.ui.pushButton_13.clicked.connect(self.main_button_all_sales)
         self.ui.pushButton_18.clicked.connect(self.main_otchet_kassira)
@@ -1656,9 +1702,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.tableWidget_2.setEnabled(False)
                 # Поле скидка
                 sale.ui.checkBox_2.setEnabled(False)
-                # Кнопка просмотр слип-чека
+                # Кнопки просмотра слип-чека и отмены платежа по банковской карте
                 if self.ui.tableWidget_2.item(row_number, 7).text() != 'карта':
                     sale.ui.pushButton_13.setEnabled(False)
+                    sale.ui.pushButton_14.setEnabled(False)
             # Если продажа не оплачена
             elif sale_status == 0:
                 sale.ui.pushButton_3.setEnabled(False)
