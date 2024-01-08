@@ -387,6 +387,28 @@ def kassir_reg(user):
 
 
 @logger_wraps()
+def deposit_of_money(amount):
+    """Функция регистрация внесения денег в кассу"""
+    logger.info("Запуск функции cash_deposit")
+    logger.info(f'Внесено в кассу: {amount}')
+    fptr.open()
+    fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
+    fptr.cashIncome()
+    fptr.close()
+
+
+@logger_wraps()
+def payment(amount):
+    """Функция регистрация выплаты денег из кассы"""
+    logger.info("Запуск функции payment")
+    logger.info(f'Выплачено из кассы: {amount}')
+    fptr.open()
+    fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
+    fptr.cashIncome()
+    fptr.close()
+
+
+@logger_wraps()
 def check_open(sale_dict, payment_type, user, type_operation, print_check, price):
     """Проведение операции оплаты"""
     logger.info("Запуск функции check_open")

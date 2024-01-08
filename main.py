@@ -1484,13 +1484,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_19.clicked.connect(self.main_otchet_administratora)
         self.ui.tableWidget_2.doubleClicked.connect(self.main_search_selected_sale)
         self.ui.pushButton_17.clicked.connect(self.main_get_statistic)
+        self.ui.pushButton_24.clicked.connect(lambda: kkt.deposit_of_money(System.amount_to_pay_or_deposit))
+        self.ui.pushButton_25.clicked.connect(lambda: kkt.payment(System.amount_to_pay_or_deposit))
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
         self.ui.dateEdit_3.setDate(date.today())
         self.ui.lineEdit_2.returnPressed.connect(self.main_search_clients)
         self.ui.comboBox_3.currentTextChanged.connect(self.main_filter_clear)
+        # при вводе в поле lineEdit сохраняем значение в System.amount_to_pay_or_deposit
+        self.ui.lineEdit.textEdited.connect(self.main_transfer_of_deposit_or_payment_amount)
         # изменяем ширину столбца
         self.ui.tableWidget_2.setColumnWidth(3, 250)
+
+
+    def main_transfer_of_deposit_or_payment_amount(self) -> None:
+        """
+        Функция сохраняет значение строки lineEdit для передачи в функции внесения/выплаты денег.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
+        logger.info("Запуск функции main_transfer_of_deposit_or_payment_amount")
+        System.amount_to_pay_or_deposit =  int(self.ui.lineEdit.text())
+
 
     def filling_client_table_widget_main_form(self, last_name: str, first_name: str, middle_name: str, birth_date: date,
                                     gender: str, phone: str, email: str,privilege: str, id: int) -> None:
@@ -2268,6 +2285,8 @@ class System:
     id_new_client_in_sale: int = 0
     # Флаг печати кассовых и банковских чеков
     print_check: int = 1
+    # Сохраняем сумму для внесения или выплаты из кассы
+    amount_to_pay_or_deposit: int = 0
 
     def user_authorization(self, login, password) -> int:
         """
