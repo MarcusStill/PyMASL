@@ -375,7 +375,35 @@ class IFptr(object):
         LIBFPTR_PARAM_MARK_CHECKING_STAGE_IN_CASH,
         LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT,
         LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_ERROR_DESCRIPTION,
-    ) = RANGE(65536, 65888)
+        LIBFPTR_PARAM_FN_CONTAINS_KEYS_UPDATER_SERVER_URI,
+        LIBFPTR_PARAM_MARKING_CODE_CLEAR,
+        LIBFPTR_PARAM_MODULE_ADDRESS,
+        LIBFPTR_PARAM_SEGMENT_ADDRESS,
+        LIBFPTR_PARAM_LAST_SUCCESSFUL_OKP,
+        LIBFPTR_PARAM_FN_SERIAL_NUMBER,
+        LIBFPTR_PARAM_ECR_REGISTRATION_NUMBER,
+        LIBFPTR_PARAM_OFD_VATIN,
+        LIBFPTR_PARAM_FNS_URL,
+        LIBFPTR_PARAM_MACHINE_NUMBER,
+        LIBFPTR_PARAM_MARKING_PRODUCT_ID,
+        LIBFPTR_PARAM_TIMEOUT,
+        LIBFPTR_PARAM_PRINT_UPDATE_FNM_KEYS_REPORT,
+        LIBFPTR_PARAM_FN_KEYS_UPDATER_SERVER_URI,
+        LIBFPTR_PARAM_DOCUMENT_ELECTRONICALLY,
+        LIBFPTR_PARAM_FORMAT_TEXT,
+        LIBFPTR_PARAM_RECEIPT_SIZE,
+        LIBFPTR_PARAM_MARK_SIZE,
+        LIBFPTR_PARAM_MCU_TEMPERATURE,
+        LIBFPTR_PARAM_DATA_FOR_SEND_IS_EMPTY,
+        LIBFPTR_PARAM_AVAILABLE_CLOSING,
+        LIBFPTR_PARAM_AVAILABLE_CANCELLATION,
+        LIBFPTR_PARAM_AVAILABLE_POSITION_ADDING,
+        LIBFPTR_PARAM_AVAILABLE_PAYMENT,
+        LIBFPTR_PARAM_AVAILABLE_TOTAL,
+        LIBFPTR_PARAM_AVAILABLE_ATTRIBUTES_ADDING,
+        LIBFPTR_PARAM_OPERATOR_REGISTERED,
+        LIBFPTR_PARAM_DEVICE_PLATFORM_VERSION,
+    ) = RANGE(65536, 65916)
 
     (
         LIBFPTR_OK,
@@ -644,7 +672,13 @@ class IFptr(object):
         LIBFPTR_ERROR_MINIPOS_MODE_FR_DISABLED,
         LIBFPTR_ERROR_ENTRY_NOT_FOUND_IN_OTP,
         LIBFPTR_ERROR_EXCISABLE_COMMODITY_WITHOUT_EXCISE,
-    ) = RANGE(0, 266)
+        LIBFPTR_ERROR_BARCODE_TYPE_NOT_SUPPORTED,
+        LIBFPTR_ERROR_OVERLAY_DATA_OVERFLOW,
+        LIBFPTR_ERROR_INVALID_MODULE_ADDRESS,
+        LIBFPTR_ERROR_ECR_MODEL_NOT_SUPPORTED,
+        LIBFPTR_ERROR_PAID_NOT_REQUIRED,
+        LIBFPTR_ERROR_NON_PRINTABLE_CHAR,
+    ) = RANGE(0, 272)
 
     (
         LIBFPTR_ERROR_BASE_MARKING,
@@ -669,7 +703,12 @@ class IFptr(object):
         LIBFPTR_ERROR_UPDATE_KEYS_SERVICE,
         LIBFPTR_ERROR_MARK_NOT_CHECKED,
         LIBFPTR_ERROR_MARK_CHECK_TIMEOUT_EXPIRED,
-    ) = RANGE(400, 422)
+        LIBFPTR_ERROR_NO_MARKING_CODE_IN_TABLE,
+        LIBFPTR_ERROR_CHEKING_MARK_IN_PROGRESS,
+        LIBFPTR_ERROR_INVALID_SERVER_ADDRESS,
+        LIBFPTR_ERROR_UPDATE_KEYS_TIMEOUT,
+        LIBFPTR_ERROR_PROPERTY_FOR_MARKING_POSITION_ONLY,
+    ) = RANGE(400, 427)
 
     (
         LIBFPTR_ERROR_BASE_WEB,
@@ -893,7 +932,12 @@ class IFptr(object):
         LIBFPTR_DT_SOFTLOCK_STATUS,
         LIBFPTR_DT_LAST_SENT_ISM_NOTICE_DATE_TIME,
         LIBFPTR_DT_MCU_INFO,
-    ) = RANGE(0, 51)
+        LIBFPTR_DT_MODULE_ADDRESS,
+        LIBFPTR_DT_CACHE_REQUISITES,
+        LIBFPTR_DT_DEPARTMENT_SUM,
+        LIBFPTR_DT_MCU_TEMPERATURE,
+        LIBFPTR_DT_AVAILABLE_OPERATIONS,
+    ) = RANGE(0, 56)
 
     (
         LIBFPTR_FNDT_TAG_VALUE,
@@ -919,7 +963,8 @@ class IFptr(object):
         LIBFPTR_FNDT_ISM_EXCHANGE_STATUS,
         LIBFPTR_FNDT_MARKING_MODE_STATUS,
         LIBFPTR_FNDT_CHECK_MARK_TIME,
-    ) = RANGE(0, 23)
+        LIBFPTR_FNDT_RECEIPT_SIZE,
+    ) = RANGE(0, 24)
 
     (
         LIBFPTR_UT_FIRMWARE,
@@ -1086,7 +1131,8 @@ class IFptr(object):
         LIBFPTR_NFM_FROM_50_TO_80_PERCENT,
         LIBFPTR_NFM_FROM_80_TO_90_PERCENT,
         LIBFPTR_NFM_MORE_90_PERCENT,
-    ) = RANGE(0, 4)
+        LIBFPTR_NFM_OUT_OF_MEMORY,
+    ) = RANGE(0, 5)
 
     (
         LIBFPTR_OIS_ESTIMATED_STATUS_CORRECT,
@@ -1132,6 +1178,12 @@ class IFptr(object):
         LIBFPTR_MCST_TASK_IS_OVER,
         LIBFPTR_MCST_WAITING_FOR_REPEAT,
     ) = RANGE(0, 8)
+
+    (
+        LIBFPTR_SILENT_REBOOT_NO,
+        LIBFPTR_SILENT_REBOOT_AFTER_SESSION_CLOSE,
+        LIBFPTR_SILENT_REBOOT_BEFORE_SESSION_OPEN,
+    ) = RANGE(0, 3)
 
     (
         LIBFPTR_ERROR_BASE_RPC,
@@ -1198,6 +1250,10 @@ class IFptr(object):
 
     LIBFPTR_SETTING_VALIDATE_MARK_WITH_FNM_ONLY = "ValidateMarksWithFnmOnly"
 
+    LIBFPTR_SETTING_AUTO_MEASUREMENT_UNIT = "AutoMeasurementUnit"
+
+    LIBFPTR_SETTING_SILENT_REBOOT = "SilentReboot"
+
     LIBFPTR_MODEL_UNKNOWN = 0
 
     LIBFPTR_MODEL_ATOL_25F = 57
@@ -1249,6 +1305,8 @@ class IFptr(object):
     LIBFPTR_MODEL_ATOL_47FA = 48
 
     LIBFPTR_MODEL_ATOL_PT_5F = 89
+
+    LIBFPTR_MODEL_ATOL_42FA = 70
 
     LIBFPTR_PORT_BR_1200 = 1200
 
@@ -1462,6 +1520,12 @@ class IFptr(object):
 
     LIBFPTR_ERROR_USERS_SCRIPTS_BASE = 1000
 
+    LIBFPTR_PLATFORM_UNKNOWN = 0
+
+    LIBFPTR_PLATFORM_25 = 25
+
+    LIBFPTR_PLATFORM_50 = 50
+
     LIBFPTR_ERROR_USERS_SCRIPTS_END = 1999
 
     LIBFPTR_ERROR_RPC_END = 699
@@ -1577,6 +1641,10 @@ class IFptr(object):
                                               ctypes.c_int,
                                               ctypes.c_void_p)
 
+    CHANGE_LABEL_METHOD = ctypes.CFUNCTYPE(ctypes.c_int,
+                                           ctypes.c_void_p,
+                                           ctypes.c_wchar_p)
+
     def __init__(self, lib_path="", fptr_id=""):
         assert sys.version_info >= (2, 6)
         self.lib_path = lib_path
@@ -1676,6 +1744,7 @@ class IFptr(object):
         self._resetError = self.RESET_ERROR_METHOD(('libfptr_reset_error', self.library))
         self._logWrite = self.LOG_WRITE_METHOD(('libfptr_log_write_ex', self.library))
         self._showProperties = self.SHOW_PROPERTIES_METHOD(('libfptr_show_properties', self.library))
+        self._changeLabel = self.CHANGE_LABEL_METHOD(('libfptr_change_label', self.library))
 
     def __del__(self):
         destroy = self.DESTROY_METHOD(('libfptr_destroy', self.library))
@@ -1686,6 +1755,9 @@ class IFptr(object):
 
     def logWrite(self, tag, level, message):
         return self._logWrite(self.interface, tag, level, message)
+
+    def changeLabel(self, label):
+        return self._changeLabel(self.interface, label)
 
     def showProperties(self, parentType, parent):
         return self._showProperties(self.interface, parentType, parent)
@@ -1737,7 +1809,7 @@ class IFptr(object):
     def setParam(self, paramId, param):
         if isinstance(param, bool):
             self._setBool(self.interface, ctypes.c_int(paramId), ctypes.c_int(param))
-        elif isinstance(param, int):
+        elif isinstance(param, int) or (sys.version_info < (3, 0) and isinstance(param, long)):
             if param < 0 or param > 4294967295:
                 raise ValueError("Invalid 'param' value {0}".format(param))
             self._setInt(self.interface, ctypes.c_int(paramId), ctypes.c_uint(param))
