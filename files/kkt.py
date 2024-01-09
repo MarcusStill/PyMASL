@@ -473,7 +473,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     if type_operation == 1:
         fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
         logger.info("Тип операции: покупка")
-    elif type_operation == 2:
+    elif type_operation in (2, 3):
         fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)
         logger.info("Тип операции: возврат")
     if print_check == 0:
