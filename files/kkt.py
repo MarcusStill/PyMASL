@@ -522,7 +522,10 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     if payment_type == 102:
         payment = 2
         fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
-        fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict['detail'][7])
+        if type_operation == 1:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict['detail'][7])
+        elif type_operation in (2, 3):
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, price)
         fptr.payment()
         # Закрытие полностью оплаченного чека
         logger.info("Закрытие полностью оплаченного чека")
