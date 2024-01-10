@@ -770,7 +770,7 @@
         <x>10</x>
         <y>20</y>
         <width>401</width>
-        <height>351</height>
+        <height>411</height>
        </rect>
       </property>
       <property name="title">
@@ -1028,6 +1028,29 @@
         <string/>
        </property>
       </widget>
+      <widget class="QPushButton" name="pushButton_26">
+       <property name="geometry">
+        <rect>
+         <x>140</x>
+         <y>350</y>
+         <width>121</width>
+         <height>61</height>
+        </rect>
+       </property>
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Проверить баланс
+кассы</string>
+       </property>
+       <property name="autoExclusive">
+        <bool>true</bool>
+       </property>
+       <property name="flat">
+        <bool>false</bool>
+       </property>
+      </widget>
      </widget>
      <widget class="QGroupBox" name="groupBox_2">
       <property name="geometry">
@@ -1035,7 +1058,7 @@
         <x>420</x>
         <y>20</y>
         <width>401</width>
-        <height>351</height>
+        <height>411</height>
        </rect>
       </property>
       <property name="title">

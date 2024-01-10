@@ -1486,6 +1486,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_17.clicked.connect(self.main_get_statistic)
         self.ui.pushButton_24.clicked.connect(lambda: kkt.deposit_of_money(System.amount_to_pay_or_deposit))
         self.ui.pushButton_25.clicked.connect(lambda: kkt.payment(System.amount_to_pay_or_deposit))
+        self.ui.pushButton_26.clicked.connect(lambda: kkt.payment(System.amount_to_pay_or_deposit))
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
         self.ui.dateEdit_3.setDate(date.today())
@@ -2320,16 +2321,42 @@ class System:
         with Session(engine) as session:
             result = session.query(Price).all()
         if result is not None:
-            # TODO: исправить преобразование типов
-            System.price['ticket_child_1'] = int(str(result[0]))
-            System.price['ticket_child_2'] = int(str(result[1]))
-            System.price['ticket_child_3'] = int(str(result[2]))
-            System.price['ticket_child_week_1'] = int(str(result[3]))
-            System.price['ticket_child_week_2'] = int(str(result[4]))
-            System.price['ticket_child_week_3'] = int(str(result[5]))
-            System.price['ticket_adult_1'] = int(str(result[6]))
-            System.price['ticket_adult_2'] = int(str(result[7]))
-            System.price['ticket_adult_3'] = int(str(result[8]))
+            if int(str(result[0])) == 0:
+                System.price['ticket_child_1'] = 250
+            else:
+                System.price['ticket_child_1'] = int(str(result[0]))
+            if int(str(result[1])) == 0:
+                System.price['ticket_child_2'] = 500
+            else:
+                System.price['ticket_child_2'] = int(str(result[1]))
+            if int(str(result[2])) == 0:
+                System.price['ticket_child_3'] = 750
+            else:
+                System.price['ticket_child_3'] = int(str(result[2]))
+            if int(str(result[3])) == 0:
+                System.price['ticket_child_week_1'] = 300
+            else:
+                System.price['ticket_child_week_1'] = int(str(result[3]))
+            if int(str(result[4])) == 0:
+                System.price['ticket_child_week_2'] = 600
+            else:
+                System.price['ticket_child_week_2'] = int(str(result[4]))
+            if int(str(result[5])) == 0:
+                System.price['ticket_child_week_3'] = 900
+            else:
+                System.price['ticket_child_week_3'] = int(str(result[5]))
+            if int(str(result[6])) == 0:
+                System.price['ticket_adult_1'] = 150
+            else:
+                System.price['ticket_adult_1'] = int(str(result[6]))
+            if int(str(result[7])) == 0:
+                System.price['ticket_adult_2'] = 200
+            else:
+                System.price['ticket_adult_2'] = int(str(result[7]))
+            if int(str(result[8])) == 0:
+                System.price['ticket_adult_3'] = 200
+            else:
+                System.price['ticket_adult_3'] = int(str(result[8]))
             logger.debug('System.price: %s' % System.price)
 
     def check_day(self) -> int:
