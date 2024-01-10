@@ -452,7 +452,7 @@ def payment(amount):
     logger.info(f'Выплачено из кассы: {amount}')
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
-    fptr.cashIncome()
+    fptr.cashOutcome()
     fptr.close()
 
 
