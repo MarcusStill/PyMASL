@@ -1285,7 +1285,8 @@ class SaleForm(QDialog):
                     while line := file.readline().rstrip():
                         logger.debug(line)
                 check = kkt.read_slip_check()
-            # Записываем информацию о возврате в БД
+                kkt.print_pinpad_check()
+            logger.info("Записываем информацию о возврате в БД")
             with Session(engine) as session:
                 query = update(Sale).where(Sale.id == System.sale_id).values(
                     status=2, id_user=System.user.id, pc_name=System.pc_name,
@@ -1322,7 +1323,7 @@ class SaleForm(QDialog):
         check = None
         # Если возврат прошел
         if state_check == 1:
-            logger.info("Операция возврата прошла успешно")
+            logger.info("Операция отмены прошла успешно")
             if payment == 1:  # Если оплата банковской картой
                 logger.info("Читаем слип-чек из файла")
                 pinpad_file = r"C:\sc552\p"
@@ -1330,7 +1331,8 @@ class SaleForm(QDialog):
                     while line := file.readline().rstrip():
                         logger.debug(line)
                 check = kkt.read_slip_check()
-            # Записываем информацию о возврате в БД
+                kkt.print_pinpad_check()
+            logger.info("Записываем информацию об отмене в БД")
             with Session(engine) as session:
                 query = update(Sale).where(Sale.id == System.sale_id).values(
                     status=2, id_user=System.user.id, pc_name=System.pc_name,
@@ -1700,7 +1702,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             sale.ui.dateEdit.setDate(client_in_sale[0][11])
             sale.ui.comboBox.setCurrentText(str(client_in_sale[0][9]))
             # Если продажа оплачена
-            if sale_status == 1 or sale_status == 2:
+            if sale_status == 1:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
                 # Кнопка оплатить
@@ -1737,6 +1739,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.comboBox.setEnabled(True)
                 sale.ui.tableWidget_2.setEnabled(True)
                 sale.ui.checkBox_2.setEnabled(True)
+            elif sale_status == 2:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(False)
+                # Кнопка отмены платежа по банковской карте
+                sale.ui.pushButton_14.setEnabled(False)
             for search_client in client_in_sale:
                 if search_client[8] >= System.age['max']:
                     type_ticket = 'взрослый'
@@ -1858,12 +1871,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f'{status_type}'))
                 self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(str(sale[5])))
                 self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(str(sale[6])))
-                if int(sale[7]) == 1:
-                    payment_type: str = 'карта'
-                elif int(sale[7]) == 2:
-                    payment_type: str = 'наличные'
-                elif int(sale[7]) == 3:
-                    payment_type: str = 'карта offline'
+                if sale[7] is not None:
+                    if int(sale[7]) == 1:
+                        payment_type: str = 'карта'
+                    elif int(sale[7]) == 2:
+                        payment_type: str = 'наличные'
+                    elif int(sale[7]) == 3:
+                        payment_type: str = 'карта offline'
                 else:
                     payment_type = '-'
                 self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(f'{payment_type}'))

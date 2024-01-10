@@ -161,7 +161,7 @@
         <x>0</x>
         <y>50</y>
         <width>1701</width>
-        <height>961</height>
+        <height>941</height>
        </rect>
       </property>
       <property name="editTriggers">
@@ -237,7 +237,7 @@
         <x>0</x>
         <y>50</y>
         <width>1901</width>
-        <height>961</height>
+        <height>941</height>
        </rect>
       </property>
       <property name="editTriggers">
@@ -475,7 +475,7 @@
         <x>0</x>
         <y>50</y>
         <width>1901</width>
-        <height>961</height>
+        <height>941</height>
        </rect>
       </property>
       <property name="editTriggers">
