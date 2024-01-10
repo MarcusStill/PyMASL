@@ -163,7 +163,7 @@ def terminal_svod_check():
     logger.info("Запуск функции terminal_svod_check")
     subprocess.call('C:\\sc552\\loadparm.exe 9')
     try:
-        print_slip_check(1)
+        print_pinpad_check()
     except FileNotFoundError as not_found:
         logger.warning(not_found.filename)
 
@@ -174,7 +174,7 @@ def terminal_control_lenta():
     logger.info("Запуск функции terminal_control_lenta")
     subprocess.call('C:\\sc552\\loadparm.exe 9 1')
     try:
-        print_slip_check(1)
+        print_pinpad_check()
     except FileNotFoundError as not_found:
         logger.warning(not_found.filename)
 
@@ -185,7 +185,7 @@ def terminal_copy_last_check():
     logger.info("Запуск функции terminal_copy_last_check")
     subprocess.call('C:\\sc552\\loadparm.exe 12')
     try:
-        print_slip_check(1)
+        print_pinpad_check()
     except FileNotFoundError as not_found:
         logger.warning(not_found.filename)
 
@@ -199,6 +199,25 @@ def read_slip_check():
     try:
         with open(pinpad_file, 'r', encoding='IBM866') as file:
             while line := file.readline().rstrip():
+                result = result + line
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+                fptr.printText()
+                # Перенос строки
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+    except FileNotFoundError as not_found:
+        logger.warning("Проверка файла завершилась с ошибкой")
+        logger.warning(not_found.filename)
+    return result
+
+@logger_wraps()
+def read_pinpad_file():
+    """Чтение банковского чека"""
+    logger.info("Запуск функции read_pinpad_file")
+    pinpad_file = r"C:\sc552\p"
+    result = ''
+    try:
+        with open(pinpad_file, 'r', encoding='IBM866') as file:
+            while line := file.readline():
                 result = result + line
                 fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
                 fptr.printText()
@@ -250,10 +269,39 @@ def print_slip_check(kol=2):
         fptr.endNonfiscalDocument()
         logger.debug("Печать документа")
         fptr.report()
-        # Частичная отрезка ЧЛ
-        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
+        # Полная отрезка ЧЛ
+        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
         logger.debug("Отрезаем чек")
         fptr.cut()
+    logger.debug("Закрываем соединение с ККМ")
+    fptr.close()
+
+
+@logger_wraps()
+def print_pinpad_check():
+    """Печать слип-чека"""
+    logger.info("Запуск функции print_pinpad_check")
+    logger.debug("Функция печати нефискального документа")
+    logger.debug("Открываем соединение с ККМ")
+    fptr.open()
+    logger.debug("Открытие нефискального документа")
+    fptr.beginNonfiscalDocument()
+    logger.info("Читаем чек из файла")
+    line = read_pinpad_file()
+    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+    fptr.printText()
+    # Перенос строки
+    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+    # Промотка чековой ленты на одну строку (пустую)
+    fptr.printText()
+    logger.debug("Закрытие нефискального документа")
+    fptr.endNonfiscalDocument()
+    logger.debug("Печать документа")
+    fptr.report()
+    # Полная отрезка ЧЛ
+    fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+    logger.debug("Отрезаем чек")
+    fptr.cut()
     logger.debug("Закрываем соединение с ККМ")
     fptr.close()
 
@@ -405,6 +453,35 @@ def payment(amount):
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
     fptr.cashIncome()
+    fptr.close()
+
+
+@logger_wraps()
+def balance_check():
+    """Функция проверки баланса наличных денег в кассе"""
+    logger.info("Запуск функции balance_check")
+    fptr.open()
+    fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_CASH_SUM)
+    fptr.queryData()
+    cashSum = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_SUM)
+    logger.info(f'Баланс наличных денег в кассе: {cashSum}')
+    logger.debug("Открытие нефискального документа")
+    fptr.beginNonfiscalDocument()
+    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, f'Баланс наличных денег: {cashSum}')
+    fptr.printText()
+    # Перенос строки
+    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+    # Промотка чековой ленты на одну строку (пустую)
+    fptr.printText()
+    logger.debug("Закрытие нефискального документа")
+    fptr.endNonfiscalDocument()
+    logger.debug("Печать документа")
+    fptr.report()
+    # Полная отрезка ЧЛ
+    fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+    logger.debug("Отрезаем чек")
+    fptr.cut()
+    logger.debug("Закрываем соединение с ККМ")
     fptr.close()
 
 
