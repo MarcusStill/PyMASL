@@ -483,6 +483,7 @@ def balance_check():
     fptr.cut()
     logger.debug("Закрываем соединение с ККМ")
     fptr.close()
+    return cashSum
 
 
 @logger_wraps()

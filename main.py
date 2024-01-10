@@ -1261,6 +1261,8 @@ class SaleForm(QDialog):
         Возвращаемое значение:
         """
         logger.info("Запуск функции sale_return")
+        # Счетчик для отслеживания корректности проведения возврата за наличный способ расчета
+        error: int = 0
         # Обновляем данные о продаже
         self.sale_update()
         logger.info('Запрашиваем информацию о продаже в БД')
@@ -1273,33 +1275,42 @@ class SaleForm(QDialog):
             payment_type: int = 101
         else:
             payment_type: int = 102
-        state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 2, 1, sale.price)
-        check = None
-        # Если возврат прошел
-        if state_check == 1:
-            logger.info("Операция возврата прошла успешно")
-            if payment == 1:  # Если оплата банковской картой
-                logger.info("Читаем слип-чек из файла")
-                pinpad_file = r"C:\sc552\p"
-                with open(pinpad_file, 'r', encoding='IBM866') as file:
-                    while line := file.readline().rstrip():
-                        logger.debug(line)
-                check = kkt.read_slip_check()
-                kkt.print_pinpad_check()
-            logger.info("Записываем информацию о возврате в БД")
-            with Session(engine) as session:
-                query = update(Sale).where(Sale.id == System.sale_id).values(
-                    status=2, id_user=System.user.id, pc_name=System.pc_name,
-                    payment_type=payment, bank_pay=check, datetime=dt.datetime.now()
-                )
-                session.execute(query)
-            self.close()
-        else:
-            logger.warning('Операция возврата завершилась с ошибкой')
-            windows.info_window(
-                "Внимание",
-                'Закройте это окно, откройте сохраненную продажу и проведите'
-                'операцию возврата еще раз.', '')
+            System.amount_of_money_at_the_cash_desk = kkt.balance_check()
+            if sale.price > System.amount_of_money_at_the_cash_desk:
+                error: int = 1
+                windows.info_window(
+                    "Внимание",
+                    'В кассе недостаточно наличных денег!\nОперация возврата будет прервана.\n'
+                    'Необходимо выполнить операцию внесения денежных средств в кассу\n'
+                    'и после этого повторить возврат снова.', '')
+        if error == 0:
+            state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 2, 1, sale.price)
+            check = None
+            # Если возврат прошел
+            if state_check == 1:
+                logger.info("Операция возврата прошла успешно")
+                if payment == 1:  # Если оплата банковской картой
+                    logger.info("Читаем слип-чек из файла")
+                    pinpad_file = r"C:\sc552\p"
+                    with open(pinpad_file, 'r', encoding='IBM866') as file:
+                        while line := file.readline().rstrip():
+                            logger.debug(line)
+                    check = kkt.read_slip_check()
+                    kkt.print_pinpad_check()
+                logger.info("Записываем информацию о возврате в БД")
+                with Session(engine) as session:
+                    query = update(Sale).where(Sale.id == System.sale_id).values(
+                        status=2, id_user=System.user.id, pc_name=System.pc_name,
+                        payment_type=payment, bank_pay=check, datetime=dt.datetime.now()
+                    )
+                    session.execute(query)
+                self.close()
+            else:
+                logger.warning('Операция возврата завершилась с ошибкой')
+                windows.info_window(
+                    "Внимание",
+                    'Закройте это окно, откройте сохраненную продажу и проведите'
+                    'операцию возврата еще раз.', '')
 
     @logger.catch()
     def sale_canceling(self):
@@ -1488,7 +1499,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_17.clicked.connect(self.main_get_statistic)
         self.ui.pushButton_24.clicked.connect(lambda: kkt.deposit_of_money(System.amount_to_pay_or_deposit))
         self.ui.pushButton_25.clicked.connect(lambda: kkt.payment(System.amount_to_pay_or_deposit))
-        self.ui.pushButton_26.clicked.connect(lambda: kkt.payment(System.amount_to_pay_or_deposit))
+        self.ui.pushButton_26.clicked.connect(kkt.balance_check)
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
         self.ui.dateEdit_3.setDate(date.today())
@@ -2302,6 +2313,8 @@ class System:
     print_check: int = 1
     # Сохраняем сумму для внесения или выплаты из кассы
     amount_to_pay_or_deposit: int = 0
+    # Сохраняем баланс наличных денег в кассе
+    amount_of_money_at_the_cash_desk: int = None
 
     def user_authorization(self, login, password) -> int:
         """
