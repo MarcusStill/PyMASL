@@ -263,7 +263,8 @@ class SaleForm(QDialog):
         self.ui.tableWidget_3.doubleClicked.connect(self.adding_related_client_to_sale)
         self.ui.pushButton_12.clicked.connect(self.clearing_client_list)
         self.ui.pushButton_13.clicked.connect(self.get_slip)
-        self.ui.pushButton_14.clicked.connect(self.sale_canceling)
+        # функция отмены платежа
+        # self.ui.pushButton_14.clicked.connect(self.sale_canceling)
 
     def edit_client_in_sale(self) -> None:
         """
@@ -655,19 +656,19 @@ class SaleForm(QDialog):
         words = slip.split()
         try:
             rub_position = words.index('(Руб):') or words.index('Руб:')
-        except ValueError:
-            rub_position = '-'
-            logger.warning('В слип-чеке слова <(Руб):> или <Руб:> не найдены.')
+        except Exception as e:
+            rub_position = 0
+            logger.warning(f'В слип-чеке слова <(Руб):> или <Руб:> не найдены. Ошибка: {e}')
         try:
             rrn_position = words.index('RRN:')
-        except ValueError:
-            rrn_position = '-'
-            logger.warning('В слип-чеке слово <RRN:> не найдено.')
+        except Exception as e:
+            rrn_position = 0
+            logger.warning(f'В слип-чеке слово <RRN:> не найдено. Ошибка: {e}')
         try:
-            pay_position = words.index('ОплатаТ:') or words.index('Оплата:') or words.index('Оплата')
-        except ValueError:
-            pay_position = '-'
-            logger.warning('В слип-чеке слова <ОплатаТ:>, <Оплата:> , <Оплата> не найдены.')
+            pay_position = words.index('ОплатаТ:') or words.index('Оплата:') or words.index('Оплата') or words.index('Оплата QRТ:') or words.index('Оплата QRТ')
+        except Exception as e:
+            pay_position = 0
+            logger.warning(f'В слип-чеке слова <ОплатаТ:>, <Оплата:> , <Оплата> не найдены. Ошибка: {e}')
         windows.info_window(
             f'Оплата была произведена картой со следующими реквизитами:\n'
             f'- последние цифры: {words[rub_position - 1][:-5]};\n'
@@ -1262,14 +1263,16 @@ class SaleForm(QDialog):
         """
         logger.info("Запуск функции sale_return")
         # Счетчик для отслеживания корректности проведения возврата за наличный способ расчета
-        error: int = 0
-        # Обновляем данные о продаже
-        self.sale_update()
+        balance_error: int = 0
+        tickets = self.generating_items_for_the_return_check()
         logger.info('Запрашиваем информацию о продаже в БД')
         with Session(engine) as session:
             query = select(Sale).filter(Sale.id == System.sale_id)
             sale = session.execute(query).scalars().one()
         logger.debug(f'Итоговая сумма: {sale.price}, тип оплаты: {sale.payment_type}')
+        logger.debug(f'Сохраняем id продажи: {sale.id}')
+        System.sale_id = sale.id
+        price: int = sale.price
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
             payment_type: int = 101
@@ -1277,14 +1280,14 @@ class SaleForm(QDialog):
             payment_type: int = 102
             System.amount_of_money_at_the_cash_desk = kkt.balance_check()
             if sale.price > System.amount_of_money_at_the_cash_desk:
-                error: int = 1
+                balance_error: int = 1
                 windows.info_window(
                     "Внимание",
                     'В кассе недостаточно наличных денег!\nОперация возврата будет прервана.\n'
                     'Необходимо выполнить операцию внесения денежных средств в кассу\n'
                     'и после этого повторить возврат снова.', '')
-        if error == 0:
-            state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 2, 1, sale.price)
+        if balance_error == 0:
+            state_check, payment = kkt.check_open(tickets, payment_type, System.user, 2, 1, price)
             check = None
             # Если возврат прошел
             if state_check == 1:
@@ -1297,13 +1300,18 @@ class SaleForm(QDialog):
                             logger.debug(line)
                     check = kkt.read_slip_check()
                     kkt.print_pinpad_check()
-                logger.info("Записываем информацию о возврате в БД")
+                logger.info("Обновляем информацию о возврате в БД")
                 with Session(engine) as session:
-                    query = update(Sale).where(Sale.id == System.sale_id).values(
-                        status=2, id_user=System.user.id, pc_name=System.pc_name,
-                        payment_type=payment, bank_pay=check, datetime=dt.datetime.now()
+                    session.execute(
+                        update(Sale).where(Sale.id == System.sale_id).values(
+                            status=2,
+                            id_user=System.user.id,
+                            bank_return=check,
+                            user_return=System.user.id,
+                            datetime_return=dt.datetime.now()
+                        )
                     )
-                    session.execute(query)
+                    session.commit()
                 self.close()
             else:
                 logger.warning('Операция возврата завершилась с ошибкой')
@@ -1311,6 +1319,91 @@ class SaleForm(QDialog):
                     "Внимание",
                     'Закройте это окно, откройте сохраненную продажу и проведите'
                     'операцию возврата еще раз.', '')
+
+    @logger.catch()
+    def generating_items_for_the_return_check(self):
+        """
+        Функция формирует список позиций для чека возврата прихода.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
+        logger.debug("Билеты сохраненной продажи %s" % System.sale_tickets)
+        dct: dict = dict(list())
+        adult = 0
+        adult_promotion = 0
+        child = 0
+        child_promotion = 0
+        for ticket_in_sale in System.sale_tickets:
+            if ticket_in_sale[8] >= System.age['max']:
+                logger.debug('Взрослый билет')
+                # исключаем из списка нулевые билеты
+                if ticket_in_sale[4] != 0:
+                    # проверяем продолжительность
+                    if ticket_in_sale[9] == 1:
+                        if ticket_in_sale[4] == System.price['ticket_adult_1']:
+                            type_ticket = 'Билет взрослый 1 ч.'
+                            adult += 1
+                            ticket = [ticket_in_sale[4], adult]
+                        else:
+                            type_ticket = 'Билет взрослый акция 1 ч.'
+                            adult_promotion += 1
+                            ticket = [ticket_in_sale[4], adult_promotion]
+                    elif ticket_in_sale[9] == 2:
+                        if ticket_in_sale[4] == System.price['ticket_adult_2']:
+                            type_ticket = 'Билет взрослый 2 ч.'
+                            adult += 1
+                            ticket = [ticket_in_sale[4], adult]
+                        else:
+                            type_ticket = 'Билет взрослый акция 2 ч.'
+                            adult_promotion += 1
+                            ticket = [ticket_in_sale[4], adult_promotion]
+                    elif ticket_in_sale[9] == 3:
+                        if ticket_in_sale[4] == System.price['ticket_adult_3']:
+                            type_ticket = 'Билет взрослый 3 ч.'
+                            adult += 1
+                            ticket = [ticket_in_sale[4], adult]
+                        else:
+                            type_ticket = 'Билет взрослый акция 3 ч.'
+                            adult_promotion += 1
+                            ticket = [ticket_in_sale[4], adult_promotion]
+                    dct[type_ticket] = ticket
+            else:
+                logger.debug('Детский билет')
+                # исключаем из списка нулевые билеты
+                if ticket_in_sale[4] != 0:
+                    # проверяем продолжительность
+                    if ticket_in_sale[9] == 1:
+                        if ticket_in_sale[4] == System.price['ticket_child_1'] or ticket_in_sale[4] == System.price['ticket_child_week_1']:
+                            type_ticket = 'Билет детский 1 ч.'
+                            child += 1
+                            ticket = [ticket_in_sale[4], child]
+                        else:
+                            type_ticket = 'Билет детский акция 1 ч.'
+                            child_promotion += 1
+                            ticket = [ticket_in_sale[4], child_promotion]
+                    elif ticket_in_sale[9] == 2:
+                        if ticket_in_sale[4] == System.price['ticket_child_2'] or ticket_in_sale[4] == System.price['ticket_child_week_2']:
+                            type_ticket = 'Билет детский 2 ч.'
+                            child += 1
+                            ticket = [ticket_in_sale[4], child]
+                        else:
+                            type_ticket = 'Билет детский акция 2 ч.'
+                            child_promotion += 1
+                            ticket = [ticket_in_sale[4], child_promotion]
+                    elif ticket_in_sale[9] == 3:
+                        if ticket_in_sale[4] == System.price['ticket_child_3'] or ticket_in_sale[4] == System.price['ticket_child_week_3']:
+                            type_ticket = 'Билет детский 3 ч.'
+                            child += 1
+                            ticket = [ticket_in_sale[4], child]
+                        else:
+                            type_ticket = 'Билет детский акция 3 ч.'
+                            child_promotion += 1
+                            ticket = [ticket_in_sale[4], child_promotion]
+                    dct[type_ticket] = ticket
+        return dct
+
 
     @logger.catch()
     def sale_canceling(self):

@@ -490,8 +490,7 @@ def balance_check():
 def check_open(sale_dict, payment_type, user, type_operation, print_check, price):
     """Проведение операции оплаты"""
     logger.info("Запуск функции check_open")
-    logger.debug(f'В функцию переданы: sale_dict = {sale_dict}, итоговая сумма = {price}')
-    time = sale_dict['detail'][6]
+    logger.debug(f'В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type}, type_operation = {type_operation}, итоговая сумма = {price}')
     bank, kkt_type, payment = None, None, None
     if print_check == 0:
         logger.info("Кассовый чек не печатаем")
@@ -499,12 +498,13 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         logger.info("Кассовый чек печатаем")
     # если оплата банковской картой
     if payment_type == 101:
+        logger.debug("оплата банковской картой")
         if type_operation == 1:
             logger.info("Запускаем оплату по банковскому терминалу")
             payment = 1
             # результат операции по терминалу
             bank = terminal_oplata(str(sale_dict['detail'][7]))
-            logger.debug("BANK: %s" % bank)
+            logger.debug("Результат операции по терминалу: %s" % bank)
             if bank != 1:
                 info = "Оплата по банковскому терминалу завершена с ошибкой"
                 logger.warning(info)
@@ -515,7 +515,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             payment = 1
             # результат операции по терминалу
             bank = terminal_return(str(price))
-            logger.debug("BANK: %s" % bank)
+            logger.debug("Результат операции по терминалу: %s" % bank)
             if bank != 1:
                 info = "Возврат по банковскому терминалу завершен с ошибкой"
                 logger.warning(info)
@@ -526,7 +526,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             payment = 1
             # результат операции по терминалу
             bank = terminal_canceling(str(price))
-            logger.debug("BANK: %s" % bank)
+            logger.debug("Результат операции по терминалу: %s" % bank)
             if bank != 1:
                 info = "Отмена по банковскому терминалу завершена с ошибкой"
                 logger.warning(info)
@@ -534,13 +534,11 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 return 0, payment
     # если offline оплата банковской картой
     elif payment_type == 100:
+        logger.debug("Продажа новая. Начинаем оплату")
         payment = 3
         # результат операции по терминалу
         logger.info("Запускаем offline оплату по банковскому терминалу")
         bank = 1
-    # проверяем есть ли билеты со скидкой
-    kol_adult_edit = sale_dict['kol_adult'] - sale_dict['detail'][0]
-    kol_child_edit = sale_dict['kol_child'] - sale_dict['detail'][2]
     logger.info("Тип оплаты: %s" % payment_type)
     # Открытие печатного чека
     logger.info("Открытие печатного чека")
@@ -550,10 +548,8 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     fptr.operatorLogin()
     if type_operation == 1:
         fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
-        logger.info("Тип операции: покупка")
     elif type_operation in (2, 3):
         fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)
-        logger.info("Тип операции: возврат")
     if print_check == 0:
         fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY, True)
         fptr.setParam(1008, EMAIL)
@@ -561,40 +557,49 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     # Регистрация позиции с указанием суммы налога
     # взрослый билет
     logger.info("Регистрация позиции: билет взрослый")
-    if kol_adult_edit > 0:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME,
-                      f'Билет взрослый {time} ч.')
-        fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict['price_adult'])
-        fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_adult_edit)
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-        fptr.registration()
-    # взрослый билет со скидкой
-    logger.info("Регистрация позиции: билет взрослый со скидкой")
-    if sale_dict['detail'][0] > 0 and sale_dict['detail'][1] > 0:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME,
-                      f'Билет взрослый акция {time} ч.')
-        fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict['detail'][1])
-        fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict['detail'][0])
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-        fptr.registration()
-    # детский билет
-    logger.info("Регистрация позиции: билет детский")
-    if kol_child_edit > 0:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME,
-                      f'Билет детский {time} ч.')
-        fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict['price_child'])
-        fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_child_edit)
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-        fptr.registration()
-    # детский билет со скидкой
-    logger.info("Регистрация позиции: билет детский со скидкой")
-    if sale_dict['detail'][2] > 0 and sale_dict['detail'][3] > 0:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME,
-                      f'Билет детский акция {time} ч.')
-        fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict['detail'][3])
-        fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict['detail'][2])
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-        fptr.registration()
+    if type_operation == 1:
+        # проверяем есть ли билеты со скидкой
+        kol_adult_edit = sale_dict['kol_adult'] - sale_dict['detail'][0]
+        kol_child_edit = sale_dict['kol_child'] - sale_dict['detail'][2]
+        time = sale_dict['detail'][6]
+        if kol_adult_edit > 0:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f'Билет взрослый {time} ч.')
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict['price_adult'])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_adult_edit)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+            fptr.registration()
+        # взрослый билет со скидкой
+        logger.info("Регистрация позиции: билет взрослый со скидкой")
+        if sale_dict['detail'][0] > 0 and sale_dict['detail'][1] > 0:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f'Билет взрослый акция {time} ч.')
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict['detail'][1])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict['detail'][0])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+            fptr.registration()
+        # детский билет
+        logger.info("Регистрация позиции: билет детский")
+        if kol_child_edit > 0:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f'Билет детский {time} ч.')
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict['price_child'])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_child_edit)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+            fptr.registration()
+        # детский билет со скидкой
+        logger.info("Регистрация позиции: билет детский со скидкой")
+        if sale_dict['detail'][2] > 0 and sale_dict['detail'][3] > 0:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f'Билет детский акция {time} ч.')
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict['detail'][3])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict['detail'][2])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+            fptr.registration()
+    else:
+        sale = sale_dict.items()
+        for item in sale:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f'{item[0]}')
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, item[1][0])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, item[1][1])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+            fptr.registration()
     # Оплата чека
     logger.info("Оплата чека")
     if payment_type == 102:
