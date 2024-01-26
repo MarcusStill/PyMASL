@@ -836,6 +836,10 @@ class SaleForm(QDialog):
         invalid: int = 0
         # Считаем количество золотых талантов
         talent: int = 0
+        # Обнуляем System.sale_dict
+        System.sale_dict = {'kol_adult': 0, 'price_adult': 0,
+                           'kol_child': 0, 'price_child': 0,
+                           'detail': [0, 0, 0, 0, 0, 0, 0, 0]}
         # Устанавливаем время и количество талантов
         if time_ticket == 1:
             System.sale_dict['detail'][6] = 1
@@ -936,7 +940,7 @@ class SaleForm(QDialog):
                         # Изменяем цену и записываем размер скидки
                         System.sale_dict['detail'][0] = kol_adult_invalid
                         System.sale_dict['detail'][1] = price
-                        # Меняем категорию билета на 'c' - сопровождающий
+                        # Меняем категорию билета на 'с' - сопровождающий
                         self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem('с'))
                     else:
                         price: int = System.price['ticket_adult_3']
@@ -1206,26 +1210,32 @@ class SaleForm(QDialog):
         if System.sale_special == 1:
             self.sale_generate_saved_tickets()
         else:
-            state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 1, print_check, None)
-
-            check = None
+            # Если оплата банковской картой
+            if payment_type in (101, 100):
+                bank, payment = kkt.operation_on_the_terminal(payment_type, 1, System.sale_dict['detail'][7])
+                if bank == 1:
+                    logger.debug('Операция прошла успешно. Сохраняем чек возврата.')
+                    if payment == 3:  # Если оплата offline банковской картой
+                        check = 'offline'
+                    else:
+                        check = kkt.read_slip_check()
+                    logger.debug(f'Чек прихода: {check}')
+                    with Session(engine) as session:
+                        session.execute(
+                            update(Sale).where(Sale.id == System.sale_id).values(bank_pay=check))
+                        session.commit()
+                    # Печать банковский чек: 1 - да, 0 - нет
+                    if print_check == 1:
+                        kkt.print_slip_check()
+            else:
+                payment = 2
+                bank = None
+            state_check = kkt.check_open(System.sale_dict, payment_type, System.user, 1, print_check, System.sale_dict['detail'][7], bank)
             # Если прошла оплата
             if state_check == 1:
                 logger.info("Оплата прошла успешно")
                 if print_check == 0:
                     windows.info_window('Оплата прошла успешно.', 'Чек не печатаем.', '')
-                if payment == 1:  # Если оплата банковской картой
-                    logger.info("Читаем слип-чек из файла")
-                    pinpad_file = r"C:\sc552\p"
-                    with open(pinpad_file, 'r', encoding='IBM866') as file:
-                        while line := file.readline().rstrip():
-                            logger.debug(line)
-                    check = kkt.read_slip_check()
-                    # Печать банковский чек: 1 - да, 0 - нет
-                    if print_check == 1:
-                        kkt.print_slip_check()
-                if payment == 3:  # Если оплата offline банковской картой
-                    check = 'offline'
                 # Обновляем информацию о продаже в БД
                 logger.debug('Обновляем информацию в БД о продаже %s' % System.sale_id)
                 with Session(engine) as session:
@@ -1235,7 +1245,6 @@ class SaleForm(QDialog):
                             id_user=System.user.id,
                             pc_name=System.pc_name,
                             payment_type=payment,
-                            bank_pay=check,
                             datetime=dt.datetime.now()
                         )
                     )
@@ -1287,32 +1296,70 @@ class SaleForm(QDialog):
                     'Необходимо выполнить операцию внесения денежных средств в кассу\n'
                     'и после этого повторить возврат снова.', '')
         if balance_error == 0:
-            state_check, payment = kkt.check_open(tickets, payment_type, System.user, 2, 1, price)
-            check = None
-            # Если возврат прошел
-            if state_check == 1:
-                logger.info("Операция возврата прошла успешно")
-                if payment == 1:  # Если оплата банковской картой
-                    logger.info("Читаем слип-чек из файла")
-                    pinpad_file = r"C:\sc552\p"
-                    with open(pinpad_file, 'r', encoding='IBM866') as file:
-                        while line := file.readline().rstrip():
-                            logger.debug(line)
-                    check = kkt.read_slip_check()
-                    kkt.print_pinpad_check()
-                logger.info("Обновляем информацию о возврате в БД")
-                with Session(engine) as session:
-                    session.execute(
-                        update(Sale).where(Sale.id == System.sale_id).values(
-                            status=2,
-                            id_user=System.user.id,
-                            bank_return=check,
-                            user_return=System.user.id,
-                            datetime_return=dt.datetime.now()
+            logger.debug('Баланс в кассе больше возвращаемой суммы. Продолжаем')
+            logger.debug(f'Проверяем статус продажи')
+            if sale.status == 1:
+                logger.debug('Продажа оплачена. Запускаем возврат')
+                if payment_type == 102:
+                    state_check = kkt.check_open(tickets, payment_type, System.user, 2, 1, price, None)
+                elif payment_type == 101:
+                    logger.debug(f'Проверяем был ли уже проведен возврат по банковскому терминалу. Sale.bank_return = {sale.bank_return}')
+                    if sale.bank_return is None:
+                        logger.debug('Запускаем возврат по банковскому терминалу')
+                        bank, payment = kkt.operation_on_the_terminal(payment_type, 2, price)
+                        if bank == 1:
+                            logger.debug('Сохраняем чек возврата.')
+                            check = kkt.read_slip_check()
+                            logger.debug(f'Чек возврата: {check}')
+                            with Session(engine) as session:
+                                session.execute(
+                                    update(Sale).where(Sale.id == System.sale_id).values(
+                                        bank_return=check,
+                                    )
+                                )
+                                session.commit()
+                            kkt.print_pinpad_check()
+                    else:
+                        logger.debug('Возврат по банковскому терминалу был произведен ранее, но статус продажи не изменен')
+                        bank = 1
+                    state_check = kkt.check_open(tickets, payment_type, System.user, 2, 1, price, bank)
+                # Если возврат прошел
+                if state_check == 1:
+                    logger.info('Обновляем информацию о возврате в БД')
+                    with Session(engine) as session:
+                        session.execute(
+                            update(Sale).where(Sale.id == System.sale_id).values(
+                                status=2,
+                                id_user=System.user.id,
+                                user_return=System.user.id,
+                                datetime_return=dt.datetime.now()
+                            )
                         )
-                    )
-                    session.commit()
-                self.close()
+                        session.commit()
+                    self.close()
+            elif sale.status == 3:
+                logger.debug('Требуется повторный возврат по банковскому терминалу')
+                bank, payment = kkt.operation_on_the_terminal(payment_type, 2, price)
+                if bank == 1:
+                    logger.info("Операция повторного возврата прошла успешно")
+                    check = kkt.read_slip_check()
+                    logger.debug(f'Чек возврата: {check}')
+                    with Session(engine) as session:
+                        session.execute(update(Sale).where(Sale.id == System.sale_id).values(
+                            bank_return=check, status=4, datetime_return=dt.datetime.now()
+                        ))
+                        session.commit()
+                    kkt.print_pinpad_check()
+                    windows.info_window(
+                        "Внимание",
+                        'Операция повторного возврата прошла успешно.', '')
+                    self.close()
+            elif sale.status == 5:
+                logger.debug('Требуется частичный возврат.')
+                windows.info_window(
+                    "Внимание",
+                    'Требуется частичный возврат.', '')
+                pass
             else:
                 logger.warning('Операция возврата завершилась с ошибкой')
                 windows.info_window(
@@ -1405,51 +1452,50 @@ class SaleForm(QDialog):
         return dct
 
 
-    @logger.catch()
-    def sale_canceling(self):
-        """
-        Функция осуществляет операцию отмены продажи, оплаченной по безналу (для текущей незакрытой смены).
-
-        Параметры:
-
-        Возвращаемое значение:
-        """
-        logger.info("Запуск функции sale_canceling")
-        # Обновляем данные о продаже
-        self.sale_update()
-        logger.info('Запрашиваем информацию о продаже в БД')
-        with Session(engine) as session:
-            query = select(Sale.price).filter(Sale.id == System.sale_id)
-            sale = session.execute(query).scalars().one()
-        # предполагаем что оплата была банковской картой
-        payment_type: int = 101
-        state_check, payment = kkt.check_open(System.sale_dict, payment_type, System.user, 3, 1, sale)
-        check = None
-        # Если возврат прошел
-        if state_check == 1:
-            logger.info("Операция отмены прошла успешно")
-            if payment == 1:  # Если оплата банковской картой
-                logger.info("Читаем слип-чек из файла")
-                pinpad_file = r"C:\sc552\p"
-                with open(pinpad_file, 'r', encoding='IBM866') as file:
-                    while line := file.readline().rstrip():
-                        logger.debug(line)
-                check = kkt.read_slip_check()
-                kkt.print_pinpad_check()
-            logger.info("Записываем информацию об отмене в БД")
-            with Session(engine) as session:
-                query = update(Sale).where(Sale.id == System.sale_id).values(
-                    status=2, id_user=System.user.id, pc_name=System.pc_name,
-                    payment_type=payment, bank_pay=check, datetime=dt.datetime.now()
-                )
-                session.execute(query)
-            self.close()
-        else:
-            logger.warning('Операция возврата завершилась с ошибкой')
-            windows.info_window(
-                "Внимание",
-                'Закройте это окно, откройте сохраненную продажу и проведите'
-                'операцию возврата еще раз.', '')
+    # @logger.catch()
+    # def sale_canceling(self):
+    #     """
+    #     Функция осуществляет операцию отмены продажи, оплаченной по безналу (для текущей незакрытой смены).
+    #
+    #     Параметры:
+    #
+    #     Возвращаемое значение:
+    #     """
+    #     logger.info("Запуск функции sale_canceling")
+    #     # Обновляем данные о продаже
+    #     self.sale_update()
+    #     logger.info('Запрашиваем информацию о продаже в БД')
+    #     with Session(engine) as session:
+    #         query = select(Sale.price).filter(Sale.id == System.sale_id)
+    #         sale = session.execute(query).scalars().one()
+    #     # предполагаем что оплата была банковской картой
+    #     payment_type: int = 101
+    #     state_check = kkt.check_open(System.sale_dict, payment_type, System.user, 3, 1, sale)
+    #     check = None
+    #     # Если возврат прошел
+    #     if state_check == 1:
+    #         logger.info("Операция отмены прошла успешно")
+    #         logger.info("Читаем слип-чек из файла")
+    #         pinpad_file = r"C:\sc552\p"
+    #         with open(pinpad_file, 'r', encoding='IBM866') as file:
+    #             while line := file.readline().rstrip():
+    #                 logger.debug(line)
+    #         check = kkt.read_slip_check()
+    #         kkt.print_pinpad_check()
+    #         logger.info("Записываем информацию об отмене в БД")
+    #         with Session(engine) as session:
+    #             query = update(Sale).where(Sale.id == System.sale_id).values(
+    #                 status=2, id_user=System.user.id, pc_name=System.pc_name,
+    #                 payment_type=1, bank_pay=check, datetime=dt.datetime.now()
+    #             )
+    #             session.execute(query)
+    #         self.close()
+    #     else:
+    #         logger.warning('Операция возврата завершилась с ошибкой')
+    #         windows.info_window(
+    #             "Внимание",
+    #             'Закройте это окно, откройте сохраненную продажу и проведите'
+    #             'операцию возврата еще раз.', '')
 
     @logger.catch()
     def sale_generate_saved_tickets(self):
@@ -1833,6 +1879,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     sale.ui.pushButton_14.setEnabled(False)
             # Если продажа не оплачена
             elif sale_status == 0:
+                # обновляем данные о продаже
+                System.sale_tickets = None
+                System.sale_dict = None
+                logger.debug(f'System.sale_dict: {System.sale_dict}')
                 sale.ui.pushButton_3.setEnabled(False)
                 sale.ui.pushButton_5.setEnabled(True)
                 sale.ui.pushButton_10.setEnabled(True)
@@ -1843,7 +1893,35 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.comboBox.setEnabled(True)
                 sale.ui.tableWidget_2.setEnabled(True)
                 sale.ui.checkBox_2.setEnabled(True)
+            # Если продажа возвращена
             elif sale_status == 2:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(False)
+                # Кнопка отмены платежа по банковской карте
+                sale.ui.pushButton_14.setEnabled(False)
+                sale.ui.pushButton_7.setEnabled(False)
+                sale.ui.pushButton_8.setEnabled(False)
+            # Если продажа требует повторный возврат по банковскому терминалу
+            elif sale_status == 3:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(True)
+                # Кнопка отмены платежа по банковской карте
+                sale.ui.pushButton_14.setEnabled(False)
+                sale.ui.pushButton_7.setEnabled(False)
+                sale.ui.pushButton_8.setEnabled(False)
+            else:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
                 # Кнопка оплатить
@@ -1972,6 +2050,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     status_type: str = 'оплачена'
                 elif int(sale[4]) == 2:
                     status_type: str = 'возврат'
+                elif int(sale[4]) == 3:
+                    status_type: str = 'требуется повторный возврат по банковскому терминалу'
+                elif int(sale[4]) == 4:
+                    status_type: str = 'повторный возврат по банковскому терминалу'
+                elif int(sale[4]) == 5:
+                    status_type: str = 'частичный возврат'
+                elif int(sale[4]) == 6:
+                    status_type: str = 'возврат по банковским реквизитам'
+                self.ui.tableWidget_2.setColumnWidth(4, 350)
                 self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f'{status_type}'))
                 self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(str(sale[5])))
                 self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(str(sale[6])))
@@ -2363,7 +2450,11 @@ class System:
     #all_clients = None # TODO: необходимо?
     # Сохраняем фамилию нового клиента
     last_name: str = ''
-    # Статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена
+    # Статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена,
+    # 3 - требуется повторный возврат по банковскому терминалу,
+    # 4 - повторный возврат по банковскому терминалу,
+    # 5 - частичный возврат, 6 - возврат по банковским реквизитам
+    # 7 - повторны возврат по ККТ TODO: проверить это при формировании
     sale_status: int | None = None
     sale_id: int | None = None
     sale_discount: int | None = None
