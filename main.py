@@ -1639,6 +1639,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_24.clicked.connect(lambda: kkt.deposit_of_money(System.amount_to_pay_or_deposit))
         self.ui.pushButton_25.clicked.connect(lambda: kkt.payment(System.amount_to_pay_or_deposit))
         self.ui.pushButton_26.clicked.connect(kkt.balance_check)
+        self.ui.pushButton_27.clicked.connect(kkt.terminal_menu)
+        self.ui.pushButton_27.clicked.connect(kkt.terminal_print_file)
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
         self.ui.dateEdit_3.setDate(date.today())
@@ -1659,7 +1661,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Возвращаемое значение:
         """
         logger.info("Запуск функции main_transfer_of_deposit_or_payment_amount")
-        System.amount_to_pay_or_deposit =  int(self.ui.lineEdit.text())
+        System.amount_to_pay_or_deposit = int(self.ui.lineEdit.text())
 
 
     def filling_client_table_widget_main_form(self, last_name: str, first_name: str, middle_name: str, birth_date: date,

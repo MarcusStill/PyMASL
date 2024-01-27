@@ -733,7 +733,7 @@
       </property>
       <property name="font">
        <font>
-        <bold>true</bold>
+        <bold>false</bold>
        </font>
       </property>
       <property name="text">
@@ -751,7 +751,7 @@
       </property>
       <property name="font">
        <font>
-        <bold>true</bold>
+        <bold>false</bold>
        </font>
       </property>
       <property name="text">
@@ -1149,6 +1149,53 @@
        <property name="text">
         <string>Копия
 последнего чека</string>
+       </property>
+       <property name="autoExclusive">
+        <bool>true</bool>
+       </property>
+       <property name="flat">
+        <bool>false</bool>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="pushButton_27">
+       <property name="geometry">
+        <rect>
+         <x>140</x>
+         <y>90</y>
+         <width>121</width>
+         <height>61</height>
+        </rect>
+       </property>
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Вызов
+меню</string>
+       </property>
+       <property name="autoExclusive">
+        <bool>true</bool>
+       </property>
+       <property name="flat">
+        <bool>false</bool>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="pushButton_28">
+       <property name="geometry">
+        <rect>
+         <x>270</x>
+         <y>90</y>
+         <width>121</width>
+         <height>61</height>
+        </rect>
+       </property>
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Печать ранее
+подготовленного
+документа</string>
        </property>
        <property name="autoExclusive">
         <bool>true</bool>

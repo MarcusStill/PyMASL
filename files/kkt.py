@@ -132,6 +132,11 @@ def terminal_check_itog():
         result = 0
     return result
 
+def terminal_menu():
+    """Вызов меню банковского терминала"""
+    logger.info('Запуск функции terminal_menu')
+    subprocess.call('C:\\sc552\\loadparm.exe 11')
+
 
 @logger_wraps()
 def terminal_check_itog_window():
@@ -179,6 +184,13 @@ def terminal_control_lenta():
         print_pinpad_check()
     except FileNotFoundError as not_found:
         logger.warning(not_found.filename)
+
+
+@logger_wraps()
+def terminal_print_file():
+    """Печать файла-отчета"""
+    logger.info('Запуск функции terminal_print_file')
+    print_pinpad_check()
 
 
 @logger_wraps()
