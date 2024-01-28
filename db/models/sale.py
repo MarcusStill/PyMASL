@@ -27,6 +27,7 @@ class Sale(Base):
     user_return: Mapped[int | None] = mapped_column(SmallInteger, comment='Id пользователя, оформившего возврат')
     datetime_return: Mapped[DateTime | None] = mapped_column(DateTime, comment='Дата и время возврата продажи')
     bank_return: Mapped[str | None | None] = mapped_column(Text, comment='Банковский чек возврата')
+    partial_return: Mapped[int] = mapped_column(Integer, comment='Сумма частичного возврата')
 
     client = relationship('Client', backref='sale_client')
     user = relationship('User', backref='sale_user')
@@ -34,7 +35,7 @@ class Sale(Base):
     def __str__(self) -> str:
         return (f'{self.id} {self.id_client} {self.id_user} {self.price} {self.datetime} {self.discount} {self.status}'
                 f'{self.pc_name} {self.payment_type} {self.bank_pay} {self.user_return} {self.datetime_return}'
-                f'{self.bank_return}')
+                f'{self.bank_return} {self.partial_return}')
 
     def __repr__(self) -> str:
         return str(self)

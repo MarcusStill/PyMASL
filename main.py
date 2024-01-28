@@ -1282,6 +1282,11 @@ class SaleForm(QDialog):
         logger.debug(f'Сохраняем id продажи: {sale.id}')
         System.sale_id = sale.id
         price: int = sale.price
+        if sale.status == 5:
+            logger.debug('Требуется частичный возврат.')
+            amount: int = int(sale.partial_return)
+            new_tickets = self.generating_parts_for_partial_returns(tickets, amount)
+            tickets = new_tickets
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
             payment_type: int = 101
@@ -1297,9 +1302,11 @@ class SaleForm(QDialog):
                     'и после этого повторить возврат снова.', '')
         if balance_error == 0:
             logger.debug('Баланс в кассе больше возвращаемой суммы. Продолжаем')
-            logger.debug(f'Проверяем статус продажи')
-            if sale.status == 1:
+            logger.debug('Проверяем статус продажи')
+            # Если нужен обычный возврат или частичный возврат
+            if sale.status in (1, 5):
                 logger.debug('Продажа оплачена. Запускаем возврат')
+                logger.debug(f'tickets: {tickets}')
                 if payment_type == 102:
                     state_check = kkt.check_open(tickets, payment_type, System.user, 2, 1, price, None)
                 elif payment_type == 101:
@@ -1325,11 +1332,16 @@ class SaleForm(QDialog):
                     state_check = kkt.check_open(tickets, payment_type, System.user, 2, 1, price, bank)
                 # Если возврат прошел
                 if state_check == 1:
+                    # Для обычного возврата устанавливаем статус 2, для частичного возврата статус 6
+                    if sale.status == 5:
+                        status_info: int = 6
+                    else:
+                        status_info: int = 2
                     logger.info('Обновляем информацию о возврате в БД')
                     with Session(engine) as session:
                         session.execute(
                             update(Sale).where(Sale.id == System.sale_id).values(
-                                status=2,
+                                status=status_info,
                                 id_user=System.user.id,
                                 user_return=System.user.id,
                                 datetime_return=dt.datetime.now()
@@ -1354,12 +1366,6 @@ class SaleForm(QDialog):
                         "Внимание",
                         'Операция повторного возврата прошла успешно.', '')
                     self.close()
-            elif sale.status == 5:
-                logger.debug('Требуется частичный возврат.')
-                windows.info_window(
-                    "Внимание",
-                    'Требуется частичный возврат.', '')
-                pass
             else:
                 logger.warning('Операция возврата завершилась с ошибкой')
                 windows.info_window(
@@ -1376,7 +1382,8 @@ class SaleForm(QDialog):
 
         Возвращаемое значение:
         """
-        logger.debug("Билеты сохраненной продажи %s" % System.sale_tickets)
+        logger.info('Запуск функции generating_items_for_the_return_check')
+        logger.debug(f'Билеты сохраненной продажи: {System.sale_tickets}')
         dct: dict = dict(list())
         adult = 0
         adult_promotion = 0
@@ -1451,6 +1458,42 @@ class SaleForm(QDialog):
                     dct[type_ticket] = ticket
         return dct
 
+    @logger.catch()
+    def generating_parts_for_partial_returns(self, tickets, amount):
+        """
+        Функция формирует список позиций для чека частичного возврата прихода.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
+        logger.info('Запуск функции generating_parts_for_partial_returns')
+        logger.debug(f'tickets: {tickets}, amount = {amount}')
+        dct: dict = dict(list())
+        # Записываем сумму возврата в сумму остатка
+        residue_all: int = amount
+        i: int = 0
+        # Сохраняем список с остатками
+        residue: list = []
+        sale = tickets.items()
+        for item in sale:
+            # Если сумма билета >= суммы возврата
+            if residue_all >= item[1][0]:
+                count = residue_all // item[1][0]
+                value = residue_all - (count * item[1][0])
+                # Сохраняем остаток
+                residue.append(value)
+                dct[item[0]] = [item[1][0], count]
+                # Обновляем сумму остатка
+                residue_all = residue[i]
+            else:
+                # Запоминаем название и цену последней позиции
+                last_element_title = item[0]
+                last_element_price = item[1][0]
+            i += 1
+        if residue_all < last_element_price:
+            dct[last_element_title] = [residue_all, 1]
+        return dct
 
     # @logger.catch()
     # def sale_canceling(self):
@@ -1872,7 +1915,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # Время посещения
                 sale.ui.comboBox.setEnabled(False)
                 # Клиенты в заказе
-                sale.ui.tableWidget_2.setEnabled(False)
+                # sale.ui.tableWidget_2.setEnabled(False)
                 # Поле скидка
                 sale.ui.checkBox_2.setEnabled(False)
                 # Кнопки просмотра слип-чека и отмены платежа по банковской карте
@@ -1911,6 +1954,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_8.setEnabled(False)
             # Если продажа требует повторный возврат по банковскому терминалу
             elif sale_status == 3:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(True)
+                # Кнопка отмены платежа по банковской карте
+                sale.ui.pushButton_14.setEnabled(False)
+                sale.ui.pushButton_7.setEnabled(False)
+                sale.ui.pushButton_8.setEnabled(False)
+            # Если продажа требует частичный возврат
+            elif sale_status == 5:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
                 # Кнопка оплатить
@@ -2057,8 +2114,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 elif int(sale[4]) == 4:
                     status_type: str = 'повторный возврат по банковскому терминалу'
                 elif int(sale[4]) == 5:
-                    status_type: str = 'частичный возврат'
+                    status_type: str = 'требуется частичный возврат'
                 elif int(sale[4]) == 6:
+                    status_type: str = 'частичный возврат'
+                elif int(sale[4]) == 7:
                     status_type: str = 'возврат по банковским реквизитам'
                 self.ui.tableWidget_2.setColumnWidth(4, 350)
                 self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f'{status_type}'))
