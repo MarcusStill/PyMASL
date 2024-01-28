@@ -51,11 +51,18 @@ def generate_saved_tickets(values):
                 str(age).replace("'", "").replace("[", "").replace("]", "")
             )
             # продолжительность
-            c.drawString(
-                80 * mm,
-                167 * mm,
-                f'{client_in_sale[i][7]} ч. пребывания'.replace("'", "").replace("[", "").replace("]", "")
-            )
+            if client_in_sale[i][7] == 3:
+                c.drawString(
+                    80 * mm,
+                    167 * mm,
+                    f'{client_in_sale[i][7]} ч. пребывания-весь день'.replace("'", "").replace("[", "").replace("]", "")
+                )
+            else:
+                c.drawString(
+                    80 * mm,
+                    167 * mm,
+                    f'{client_in_sale[i][7]} ч. пребывания'.replace("'", "").replace("[", "").replace("]", "")
+                )
             # дата и время билета
             c.drawString(
                 160 * mm,
