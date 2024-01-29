@@ -30,7 +30,7 @@ from db.models import Workday
 from db.models.user import User
 from db.models.price import Price
 from db.models.sale_service import SaleService
-from sqlalchemy import engine, and_, select, func, update, desc
+from sqlalchemy import engine, and_, select, func, update, desc, or_
 from PySide6.QtGui import QPixmap
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, exc
@@ -2073,12 +2073,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.ui.radioButton_7.isChecked():
             dt1: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + start_time
             dt2: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + end_time
-            with Session(engine) as session:
-                sales = session.query(Sale.id, Sale.id_client, Sale.price, Sale.datetime,
-                                      Sale.status, Sale.discount, Sale.pc_name, Sale.payment_type,
-                                      Client.last_name).filter(and_(
-                    Sale.id_client == Client.id, Sale.datetime.between(dt1, dt2)
-                )).order_by(desc(Sale.id))
+            if self.ui.checkBox.isChecked():
+                with Session(engine) as session:
+                    sales = session.query(Sale.id, Sale.id_client, Sale.price, Sale.datetime,
+                                          Sale.status, Sale.discount, Sale.pc_name, Sale.payment_type,
+                                          Client.last_name).filter(and_(
+                        Sale.id_client == Client.id, Sale.datetime_return.between(dt1, dt2),
+                        or_(Sale.status == 2, Sale.status == 3, Sale.status == 4, Sale.status == 5, Sale.status == 6)
+                    )).order_by(desc(Sale.id))
+            else:
+                with Session(engine) as session:
+                    sales = session.query(Sale.id, Sale.id_client, Sale.price, Sale.datetime,
+                                          Sale.status, Sale.discount, Sale.pc_name, Sale.payment_type,
+                                          Client.last_name).filter(and_(
+                        Sale.id_client == Client.id, Sale.datetime.between(dt1, dt2)
+                    )).order_by(desc(Sale.id))
         # Фильтр продаж за 1, 3 и 7 дней
         else:
             if self.ui.radioButton.isChecked():
@@ -2087,12 +2096,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 filter_day = dt.datetime.today() - timedelta(days=3)
             elif self.ui.radioButton_3.isChecked():
                 filter_day = dt.datetime.today() - timedelta(days=7)
-            with Session(engine) as session:
-                sales = session.query(Sale.id, Sale.id_client, Sale.price, Sale.datetime,
-                                      Sale.status, Sale.discount,Sale.pc_name,
-                                      Sale.payment_type, Client.last_name).filter(and_(
-                    Sale.id_client == Client.id, Sale.datetime >= filter_day
-                )).order_by(desc(Sale.id))
+            if self.ui.checkBox.isChecked():
+                with Session(engine) as session:
+                    sales = session.query(Sale.id, Sale.id_client, Sale.price, Sale.datetime,
+                                          Sale.status, Sale.discount, Sale.pc_name,
+                                          Sale.payment_type, Client.last_name).filter(and_(
+                        Sale.id_client == Client.id, Sale.datetime_return >= filter_day,
+                        or_(Sale.status == 2, Sale.status == 3, Sale.status == 4, Sale.status == 5, Sale.status == 6)
+                    )).order_by(desc(Sale.id))
+            else:
+                with Session(engine) as session:
+                    sales = session.query(Sale.id, Sale.id_client, Sale.price, Sale.datetime,
+                                          Sale.status, Sale.discount,Sale.pc_name,
+                                          Sale.payment_type, Client.last_name).filter(and_(
+                        Sale.id_client == Client.id, Sale.datetime >= filter_day
+                    )).order_by(desc(Sale.id))
         if sales:
             for sale in sales:
                 row = self.ui.tableWidget_2.rowCount()
@@ -2223,8 +2241,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             sales = session.execute(query).all()
         logger.debug("Продажи за выбранный период %s" % sales)
         # Предполагаем что кассовых РМ два
-        pc_1: dict[str, int | str] = {'Name PC': f'{System.pc_1}', 'card': 0, 'cash': 0}
-        pc_2: dict[str, int | str] = {'Name PC': f'{System.pc_2}', 'card': 0, 'cash': 0}
+        pc_1: dict[str, int | str] = {
+            'Name PC': f'{System.pc_1}', 'card': 0, 'cash': 0, 'return': 0, 'return_again': 0, 'return_partial': 0, 'return_card': 0, 'return_cash': 0,
+        }
+        pc_2: dict[str, int | str] = {
+            'Name PC': f'{System.pc_2}', 'card': 0, 'cash': 0, 'return': 0, 'return_again': 0, 'return_partial': 0, 'return_card': 0, 'return_cash': 0,
+        }
         # Тип оплаты: 1 - карта, 2 - наличные
         type_rm: list[int] = [1, 2]
         for i in range(len(sales)):
@@ -2245,20 +2267,93 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         card: int = int(pc_1['card']) + int(pc_2['card'])
         cash: int = int(pc_1['cash']) + int(pc_2['cash'])
         summa: int = card + cash
+        # Считаем возвраты
+        with Session(engine) as session:
+            query = select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status).where(
+                and_(Sale.datetime_return.between(dt1, dt2),
+                     or_(Sale.status == 2, Sale.status == 3, Sale.status == 4, Sale.status == 5, Sale.status == 6)
+                     )
+            )
+            sales = session.execute(query).all()
+        logger.debug(f'sales return: {sales}')
+        for i in range(len(sales)):
+            if sales[i][0] in pc_1.values():
+                # Возврат
+                if sales[i][3] == 2:
+                    # Если карта
+                    if sales[i][1] == 1:
+                        pc_1['return'] += 1
+                        pc_1['return_card'] += sales[i][2]
+                    # Если наличные
+                    else:
+                        pc_1['return'] += 1
+                        pc_1['return_cash'] += sales[i][2]
+                # Повторный возврат
+                elif sales[i][3] == 4:
+                    # Если карта
+                    if sales[i][1] == 1:
+                        pc_1['return_again'] += 1
+                        pc_1['return_card'] += sales[i][2]
+                # Частичный возврат
+                elif sales[i][3] == 6:
+                    # Если карта
+                    if sales[i][1] == 1:
+                        pc_1['return_partial'] += 1
+                        pc_1['return_card'] += sales[i][2]
+                    # Если наличные
+                    else:
+                        pc_1['return_partial'] += 1
+                        pc_1['return_cash'] += sales[i][2]
+            else:
+                # Возврат
+                if sales[i][3] == 2:
+                    # Если карта
+                    if sales[i][1] == 1:
+                        pc_2['return'] += 1
+                        pc_2['return_card'] += sales[i][2]
+                    # Если наличные
+                    else:
+                        pc_2['return'] += 1
+                        pc_2['return_cash'] += sales[i][2]
+                # Повторный возврат
+                elif sales[i][3] == 4:
+                    # Если карта
+                    if sales[i][1] == 1:
+                        pc_2['return_again'] += 1
+                        # pc_2['return_card'] += sales[i][2]
+                # Частичный возврат
+                elif sales[i][3] == 6:
+                    # Если карта
+                    if sales[i][1] == 1:
+                        pc_2['return_partial'] += 1
+                        pc_2['return_card'] += sales[i][2]
+                    # Если наличные
+                    else:
+                        pc_2['return_partial'] += 1
+                        pc_2['return_cash'] += sales[i][2]
+        pc_1_return = pc_1['return_card'] + pc_1['return_cash']
+        pc_2_return = pc_2['return_card'] + pc_2['return_cash']
         self.ui.tableWidget_4.setRowCount(0)
         self.ui.tableWidget_4.insertRow(0)
         self.ui.tableWidget_4.setItem(0, 0, QTableWidgetItem(f"{pc_1['Name PC']}"))
         self.ui.tableWidget_4.setItem(0, 1, QTableWidgetItem(f"{pc_1['card']}"))
         self.ui.tableWidget_4.setItem(0, 2, QTableWidgetItem(f"{pc_1['cash']}"))
+        self.ui.tableWidget_4.setItem(0, 4, QTableWidgetItem(f"{pc_1['return_card']}"))
+        self.ui.tableWidget_4.setItem(0, 5, QTableWidgetItem(f"{pc_1['return_cash']}"))
+        self.ui.tableWidget_4.setItem(0, 6, QTableWidgetItem(f"{pc_1_return}"))
         self.ui.tableWidget_4.insertRow(1)
         self.ui.tableWidget_4.setItem(1, 0, QTableWidgetItem(f"{pc_2['Name PC']}"))
         self.ui.tableWidget_4.setItem(1, 1, QTableWidgetItem(f"{pc_2['card']}"))
         self.ui.tableWidget_4.setItem(1, 2, QTableWidgetItem(f"{pc_2['cash']}"))
+        self.ui.tableWidget_4.setItem(1, 4, QTableWidgetItem(f"{pc_2['return_card']}"))
+        self.ui.tableWidget_4.setItem(1, 5, QTableWidgetItem(f"{pc_2['return_cash']}"))
+        self.ui.tableWidget_4.setItem(1, 6, QTableWidgetItem(f"{pc_2_return}"))
         self.ui.tableWidget_4.insertRow(2)
         self.ui.tableWidget_4.setItem(2, 0, QTableWidgetItem(f"{'Итого'}"))
         self.ui.tableWidget_4.setItem(2, 1, QTableWidgetItem(f"{card}"))
         self.ui.tableWidget_4.setItem(2, 2, QTableWidgetItem(f"{cash}"))
         self.ui.tableWidget_4.setItem(2, 3, QTableWidgetItem(f"{summa}"))
+        self.ui.tableWidget_4.setItem(2, 6, QTableWidgetItem(f"{pc_1_return + pc_2_return}"))
         # Считаем оплаченные билеты
         with Session(engine) as session:
             query = select(Ticket.ticket_type, Ticket.arrival_time, Ticket.description, Sale.status, Sale.id).where(
@@ -2508,14 +2603,13 @@ class System:
     # Флаг для обновления клиента
     client_id: int | None = None
     client_update: int | None = None
-    #all_clients = None # TODO: необходимо?
     # Сохраняем фамилию нового клиента
     last_name: str = ''
     # Статус продажи: 0 - создана, 1 - оплачена, 2 - возвращена,
     # 3 - требуется повторный возврат по банковскому терминалу,
     # 4 - повторный возврат по банковскому терминалу,
-    # 5 - частичный возврат, 6 - возврат по банковским реквизитам
-    # 7 - повторны возврат по ККТ TODO: проверить это при формировании
+    # 5 - требуется частичный возврат, 6 - частичный возврат
+    # 7 - возврат по банковским реквизитам
     sale_status: int | None = None
     sale_id: int | None = None
     sale_discount: int | None = None

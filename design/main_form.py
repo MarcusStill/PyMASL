@@ -1,10 +1,11 @@
 from PySide6.QtCore import (QCoreApplication, QMetaObject, QRect,
                             QSize, Qt)
 from PySide6.QtGui import (QAction, QFont)
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDateEdit,
-                               QFrame, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu,
-                               QMenuBar, QPushButton, QRadioButton, QStatusBar, QTabWidget, QTableWidget, QTableWidgetItem,
-                               QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
+                               QDateEdit, QFrame, QGroupBox, QHBoxLayout,
+                               QLabel, QLineEdit, QMenu, QMenuBar, QPushButton, QRadioButton,
+                               QStatusBar, QTabWidget, QTableWidget,
+                               QTableWidgetItem, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -107,7 +108,7 @@ class Ui_MainWindow(object):
         self.tableWidget_2.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.groupBox_3 = QGroupBox(self.sales)
         self.groupBox_3.setObjectName(u"groupBox_3")
-        self.groupBox_3.setGeometry(QRect(120, 0, 471, 41))
+        self.groupBox_3.setGeometry(QRect(120, 0, 551, 41))
         self.radioButton = QRadioButton(self.groupBox_3)
         self.radioButton.setObjectName(u"radioButton")
         self.radioButton.setGeometry(QRect(0, 20, 89, 20))
@@ -120,7 +121,7 @@ class Ui_MainWindow(object):
         self.radioButton_3.setGeometry(QRect(150, 20, 61, 20))
         self.pushButton_13 = QPushButton(self.groupBox_3)
         self.pushButton_13.setObjectName(u"pushButton_13")
-        self.pushButton_13.setGeometry(QRect(370, 10, 94, 28))
+        self.pushButton_13.setGeometry(QRect(450, 10, 94, 28))
         self.radioButton_7 = QRadioButton(self.groupBox_3)
         self.radioButton_7.setObjectName(u"radioButton_7")
         self.radioButton_7.setGeometry(QRect(220, 20, 41, 20))
@@ -128,6 +129,9 @@ class Ui_MainWindow(object):
         self.dateEdit_3.setObjectName(u"dateEdit_3")
         self.dateEdit_3.setGeometry(QRect(270, 20, 95, 22))
         self.dateEdit_3.setCalendarPopup(True)
+        self.checkBox = QCheckBox(self.groupBox_3)
+        self.checkBox.setObjectName(u"checkBox")
+        self.checkBox.setGeometry(QRect(370, 20, 75, 20))
         self.pushButton_23 = QPushButton(self.sales)
         self.pushButton_23.setObjectName(u"pushButton_23")
         self.pushButton_23.setGeometry(QRect(0, 10, 111, 31))
@@ -241,10 +245,10 @@ class Ui_MainWindow(object):
 
         self.groupBox_6 = QGroupBox(self.statistic)
         self.groupBox_6.setObjectName(u"groupBox_6")
-        self.groupBox_6.setGeometry(QRect(600, 70, 600, 350))
+        self.groupBox_6.setGeometry(QRect(600, 70, 1091, 350))
         self.tableWidget_4 = QTableWidget(self.groupBox_6)
-        if (self.tableWidget_4.columnCount() < 4):
-            self.tableWidget_4.setColumnCount(4)
+        if (self.tableWidget_4.columnCount() < 7):
+            self.tableWidget_4.setColumnCount(7)
         __qtablewidgetitem33 = QTableWidgetItem()
         self.tableWidget_4.setHorizontalHeaderItem(0, __qtablewidgetitem33)
         __qtablewidgetitem34 = QTableWidgetItem()
@@ -253,8 +257,14 @@ class Ui_MainWindow(object):
         self.tableWidget_4.setHorizontalHeaderItem(2, __qtablewidgetitem35)
         __qtablewidgetitem36 = QTableWidgetItem()
         self.tableWidget_4.setHorizontalHeaderItem(3, __qtablewidgetitem36)
+        __qtablewidgetitem37 = QTableWidgetItem()
+        self.tableWidget_4.setHorizontalHeaderItem(4, __qtablewidgetitem37)
+        __qtablewidgetitem38 = QTableWidgetItem()
+        self.tableWidget_4.setHorizontalHeaderItem(5, __qtablewidgetitem38)
+        __qtablewidgetitem39 = QTableWidgetItem()
+        self.tableWidget_4.setHorizontalHeaderItem(6, __qtablewidgetitem39)
         self.tableWidget_4.setObjectName(u"tableWidget_4")
-        self.tableWidget_4.setGeometry(QRect(10, 20, 581, 321))
+        self.tableWidget_4.setGeometry(QRect(10, 20, 1071, 321))
         self.tableWidget_4.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tableWidget_4.horizontalHeader().setDefaultSectionSize(140)
         self.pushButton_18 = QPushButton(self.statistic)
@@ -460,6 +470,7 @@ class Ui_MainWindow(object):
         self.radioButton_3.setText(QCoreApplication.translate("MainWindow", u"7 \u0434\u043d\u0435\u0439", None))
         self.pushButton_13.setText(QCoreApplication.translate("MainWindow", u"\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c", None))
         self.radioButton_7.setText(QCoreApplication.translate("MainWindow", u"\u0434\u0430\u0442\u0430", None))
+        self.checkBox.setText(QCoreApplication.translate("MainWindow", u"\u0412\u043e\u0437\u0432\u0440\u0430\u0442\u044b", None))
         self.pushButton_23.setText(QCoreApplication.translate("MainWindow", u"\u041d\u043e\u0432\u0430\u044f", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.sales), QCoreApplication.translate("MainWindow", u"\u041f\u0440\u043e\u0434\u0430\u0436\u0438", None))
         self.groupBox_4.setTitle(QCoreApplication.translate("MainWindow", u"\u0424\u0438\u043b\u044c\u0442\u0440 \u0437\u0430 \u043f\u0435\u0440\u0438\u043e\u0434", None))
@@ -513,6 +524,12 @@ class Ui_MainWindow(object):
         ___qtablewidgetitem35.setText(QCoreApplication.translate("MainWindow", u"\u041d\u0430\u043b\u0438\u0447\u043d\u044b\u0435", None));
         ___qtablewidgetitem36 = self.tableWidget_4.horizontalHeaderItem(3)
         ___qtablewidgetitem36.setText(QCoreApplication.translate("MainWindow", u"\u0412\u0441\u0435\u0433\u043e", None));
+        ___qtablewidgetitem37 = self.tableWidget_4.horizontalHeaderItem(4)
+        ___qtablewidgetitem37.setText(QCoreApplication.translate("MainWindow", u"\u0412\u043e\u0437\u0432\u0440\u0430\u0442 \u0431\u0430\u043d\u043a", None));
+        ___qtablewidgetitem38 = self.tableWidget_4.horizontalHeaderItem(5)
+        ___qtablewidgetitem38.setText(QCoreApplication.translate("MainWindow", u"\u0412\u043e\u0437\u0432\u0440\u0430\u0442 \u043d\u0430\u043b\u0438\u0447\u043d\u044b\u0435", None));
+        ___qtablewidgetitem39 = self.tableWidget_4.horizontalHeaderItem(6)
+        ___qtablewidgetitem39.setText(QCoreApplication.translate("MainWindow", u"\u0412\u0441\u0435\u0433\u043e \u0432\u043e\u0437\u0432\u0440\u0430\u0442\u043e\u0432", None));
         self.pushButton_18.setText(QCoreApplication.translate("MainWindow", u"\u041e\u0442\u0447\u0435\u0442 \u043a\u0430\u0441\u0441\u0438\u0440\u0430", None))
         self.pushButton_19.setText(QCoreApplication.translate("MainWindow", u"\u041e\u0442\u0447\u0435\u0442\u0430\n"
 " \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0430", None))
