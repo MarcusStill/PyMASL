@@ -2677,9 +2677,10 @@ class System:
             # Если авторизация прошла успешно - сохраняем данные пользователя
             System.user: User | None = kassir
             logger.info(f'Успешная авторизация: {kassir.last_name}')
-            return 1
+            result: int = 1
         else:
-            return 0
+            result: int = 0
+        return result
 
     def get_price(self) -> None:
         """
@@ -2792,12 +2793,14 @@ class System:
 
         Возвращаемое значение:
         """
+        result: str = ''
         if age < System.age['min']:
-            return 'бесплатный'
+            result = 'бесплатный'
         elif System.age['min'] <= age < System.age['max']:
-            return 'детский'
+            result = 'детский'
         elif age >= System.age['max']:
-            return 'взрослый'
+            result = 'взрослый'
+        return result
 
 
 if __name__ == '__main__':
