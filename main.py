@@ -1527,7 +1527,7 @@ class SaleForm(QDialog):
         if os.path.exists('./ticket.pdf'):
             os.remove('./ticket.pdf')
         # Формируем новый файл с билетами
-        otchet.generate_saved_tickets(client_in_sale)
+        otchet.generate_saved_tickets(client_in_sale, System.sale_open)
         # Печатаем билеты
         subprocess.Popen([r'print.cmd'])
         System.sale_tickets = []
@@ -1882,13 +1882,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         kol_adult: int = 0
         kol_child: int = 0
         summ: int = 0
+        System.sale_open = 1
         for idx in self.ui.tableWidget_2.selectionModel().selectedIndexes():
             # Номер строки найден
             row_number: int = idx.row()
             # Получаем содержимое ячейки
             sale_number: str = self.ui.tableWidget_2.item(row_number, 0).text()
             with Session(engine) as session:
-                query = select(Client.first_name, Client.last_name, Client.middle_name, Ticket.ticket_type,
+                query = select(Client.first_name, Client.last_name,
                                Ticket.price, Ticket.description, Client.id, Ticket.print, Ticket.client_age,
                                Ticket.arrival_time, Ticket.talent, Ticket.datetime).join(Ticket).where(
                     and_(Client.id == Ticket.id_client, Ticket.id_sale == sale_number)
@@ -1903,8 +1904,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Передаем в форму данные клиента
             sale: SaleForm = SaleForm()
             sale.ui.tableWidget_2.setRowCount(0)
-            sale.ui.dateEdit.setDate(client_in_sale[0][11])
-            sale.ui.comboBox.setCurrentText(str(client_in_sale[0][9]))
+            sale.ui.dateEdit.setDate(client_in_sale[0][9])
+            sale.ui.comboBox.setCurrentText(str(client_in_sale[0][7]))
             # Если продажа оплачена
             if sale_status == 1:
                 # Кнопка сохранить
@@ -1975,8 +1976,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_14.setEnabled(False)
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
+            elif sale_status == 4:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                sale.ui.pushButton_7.setEnabled(False)
             # Если продажа требует частичный возврат
             elif sale_status == 5:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(True)
+                # Кнопка отмены платежа по банковской карте
+                sale.ui.pushButton_14.setEnabled(False)
+                sale.ui.pushButton_7.setEnabled(False)
+                sale.ui.pushButton_8.setEnabled(False)
+                # Если продажа требует частичный возврат
+            elif sale_status == 6:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
                 # Кнопка оплатить
@@ -2001,7 +2024,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # Кнопка отмены платежа по банковской карте
                 sale.ui.pushButton_14.setEnabled(False)
             for search_client in client_in_sale:
-                if search_client[8] >= System.age['max']:
+                if search_client[6] >= System.age['max']:
                     type_ticket = 'взрослый'
                     kol_adult += 1
                 else:
@@ -2041,15 +2064,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # Тип билета
                 sale.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(type_ticket))
                 # Цена
-                sale.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{search_client[4]}"))
+                sale.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{search_client[2]}"))
                 # Примечание
-                sale.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{search_client[5]}"))
+                sale.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f"{search_client[3]}"))
                 # id клиента
-                sale.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client[6]}"))
+                sale.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(f"{search_client[4]}"))
                 sale.ui.tableWidget_2.setColumnHidden(5, True)
                 # Возраст
-                sale.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client[8]}"))
-                summ += int(search_client[4])
+                sale.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(f"{search_client[6]}"))
+                summ += int(search_client[2])
             sale.ui.label_5.setText(str(kol_adult))
             sale.ui.label_7.setText(str(kol_child))
             sale.ui.label_8.setText(str(summ))
@@ -2227,6 +2250,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # сбрасываем id и статус продажи
         System.sale_id = None
         System.sale_status = None
+        System.sale_open = None
         sale.exec_()
 
     def main_get_statistic(self) -> None:
@@ -2615,8 +2639,9 @@ class System:
     # 3 - требуется повторный возврат по банковскому терминалу,
     # 4 - повторный возврат по банковскому терминалу,
     # 5 - требуется частичный возврат, 6 - частичный возврат
-    # 7 - возврат по банковским реквизитам
     sale_status: int | None = None
+    # Сохраняем статус "сохраненная продажа" для корректной повторной печати билетов
+    sale_open: int | None = None
     sale_id: int | None = None
     sale_discount: int | None = None
     sale_tickets = ()
