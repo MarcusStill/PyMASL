@@ -29,6 +29,7 @@ from design.client import Ui_Dialog_Client
 from design.main_form import Ui_MainWindow
 from design.pay import Ui_Dialog_Pay
 from design.sale import Ui_Dialog_Sale
+from design.slip import Ui_Dialog_Slip
 from files import kkt
 from files import otchet
 from files import windows
@@ -255,7 +256,8 @@ class SaleForm(QDialog):
         self.ui.pushButton_10.clicked.connect(self.sale_update)
         self.ui.tableWidget_3.doubleClicked.connect(self.adding_related_client_to_sale)
         self.ui.pushButton_12.clicked.connect(self.clearing_client_list)
-        self.ui.pushButton_13.clicked.connect(self.get_slip)
+        #self.ui.pushButton_13.clicked.connect(self.get_slip)
+        self.ui.pushButton_13.clicked.connect(SlipForm.get_slip)
         # функция отмены платежа
         # self.ui.pushButton_14.clicked.connect(self.sale_canceling)
 
@@ -633,42 +635,6 @@ class SaleForm(QDialog):
         logger.info('Запуск функции check_filter_update')
         self.ui.tableWidget.clearContents()
         self.ui.tableWidget.setRowCount(0)
-
-    def get_slip(self) -> None:
-        """
-        Функция запрашивает банковский слип-чек в БД.
-
-        Параметры:
-
-        Возвращаемое значение:
-        """
-        logger.info('Запуск функции get_slip')
-        with Session(engine) as session:
-            query = select(Sale.bank_pay).where(Sale.id == System.sale_id)
-            slip = session.execute(query).scalars().one()
-        words = slip.split()
-        try:
-            rub_position = words.index('(Руб):') or words.index('Руб:')
-        except Exception as e:
-            rub_position = 0
-            logger.warning(f'В слип-чеке слова <(Руб):> или <Руб:> не найдены. Ошибка: {e}')
-        try:
-            rrn_position = words.index('RRN:')
-        except Exception as e:
-            rrn_position = 0
-            logger.warning(f'В слип-чеке слово <RRN:> не найдено. Ошибка: {e}')
-        try:
-            pay_position = words.index('ОплатаТ:') or words.index('Оплата:') or words.index('Оплата') or words.index('Оплата QRТ:') or words.index('Оплата QRТ')
-        except Exception as e:
-            pay_position = 0
-            logger.warning(f'В слип-чеке слова <ОплатаТ:>, <Оплата:> , <Оплата> не найдены. Ошибка: {e}')
-        windows.info_window(
-            f'Оплата была произведена картой со следующими реквизитами:\n'
-            f'- последние цифры: {words[rub_position - 1][:-5]};\n'
-            f'- мерчант: {words[pay_position + 2]}.\n'
-            f'\nДля возврата платежа терминал попросит ввести номер ссылки.',
-            f'Введите следующие цифры: {words[rrn_position + 1]}',
-            f'Банковский слип-чек:\n{slip}')
 
     @logger_wraps()
     def adding_client_to_sale(self, *args, **kwargs) -> None:
@@ -1650,6 +1616,45 @@ class PayForm(QDialog):
             System.print_check = 1
         else:
             System.print_check = 0
+
+class SlipForm(QDialog):
+    """Форма просмотра банковского слип-чека"""
+
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Dialog_Slip()
+        self.ui.setupUi(self)
+
+    def get_slip(self) -> None:
+        """
+        Функция запрашивает банковский слип-чек в БД и отображает его во всплывающем окне.
+
+        Параметры:
+
+        Возвращаемое значение:
+        """
+        logger.info('Запуск функции get_slip')
+        with Session(engine) as session:
+            query = select(Sale.bank_pay).where(Sale.id == System.sale_id)
+            load_slip = session.execute(query).scalars().one()
+        words = load_slip.split()
+        try:
+            rub_position = words.index('(Руб):') or words.index('Руб:')
+            rrn_position = words.index('RRN:')
+            pay_position = words.index('ОплатаТ:') or words.index('Оплата:') or words.index('Оплата') or words.index(
+                'Оплата QRТ:') or words.index('Оплата QRТ')
+        except Exception as e:
+            rub_position = 0
+            rrn_position = 0
+            pay_position = 0
+            logger.warning(f'Ошибка при чтении слип-чека из БД: {e}')
+        slip: SlipForm = SlipForm()
+        slip.ui.label_5.setText(words[rub_position - 1][:-5])
+        slip.ui.label_6.setText(words[pay_position + 2])
+        slip.ui.lineEdit.setText(words[rrn_position + 1])
+        slip.ui.textEdit.setText(load_slip)
+        slip.show()
+        slip.exec_()
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):

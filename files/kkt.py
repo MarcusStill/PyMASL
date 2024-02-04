@@ -355,7 +355,7 @@ def get_status_obmena():
             f'Дата и время первого неотправленного документа: {date_time}.\n'
             f'Флаг наличия сообщения для ОФД: {ofd_message_read}.\n'
             f'Дата и время последнего успешного ОКП: {okp_time}.')
-    windows.info_window('Смотрите подробную информацию.', '', info)
+    windows.info_dialog_window_2('Смотрите подробную информацию.', '', info)
 
 
 @logger_wraps()
