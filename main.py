@@ -901,9 +901,6 @@ class SaleForm(QDialog):
                 # Отключаем кнопки сохранения и возврата
                 self.ui.pushButton_3.setEnabled(False)
                 self.ui.pushButton_6.setEnabled(False)
-            # Если стоит флаг 'н' - исключаем из продажи
-            elif self.ui.tableWidget_2.item(row, 4).text() == 'н':
-                self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setCheckState(Qt.Checked)
             # Учитываем тип билета
             type_ticket: str = self.ui.tableWidget_2.item(row, 2).text()
             # Считаем взрослые билеты
@@ -953,28 +950,16 @@ class SaleForm(QDialog):
                         System.exclude_from_sale = 1
                         # Ставим метку "не идет"
                         self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem('н'))
-                # Если QCheckBox не активен
                 else:
-                    # Флаг состояния QCheckBox активирован
                     if System.exclude_from_sale == 1:
-                        self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
-                    # Флаг состояния QCheckBox не активирован (вернули в продажу)
-                    else:
-                        logger.info('Активируем QCheckBox строке')
-                        self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(True)
-                # Флаг состояния QCheckBox активирован
-                if System.exclude_from_sale == 1:
-                    # Если отмеченный ранее QCheckBox не активен
-                    if not self.ui.tableWidget_2.cellWidget(System.sale_checkbox_row, 8).findChild(
-                            QCheckBox).isChecked():
-                        logger.info('Возвращаем в продажу')
-                        self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem('-'))
-                        self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(price))
-                        System.sale_dict['detail'][0] = 0
-                        System.sale_dict['detail'][1] = 0
-                        System.sale_dict['detail'][4] = 0
-                        System.sale_checkbox_row = None
-                        System.exclude_from_sale = 0
+                        logger.info('Возвращаем взрослого в продажу')
+                        if not self.ui.tableWidget_2.cellWidget(System.sale_checkbox_row, 8).findChild(QCheckBox).isChecked():
+                            self.ui.tableWidget_2.setItem(System.sale_checkbox_row, 4, QTableWidgetItem('-'))
+                            System.sale_dict['detail'][0] = 0
+                            System.sale_dict['detail'][1] = 0
+                            System.sale_dict['detail'][4] = 0
+                            System.sale_checkbox_row = None
+                            System.exclude_from_sale = 0
                 kol_adult += 1
                 System.sale_dict['kol_adult'] = kol_adult
                 System.sale_dict['price_adult'] = price
@@ -1122,6 +1107,15 @@ class SaleForm(QDialog):
             self.ui.pushButton_5.setEnabled(True)
         else:
             self.ui.pushButton_5.setEnabled(False)
+        # Отключаем checkbox исключения из продажи для других позиций
+        if System.exclude_from_sale == 1:
+            for row in range(rows):
+                if row != System.sale_checkbox_row:
+                    self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
+                # Флаг состояния QCheckBox не активирован (вернули в продажу)
+                else:
+                    logger.debug('Активируем QCheckBox строке')
+                    self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(True)
 
     def save_sale(self) -> None:
         """
