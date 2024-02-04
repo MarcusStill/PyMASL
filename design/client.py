@@ -139,6 +139,17 @@ class Ui_Dialog_Client(object):
 
         self.horizontalLayout.addWidget(self.pushButton_2)
 
+        QWidget.setTabOrder(self.lineEdit, self.lineEdit_2)
+        QWidget.setTabOrder(self.lineEdit_2, self.lineEdit_3)
+        QWidget.setTabOrder(self.lineEdit_3, self.dateEdit)
+        QWidget.setTabOrder(self.dateEdit, self.lineEdit_4)
+        QWidget.setTabOrder(self.lineEdit_4, self.comboBox)
+        QWidget.setTabOrder(self.comboBox, self.comboBox_2)
+        QWidget.setTabOrder(self.comboBox_2, self.lineEdit_5)
+        QWidget.setTabOrder(self.lineEdit_5, self.pushButton)
+        QWidget.setTabOrder(self.pushButton, self.pushButton_2)
+        QWidget.setTabOrder(self.pushButton_2, self.pushButton_4)
+        QWidget.setTabOrder(self.pushButton_4, self.pushButton_3)
 
         self.retranslateUi(Dialog_Client)
 
