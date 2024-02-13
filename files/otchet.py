@@ -9,14 +9,16 @@ from reportlab.platypus import Table, TableStyle
 from files.logger import *
 
 
-def generate_saved_tickets(values, sale_open):
+def generate_saved_tickets(values):
     logger.info("Запуск функции generate_saved_tickets")
     client_in_sale = values
     type_ticket = None
     img_file = 'files/qr-code.jpg'
     path = "./ticket.pdf"
+    logger.info("Устанавливаем параметры макета билета")
     pdfmetrics.registerFont(TTFont('DejaVuSerif', 'files/DejaVuSerif.ttf'))
     c = canvas.Canvas(path, pagesize=(landscape(letter)))
+    logger.debug("Сохраняем билеты")
     for i in range(len(client_in_sale)):
         age = int(client_in_sale[i][6])
         not_go = client_in_sale[i][4]
@@ -26,14 +28,9 @@ def generate_saved_tickets(values, sale_open):
             type_ticket = 'детский'
         elif age >= 15:
             type_ticket = 'взрослый'
-        if sale_open == 1:
-            note = client_in_sale[i][3]
-            price = client_in_sale[i][2]
-        else:
-            note = client_in_sale[i][4]
-            price = client_in_sale[i][3]
         if type_ticket != 'бесплатный' and not_go != 'н':
             date_time = str(client_in_sale[i][9])
+            """Сохраняем макет билета"""
             c.setFont('DejaVuSerif', 12)
             # имя
             c.drawString(
@@ -79,7 +76,7 @@ def generate_saved_tickets(values, sale_open):
             c.drawString(
                 190 * mm,
                 155 * mm,
-                f'{price} руб.'.replace("'", "").replace("[", "").replace("]", "")
+                f'{client_in_sale[i][3]} руб.'.replace("'", "").replace("[", "").replace("]", "")
             )
             # тип билета
             c.drawString(
@@ -88,7 +85,7 @@ def generate_saved_tickets(values, sale_open):
                 str(type_ticket).replace("'", "").replace("[", "").replace("]", "")
             )
             # доп.отметки
-            c.drawString(170 * mm, 138 * mm, f'{note}')
+            c.drawString(170 * mm, 138 * mm, str(client_in_sale[i][4]))
             # таланты
             # печатаем их только для детских билетов
             c.setFont('DejaVuSerif', 24)

@@ -355,7 +355,7 @@ def get_status_obmena():
             f'Дата и время первого неотправленного документа: {date_time}.\n'
             f'Флаг наличия сообщения для ОФД: {ofd_message_read}.\n'
             f'Дата и время последнего успешного ОКП: {okp_time}.')
-    windows.info_dialog_window_2('Смотрите подробную информацию.', '', info)
+    windows.info_dialog_window('Смотрите подробную информацию.', info)
 
 
 @logger_wraps()
@@ -386,12 +386,14 @@ def smena_info():
     logger.debug(f'Состояние смены: {state}')
     if state == 0:
         result = 'закрыта'
-    else:
+    elif state == 1:
         result = 'открыта'
+    elif state == 2:
+        result = 'истекла (продолжительность смены больше 24 часов)'
     info = (f'Состояние смены: {result}.\n'
             f'Номер смены: {number}.\n'
             f'Дата и время истечения текущей смены: {date_time}')
-    windows.info_window('Состояние смены:  {result}',
+    windows.info_window(f'Состояние смены:  {result}',
                         'Смотрите подробную информацию.', info)
     fptr.close()
     return state
