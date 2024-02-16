@@ -2005,6 +2005,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_14.setEnabled(False)
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
+            # Если продажа требует частичный возврат
+            elif sale_status == 7:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(False)
+                # Кнопка отмены платежа по банковской карте
+                sale.ui.pushButton_14.setEnabled(False)
+                sale.ui.pushButton_7.setEnabled(False)
+                sale.ui.pushButton_8.setEnabled(False)
             else:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
