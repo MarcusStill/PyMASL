@@ -13,8 +13,10 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QCheckBox, QDialog, QHBoxLayout
 from PySide6.QtWidgets import QTableWidgetItem, QWidget
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy import engine, and_, select, func, update, desc, or_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from db.models import Client
@@ -35,21 +37,46 @@ from files import otchet
 from files import windows
 from files.logger import *
 
-# Чтение параметров из файла конфигурации
-config = ConfigParser()
-config.read("config.ini")
-host = config.get("DATABASE", "host")
-port = config.get("DATABASE", "port")
-database = config.get("DATABASE", "database")
-user = config.get("DATABASE", "user")
-pswrd = config.get("DATABASE", "password")
-software_version = config.get("OTHER", "version")
-log_file = config.get("OTHER", "log_file")
-kol_pc = config.get("PC", "kol")
-pc_1 = config.get("PC", "pc_1")
-pc_2 = config.get("PC", "pc_2")
 
-engine = create_engine("postgresql+psycopg2://postgres:" + pswrd + "@" + host + ":" + port + "/" + database, echo=True)
+@logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
+def read_config():
+    """ Функция для загрузки параметров из файла конфигурации """
+    config = ConfigParser()
+    config.read("config.ini")
+    return {
+        "host": config.get("DATABASE", "host"),
+        "port": config.get("DATABASE", "port"),
+        "database": config.get("DATABASE", "database"),
+        "user": config.get("DATABASE", "user"),
+        "software_version": config.get("OTHER", "version"),
+        "log_file": config.get("OTHER", "log_file"),
+        "kol_pc": config.get("PC", "kol"),
+        "pc_1": config.get("PC", "pc_1"),
+        "pc_2": config.get("PC", "pc_2")
+    }
+
+# Чтение параметров из файла конфигурации
+config_data = read_config()
+host = config_data["host"]
+port = config_data["port"]
+database = config_data["database"]
+user = config_data["user"]
+software_version = config_data["software_version"]
+log_file = config_data["log_file"]
+kol_pc = config_data["kol_pc"]
+pc_1 = config_data["pc_1"]
+pc_2 = config_data["pc_2"]
+
+# Загрузка переменных окружения из файла .env
+load_dotenv()
+
+# Проверка переменной окружения
+pswrd: str | None = os.getenv('DB_PASSWORD')
+if not pswrd:
+    logger.error("Переменная окружения DB_PASSWORD не установлена!")
+    raise ValueError("Переменная окружения DB_PASSWORD не установлена!")
+
+engine = create_engine(f'postgresql+psycopg2://{user}:{pswrd}@{host}:{port}/{database}')
 
 logger.add(log_file, rotation="1 MB")
 
@@ -2705,17 +2732,23 @@ class System:
         Возвращаемое значение:
         """
         logger.info('Запуск функции user_authorization')
-        with Session(engine) as session:
-            query = select(User).where(User.login == login, User.password == password)
-            kassir: User | None = session.execute(query).scalars().first()
-        if kassir:
-            # Если авторизация прошла успешно - сохраняем данные пользователя
-            System.user: User | None = kassir
-            logger.info(f'Успешная авторизация: {kassir.last_name}')
-            result: int = 1
-        else:
-            result: int = 0
-        return result
+        try:
+            with Session(engine) as session:
+                query = select(User).where(User.login == login, User.password == password)
+                kassir = session.execute(query).scalars().first()
+            if kassir:
+                System.user = kassir
+                logger.info(f'Успешная авторизация: {kassir.last_name}')
+                return 1
+            else:
+                logger.warning(f'Неудачная попытка авторизации для пользователя {login}')
+                return 0
+        except SQLAlchemyError as e:
+            logger.error(f"Ошибка базы данных при авторизации пользователя: {e}")
+            return 0
+        except Exception as e:
+            logger.error(f"Неизвестная ошибка при авторизации: {e}")
+            return 0
 
     @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
     def get_price(self) -> None:
