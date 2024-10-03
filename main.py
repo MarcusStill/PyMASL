@@ -871,6 +871,7 @@ class SaleForm(QDialog):
             type_ticket: str = self.ui.tableWidget_2.item(row, 2).text()
             # Считаем взрослые билеты
             if type_ticket == 'взрослый':
+                logger.debug(f'type_ticket == взрослый')
                 # Если продолжительность посещения 1 час
                 if System.sale_dict['detail'][6] == 1:
                     # Сохраняем цену билета
@@ -928,9 +929,11 @@ class SaleForm(QDialog):
                             System.exclude_from_sale = 0
                 kol_adult += 1
                 System.sale_dict['kol_adult'] = kol_adult
+                logger.debug(f'price adult {price}')
                 System.sale_dict['price_adult'] = price
             # Считаем детские билеты
             elif type_ticket == 'детский':
+                logger.debug(f'type_ticket == детский')
                 # Отключаем исключающий из продажи QCheckBox
                 self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
                 # Если продолжительность посещения 1 час
@@ -970,6 +973,7 @@ class SaleForm(QDialog):
                         price: int = System.price['ticket_child_week_3']
                 kol_child += 1
                 System.sale_dict['kol_child'] = kol_child
+                logger.debug(f'price adult {price}')
                 System.sale_dict['price_child'] = price
             # Считаем бесплатные билеты
             else:
@@ -2094,6 +2098,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             logger.debug(f'Билеты сохраненной продажи: {System.sale_tickets}')
             sale.exec_()
 
+    @logger_wraps(entry=True, exit=True, level="DEBUG")
     def main_button_all_sales(self) -> None:
         """
         Функция выводит на форму продаж в соответствии с выбранным пользователем фильтром (за 1, 3 и 7 дней).
@@ -2712,6 +2717,7 @@ class System:
             result: int = 0
         return result
 
+    @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
     def get_price(self) -> None:
         """
         Функция загружает прайс-лист основных услуг из БД.
@@ -2721,45 +2727,45 @@ class System:
         Возвращаемое значение:
         """
         logger.info('Запуск функции get_price')
+
+        # Словарь с значениями по умолчанию
+        default_prices = {
+            'ticket_child_1': 250,
+            'ticket_child_2': 500,
+            'ticket_child_3': 750,
+            'ticket_child_week_1': 300,
+            'ticket_child_week_2': 600,
+            'ticket_child_week_3': 900,
+            'ticket_adult_1': 150,
+            'ticket_adult_2': 200,
+            'ticket_adult_3': 250
+        }
+
         with Session(engine) as session:
             result = session.query(Price).all()
-        if result is not None:
-            if int(str(result[0])) == 0:
-                System.price['ticket_child_1'] = 250
-            else:
-                System.price['ticket_child_1'] = int(str(result[0]))
-            if int(str(result[1])) == 0:
-                System.price['ticket_child_2'] = 500
-            else:
-                System.price['ticket_child_2'] = int(str(result[1]))
-            if int(str(result[2])) == 0:
-                System.price['ticket_child_3'] = 750
-            else:
-                System.price['ticket_child_3'] = int(str(result[2]))
-            if int(str(result[3])) == 0:
-                System.price['ticket_child_week_1'] = 300
-            else:
-                System.price['ticket_child_week_1'] = int(str(result[3]))
-            if int(str(result[4])) == 0:
-                System.price['ticket_child_week_2'] = 600
-            else:
-                System.price['ticket_child_week_2'] = int(str(result[4]))
-            if int(str(result[5])) == 0:
-                System.price['ticket_child_week_3'] = 900
-            else:
-                System.price['ticket_child_week_3'] = int(str(result[5]))
-            if int(str(result[6])) == 0:
-                System.price['ticket_adult_1'] = 150
-            else:
-                System.price['ticket_adult_1'] = int(str(result[6]))
-            if int(str(result[7])) == 0:
-                System.price['ticket_adult_2'] = 200
-            else:
-                System.price['ticket_adult_2'] = int(str(result[7]))
-            if int(str(result[8])) == 0:
-                System.price['ticket_adult_3'] = 200
-            else:
-                System.price['ticket_adult_3'] = int(str(result[8]))
+
+        if result:
+            # Словарь для хранения цен из БД
+            db_prices = {
+                'ticket_child_1': result[0],
+                'ticket_child_2': result[1],
+                'ticket_child_3': result[2],
+                'ticket_child_week_1': result[3],
+                'ticket_child_week_2': result[4],
+                'ticket_child_week_3': result[5],
+                'ticket_adult_1': result[6],
+                'ticket_adult_2': result[7],
+                'ticket_adult_3': result[8]
+            }
+
+            # Устанавливаем цены, используя значения из БД или по умолчанию
+            for key, value in db_prices.items():
+                System.price[key] = int(str(value)) if int(str(value)) != 0 else default_prices[key]
+        else:
+            # Если результат запроса пуст, устанавливаем значения по умолчанию
+            logger.info(f'Устанавливаем значения прайс-листа по умолчанию.')
+            System.price.update(default_prices)
+        logger.debug(f'System.price: {System.price}')
 
     def check_day(self) -> int:
         """
