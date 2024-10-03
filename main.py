@@ -2728,7 +2728,7 @@ class System:
         """
         logger.info('Запуск функции get_price')
 
-        # Словарь с значениями по умолчанию
+        # Словарь со значениями по умолчанию
         default_prices = {
             'ticket_child_1': 250,
             'ticket_child_2': 500,
@@ -2742,9 +2742,10 @@ class System:
         }
 
         with Session(engine) as session:
-            result = session.query(Price).all()
+            result = session.query(Price).order_by(Price.id).all()
 
         if result:
+            logger.debug(f'result: {result}')
             # Словарь для хранения цен из БД
             db_prices = {
                 'ticket_child_1': result[0],
