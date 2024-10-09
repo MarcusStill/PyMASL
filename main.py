@@ -801,27 +801,27 @@ class SaleForm(QDialog):
         """
         logger.info('Запуск функцию sale_update')
         # Используем для подсчета количества посетителей
-        kol_adult: int = 0
-        kol_child: int = 0
+        System.count_number_of_visitors['kol_adult'] = 0
+        System.count_number_of_visitors['kol_child'] = 0
         # Используем для подсчета количества посетителей со скидкой
-        kol_sale_adult: int = 0
-        kol_sale_child: int = 0
+        System.count_number_of_visitors['kol_sale_adult'] = 0
+        System.count_number_of_visitors['kol_sale_child'] = 0
         # Используем для подсчета количества посетителей с категорией
-        kol_adult_many_child: int = 0
-        kol_child_many_child: int = 0
-        kol_adult_invalid: int = 0
-        kol_child_invalid: int = 0
+        System.count_number_of_visitors['kol_adult_many_child'] = 0
+        System.count_number_of_visitors['kol_child_many_child'] = 0
+        System.count_number_of_visitors['kol_adult_invalid'] = 0
+        System.count_number_of_visitors['kol_child_invalid'] = 0
         # Запоминаем id для "привязки" продажи ко взрослому
-        id_adult: int = 0
+        System.count_number_of_visitors['id_adult'] = 0
         # Учитываем продолжительность посещения
         time_ticket: int = int(self.ui.comboBox.currentText())
         # Сохраняем билеты
         tickets: list[tuple[str, str, str, str, str, str, str, str, int, str]] = []
         # Флаг "многодетные": 1 - 2 часа бесплатно, 2 - скидка 50%
-        many_child: int = 0
-        invalid: int = 0
+        System.count_number_of_visitors['many_child'] = 0
+        System.count_number_of_visitors['invalid'] = 0
         # Считаем количество золотых талантов
-        talent: int = 0
+        System.count_number_of_visitors['talent'] = 0
         # Обнуляем System.sale_dict
         System.sale_dict = {'kol_adult': 0, 'price_adult': 0,
                            'kol_child': 0, 'price_child': 0,
@@ -829,13 +829,13 @@ class SaleForm(QDialog):
         # Устанавливаем время и количество талантов
         if time_ticket == 1:
             System.sale_dict['detail'][6] = 1
-            talent: int = System.talent['1_hour']
+            System.count_number_of_visitors['talent']: int = System.talent['1_hour']
         elif time_ticket == 2:
             System.sale_dict['detail'][6] = 2
-            talent: int = System.talent['2_hour']
+            System.count_number_of_visitors['talent']: int = System.talent['2_hour']
         elif time_ticket == 3:
             System.sale_dict['detail'][6] = 3
-            talent: int = System.talent['3_hour']
+            System.count_number_of_visitors['talent']: int = System.talent['3_hour']
         # Записываем в sale_dict время посещения
         date_time: str = self.ui.dateEdit.date().toString('yyyy-MM-dd')
         # Анализируем таблицу с заказом
@@ -851,14 +851,14 @@ class SaleForm(QDialog):
                 if System.sunday == 1 and self.ui.checkBox_3.isChecked():
                     logger.info('Продление билетов многодетным')
                     # Отменяем скидку 100%
-                    many_child: int = 0
+                    System.count_number_of_visitors['many_child'] = 0
                     self.ui.checkBox_2.setEnabled(True)
                     self.ui.checkBox_2.setChecked(True)
                     self.ui.comboBox_2.setCurrentIndex(0)
                     self.ui.comboBox.setEnabled(True)
                 elif System.sunday == 1:
                     # Используем "флаг" many_child
-                    many_child: int = 1
+                    System.count_number_of_visitors['many_child']: int = 1
                     logger.info('Сегодня день многодетных')
                     # Устанавливаем продолжительность посещения 2 часа
                     self.ui.comboBox.setCurrentIndex(1)
@@ -873,16 +873,16 @@ class SaleForm(QDialog):
                 # используем "флаг" many_child, для скидки 50%
                 elif System.num_of_week <= 5:
                     logger.info('Многодетным скидка 50%')
-                    many_child: int = 2
+                    System.count_number_of_visitors['many_child']: int = 2
                     # Устанавливаем скидку
                     self.ui.checkBox_2.setChecked(True)
                     self.ui.checkBox_2.setEnabled(True)
                     self.ui.comboBox_2.setCurrentIndex(10)
-                    self.ui.comboBox_2.setEnabled(False)
+                    self.ui.comboBox_2.setEnabled(True)
                     System.sale_dict['detail'][4] = 50
             # Проверяем категорию посетителя - если инвалид
             elif self.ui.tableWidget_2.item(row, 4).text() == 'и':
-                invalid: int = 1
+                System.count_number_of_visitors['invalid'] = 1
                 System.sale_dict['detail'][4] = 100
                 # Изменяем продолжительность времени посещения
                 self.ui.comboBox.setCurrentIndex(2)
@@ -905,12 +905,12 @@ class SaleForm(QDialog):
                     price: int = System.price['ticket_adult_1']
                 elif System.sale_dict['detail'][6] == 2:
                     # Если день многодетных
-                    if many_child == 1:
+                    if System.count_number_of_visitors['many_child'] == 1:
                         price: int = System.price['ticket_free']
-                        kol_adult_many_child += 1
+                        System.count_number_of_visitors['kol_adult_many_child'] += 1
                         # Изменяем цену и записываем размер скидки
                         logger.debug('Добавляем взрослого мног-го в sale_dict[detail]')
-                        System.sale_dict['detail'][0] = kol_adult_many_child
+                        System.sale_dict['detail'][0] = System.count_number_of_visitors['kol_adult_many_child']
                         System.sale_dict['detail'][1] = price
                     # Если обычный день
                     else:
@@ -918,18 +918,19 @@ class SaleForm(QDialog):
                 else:
                     # Если продолжительность 3 часа
                     # Если в продаже инвалид
-                    if invalid == 1:
+                    if System.count_number_of_visitors['invalid'] == 1:
                         price: int = System.price['ticket_free']
-                        kol_adult_invalid += 1
+                        System.count_number_of_visitors['kol_adult_invalid'] += 1
                         # Изменяем цену и записываем размер скидки
-                        System.sale_dict['detail'][0] = kol_adult_invalid
+                        System.sale_dict['detail'][0] = System.count_number_of_visitors['kol_adult_invalid']
                         System.sale_dict['detail'][1] = price
                         # Меняем категорию билета на 'с' - сопровождающий
                         self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem('с'))
                     else:
                         price: int = System.price['ticket_adult_3']
                 # Привязываем продажу ко взрослому
-                if id_adult == 0:
+                if System.count_number_of_visitors['id_adult'] == 0:
+                    System.count_number_of_visitors['id_adult'] += 1
                     System.sale_dict['detail'][5] = self.ui.tableWidget_2.item(row, 5).text()
                 # Если checkbox активен - взрослый в оплату не добавляется
                 if self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).isChecked():
@@ -954,8 +955,8 @@ class SaleForm(QDialog):
                             System.sale_dict['detail'][4] = 0
                             System.sale_checkbox_row = None
                             System.exclude_from_sale = 0
-                kol_adult += 1
-                System.sale_dict['kol_adult'] = kol_adult
+                System.count_number_of_visitors['kol_adult'] += 1
+                System.sale_dict['kol_adult'] = System.count_number_of_visitors['kol_adult']
                 logger.debug(f'price adult {price}')
                 System.sale_dict['price_adult'] = price
             # Считаем детские билеты
@@ -972,11 +973,11 @@ class SaleForm(QDialog):
                         price: int = System.price['ticket_child_week_1']
                 elif System.sale_dict['detail'][6] == 2:
                     # если день многодетных
-                    if many_child == 1:
+                    if System.count_number_of_visitors['many_child'] == 1:
                         price: int = System.price['ticket_free']
-                        kol_child_many_child += 1
+                        System.count_number_of_visitors['kol_child_many_child'] += 1
                         # Применяем сидку
-                        System.sale_dict['detail'][2] = kol_child_many_child
+                        System.sale_dict['detail'][2] = System.count_number_of_visitors['kol_child_many_child']
                         System.sale_dict['detail'][3] = price
                     # Если обычный день
                     else:
@@ -988,18 +989,18 @@ class SaleForm(QDialog):
                 else:
                     # Если продолжительность посещения 3 часа
                     # Если в продаже инвалид
-                    if invalid == 1:
+                    if System.count_number_of_visitors['invalid'] == 1:
                         price: int = System.price['ticket_free']
-                        kol_child_invalid += 1
+                        System.count_number_of_visitors['kol_child_invalid'] += 1
                         # Изменяем цену и записываем размер скидки
-                        System.sale_dict['detail'][2] = kol_child_invalid
+                        System.sale_dict['detail'][2] = System.count_number_of_visitors['kol_child_invalid']
                         System.sale_dict['detail'][3] = price
                     elif System.what_a_day == 0:
                         price: int = System.price['ticket_child_3']
                     else:
                         price: int = System.price['ticket_child_week_3']
-                kol_child += 1
-                System.sale_dict['kol_child'] = kol_child
+                System.count_number_of_visitors['kol_child'] += 1
+                System.sale_dict['kol_child'] = System.count_number_of_visitors['kol_child']
                 logger.debug(f'price adult {price}')
                 System.sale_dict['price_child'] = price
             # Считаем бесплатные билеты
@@ -1010,7 +1011,7 @@ class SaleForm(QDialog):
             # Применяем скидку
             logger.info('Применяем скидку')
             # В день многодетных
-            if many_child == 1:
+            if System.count_number_of_visitors['many_child'] == 1:
                 logger.info('Скидка 100% в день многодетных')
                 self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
                 logger.debug('В продаже многодетные')
@@ -1018,13 +1019,13 @@ class SaleForm(QDialog):
                 System.sale_special = 1
                 logger.debug(f'Продажа особенная: {System.sale_special}')
             # Скидка 50% в будни
-            elif many_child == 2:
+            elif System.count_number_of_visitors['many_child'] == 2:
                 logger.info('Скидка 50% многодетным в будни')
                 self.ui.comboBox_2.setCurrentIndex(10)
                 new_price: int = round(price * 0.5)
                 self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f'{new_price}'))
             # Скидка инвалидам
-            elif invalid == 1:
+            elif System.count_number_of_visitors['invalid'] == 1:
                 logger.info('Скидка 100% инвалидам')
                 self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
                 logger.debug('В продаже инвалид')
@@ -1043,14 +1044,14 @@ class SaleForm(QDialog):
                         # Если checkbox в акт - применяем к этой строке скидку
                         if self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).isChecked():
                             if type_ticket == 'взрослый':
-                                kol_sale_adult += 1
-                                logger.debug(f'kol_sale_adult: {kol_sale_adult}')
-                                System.sale_dict['detail'][0] = kol_sale_adult
+                                System.count_number_of_visitors['kol_sale_adult'] += 1
+                                logger.debug(f"kol_sale_adult: {System.count_number_of_visitors['kol_sale_adult']}")
+                                System.sale_dict['detail'][0] = System.count_number_of_visitors['kol_sale_adult']
                                 System.sale_dict['detail'][1] = new_price
                             elif type_ticket == 'детский':
-                                kol_sale_child += 1
-                                logger.debug(f'kol_sale_child: {kol_sale_child}')
-                                System.sale_dict['detail'][2] = kol_sale_child
+                                System.count_number_of_visitors['kol_sale_child'] += 1
+                                logger.debug(f"kol_sale_child: {System.count_number_of_visitors['kol_sale_child']}")
+                                System.sale_dict['detail'][2] = System.count_number_of_visitors['kol_sale_child']
                                 System.sale_dict['detail'][3] = new_price
                             self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
         logger.debug(f'System.sale_dict: {System.sale_dict}')
@@ -1063,10 +1064,10 @@ class SaleForm(QDialog):
         logger.debug(f'Итого: {itog}')
         self.ui.label_8.setText(str(itog))
         System.sale_dict['detail'][7] = itog
-        self.ui.label_5.setText(str(kol_adult))
-        self.ui.label_7.setText(str(kol_child))
-        self.ui.label_17.setText(str(kol_adult_many_child))
-        self.ui.label_19.setText(str(kol_child_many_child))
+        self.ui.label_5.setText(str(System.count_number_of_visitors['kol_adult']))
+        self.ui.label_7.setText(str(System.count_number_of_visitors['kol_child']))
+        self.ui.label_17.setText(str(System.count_number_of_visitors['kol_adult_many_child']))
+        self.ui.label_19.setText(str(System.count_number_of_visitors['kol_child_many_child']))
         # Сохраняем данные продажи
         logger.debug(f'Sale_dict: {System.sale_dict}')
         # Генерируем список с билетами
@@ -1078,22 +1079,9 @@ class SaleForm(QDialog):
                 self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
             tickets.append(
                 (
-                    # Фамилия
-                    self.ui.tableWidget_2.item(row, 0).text(),
-                    # Имя
-                    self.ui.tableWidget_2.item(row, 1).text(),
-                    # Тип билета
-                    self.ui.tableWidget_2.item(row, 2).text(),
-                    # Цена
-                    self.ui.tableWidget_2.item(row, 3).text(),
-                    # Категория
-                    self.ui.tableWidget_2.item(row, 4).text(),
-                    # Id взрослого
-                    self.ui.tableWidget_2.item(row, 5).text(),
-                    # Возраст
-                    self.ui.tableWidget_2.item(row, 6).text(),
-                    time_ticket,
-                    talent,
+                    *map(lambda col: self.ui.tableWidget_2.item(row, col).text(), range(7)),
+                    System.sale_dict['detail'][6],
+                    System.count_number_of_visitors['talent'],
                     date_time
                 )
             )
@@ -2722,7 +2710,13 @@ class System:
     amount_to_pay_or_deposit: int = 0
     # Сохраняем баланс наличных денег в кассе
     amount_of_money_at_the_cash_desk: int = None
-
+    count_number_of_visitors: dict = {
+        'kol_adult': 0, 'kol_child': 0,
+        'kol_sale_adult': 0, 'kol_sale_child': 0,
+        'kol_adult_many_child': 0, 'kol_child_many_child': 0,
+        'kol_adult_invalid': 0, 'kol_child_invalid': 0,
+        'id_adult': 0, 'many_child': 0, 'invalid': 0, 'talent': 0
+    }
     def user_authorization(self, login, password) -> int:
         """
         Функция проверяет есть ли пользователь в БД с данными, указанными на форме авторизации.
