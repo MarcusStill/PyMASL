@@ -827,15 +827,7 @@ class SaleForm(QDialog):
                            'kol_child': 0, 'price_child': 0,
                            'detail': [0, 0, 0, 0, 0, 0, 0, 0]}
         # Устанавливаем время и количество талантов
-        if time_ticket == 1:
-            System.sale_dict['detail'][6] = 1
-            System.count_number_of_visitors['talent']: int = System.talent['1_hour']
-        elif time_ticket == 2:
-            System.sale_dict['detail'][6] = 2
-            System.count_number_of_visitors['talent']: int = System.talent['2_hour']
-        elif time_ticket == 3:
-            System.sale_dict['detail'][6] = 3
-            System.count_number_of_visitors['talent']: int = System.talent['3_hour']
+        System.sale_dict['detail'][6], System.count_number_of_visitors['talent'] = self.get_talent_based_on_time(time_ticket)
         # Записываем в sale_dict время посещения
         date_time: str = self.ui.dateEdit.date().toString('yyyy-MM-dd')
         # Анализируем таблицу с заказом
@@ -1077,14 +1069,7 @@ class SaleForm(QDialog):
                 # Изменяем цену
                 logger.debug('Изменяем цену в билете посетителя!')
                 self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
-            tickets.append(
-                (
-                    *map(lambda col: self.ui.tableWidget_2.item(row, col).text(), range(7)),
-                    System.sale_dict['detail'][6],
-                    System.count_number_of_visitors['talent'],
-                    date_time
-                )
-            )
+            self.generate_ticket_list(row, tickets, date_time)
         System.sale_tickets = tickets
         logger.info(f'System.sale_tickets: {System.sale_tickets}')
         # Проверяем есть ли в продаже взрослый
@@ -1101,6 +1086,29 @@ class SaleForm(QDialog):
                 else:
                     logger.debug('Активируем QCheckBox строке')
                     self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(True)
+
+    def get_talent_based_on_time(self, time_ticket):
+        """Возвращает количество талантов в зависимости от времени."""
+        if time_ticket == 1:
+            return 1, System.talent['1_hour']
+        elif time_ticket == 2:
+            return 2, System.talent['2_hour']
+        elif time_ticket == 3:
+            return 3, System.talent['3_hour']
+        return 0, 0
+
+    def generate_ticket_list(
+            self, row: int, ticket_list: list[tuple[str, str, str, str, str, str, str, str, int, str]], date_time: str
+    ):
+        """Генерация списка билетов."""
+        ticket_list.append(
+            (
+                *map(lambda col: self.ui.tableWidget_2.item(row, col).text(), range(7)),
+                System.sale_dict['detail'][6],
+                System.count_number_of_visitors['talent'],
+                date_time
+            )
+        )
 
     def save_sale(self) -> None:
         """
