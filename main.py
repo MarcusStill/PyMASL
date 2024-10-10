@@ -834,58 +834,7 @@ class SaleForm(QDialog):
         rows: int = self.ui.tableWidget_2.rowCount()
         for row in range(rows):
             # Сегодня день многодетных?
-            # Проверяем категорию посетителя - если многодетный
-            if self.ui.tableWidget_2.item(row, 4).text() == 'м':
-                # Активируем поле со скидкой
-                self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).setCheckState(Qt.Checked)
-                # Проверяем если номер дня недели равен 7 и дата <= 7
-                # Установлена галочка "продление многодетным"
-                if System.sunday == 1 and self.ui.checkBox_3.isChecked():
-                    logger.info('Продление билетов многодетным')
-                    # Отменяем скидку 100%
-                    System.count_number_of_visitors['many_child'] = 0
-                    self.ui.checkBox_2.setEnabled(True)
-                    self.ui.checkBox_2.setChecked(True)
-                    self.ui.comboBox_2.setCurrentIndex(0)
-                    self.ui.comboBox.setEnabled(True)
-                elif System.sunday == 1:
-                    # Используем "флаг" many_child
-                    System.count_number_of_visitors['many_child']: int = 1
-                    logger.info('Сегодня день многодетных')
-                    # Устанавливаем продолжительность посещения 2 часа
-                    self.ui.comboBox.setCurrentIndex(1)
-                    self.ui.comboBox.setEnabled(False)
-                    # Устанавливаем скидку
-                    self.ui.checkBox_2.setEnabled(False)
-                    self.ui.comboBox_2.setCurrentIndex(15)
-                    self.ui.comboBox_2.setEnabled(False)
-                    System.sale_dict['detail'][4] = 100
-                    # Отключаем кнопку возврата
-                    self.ui.pushButton_6.setEnabled(False)
-                # используем "флаг" many_child, для скидки 50%
-                elif System.num_of_week <= 5:
-                    logger.info('Многодетным скидка 50%')
-                    System.count_number_of_visitors['many_child']: int = 2
-                    # Устанавливаем скидку
-                    self.ui.checkBox_2.setChecked(True)
-                    self.ui.checkBox_2.setEnabled(True)
-                    self.ui.comboBox_2.setCurrentIndex(10)
-                    self.ui.comboBox_2.setEnabled(True)
-                    System.sale_dict['detail'][4] = 50
-            # Проверяем категорию посетителя - если инвалид
-            elif self.ui.tableWidget_2.item(row, 4).text() == 'и':
-                System.count_number_of_visitors['invalid'] = 1
-                System.sale_dict['detail'][4] = 100
-                # Изменяем продолжительность времени посещения
-                self.ui.comboBox.setCurrentIndex(2)
-                self.ui.comboBox.setEnabled(False)
-                # Устанавливаем скидку
-                self.ui.checkBox_2.setEnabled(False)
-                self.ui.comboBox_2.setCurrentIndex(15)
-                self.ui.comboBox_2.setEnabled(False)
-                # Отключаем кнопки сохранения и возврата
-                self.ui.pushButton_3.setEnabled(False)
-                self.ui.pushButton_6.setEnabled(False)
+            self.analyzing_visitor_category(row)
             # Учитываем тип билета
             type_ticket: str = self.ui.tableWidget_2.item(row, 2).text()
             # Считаем взрослые билеты
@@ -1060,6 +1009,68 @@ class SaleForm(QDialog):
                 else:
                     logger.debug('Активируем QCheckBox строке')
                     self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(True)
+
+    def analyzing_visitor_category(self, row: int) -> None:
+        """
+            Функция анализирует типы категорий посетителей.
+
+            Параметры: row
+
+            Возвращаемое значение: None
+            """
+        logger.info('Запуск функцию analyzing_visitor_category')
+        # Проверяем категорию посетителя - если многодетный
+        if self.ui.tableWidget_2.item(row, 4).text() == 'м':
+            # Активируем поле со скидкой
+            self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).setCheckState(Qt.Checked)
+            # Проверяем если номер дня недели равен 7 и дата <= 7
+            # Установлена галочка "продление многодетным"
+            if System.sunday == 1 and self.ui.checkBox_3.isChecked():
+                logger.info('Продление билетов многодетным')
+                # Отменяем скидку 100%
+                System.count_number_of_visitors['many_child'] = 0
+                self.ui.checkBox_2.setEnabled(True)
+                self.ui.checkBox_2.setChecked(True)
+                self.ui.comboBox_2.setCurrentIndex(0)
+                self.ui.comboBox.setEnabled(True)
+            elif System.sunday == 1:
+                # Используем "флаг" many_child
+                System.count_number_of_visitors['many_child']: int = 1
+                logger.info('Сегодня день многодетных')
+                # Устанавливаем продолжительность посещения 2 часа
+                self.ui.comboBox.setCurrentIndex(1)
+                self.ui.comboBox.setEnabled(False)
+                # Устанавливаем скидку
+                self.ui.checkBox_2.setEnabled(False)
+                self.ui.comboBox_2.setCurrentIndex(15)
+                self.ui.comboBox_2.setEnabled(False)
+                System.sale_dict['detail'][4] = 100
+                # Отключаем кнопку возврата
+                self.ui.pushButton_6.setEnabled(False)
+            # используем "флаг" many_child, для скидки 50%
+            elif System.num_of_week <= 5:
+                logger.info('Многодетным скидка 50%')
+                System.count_number_of_visitors['many_child']: int = 2
+                # Устанавливаем скидку
+                self.ui.checkBox_2.setChecked(True)
+                self.ui.checkBox_2.setEnabled(True)
+                self.ui.comboBox_2.setCurrentIndex(10)
+                self.ui.comboBox_2.setEnabled(True)
+                System.sale_dict['detail'][4] = 50
+        # Проверяем категорию посетителя - если инвалид
+        elif self.ui.tableWidget_2.item(row, 4).text() == 'и':
+            System.count_number_of_visitors['invalid'] = 1
+            System.sale_dict['detail'][4] = 100
+            # Изменяем продолжительность времени посещения
+            self.ui.comboBox.setCurrentIndex(2)
+            self.ui.comboBox.setEnabled(False)
+            # Устанавливаем скидку
+            self.ui.checkBox_2.setEnabled(False)
+            self.ui.comboBox_2.setCurrentIndex(15)
+            self.ui.comboBox_2.setEnabled(False)
+            # Отключаем кнопки сохранения и возврата
+            self.ui.pushButton_3.setEnabled(False)
+            self.ui.pushButton_6.setEnabled(False)
 
     def adult_exclusion(self, row: int) -> None:
         """
