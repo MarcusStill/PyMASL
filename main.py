@@ -455,18 +455,12 @@ class SaleForm(QDialog):
             self.ui.pushButton_5.setEnabled(True)
             self.ui.pushButton_6.setEnabled(True)
             # Обновляем System.sale_dict
-            System.sale_dict['kol_adult'] = 0
-            System.sale_dict['price_adult'] = 0
-            System.sale_dict['kol_child'] = 0
-            System.sale_dict['price_child'] = 0
-            System.sale_dict['detail'][0] = 0
-            System.sale_dict['detail'][1] = 0
-            System.sale_dict['detail'][2] = 0
-            System.sale_dict['detail'][3] = 0
-            System.sale_dict['detail'][4] = 0
-            System.sale_dict['detail'][5] = 0
-            System.sale_dict['detail'][6] = 0
-            System.sale_dict['detail'][7] = 0
+            sale_initial_values = {
+                'kol_adult': 0, 'price_adult': 0,
+                'kol_child': 0, 'price_child': 0,
+                'detail': [0, 0, 0, 0, 0, 0, 0, 0]
+            }
+            System.sale_dict.update(sale_initial_values)
             System.sale_discount = 0
             self.sale_update()
 
@@ -2458,18 +2452,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # флаг состояния особенной (бесплатной) продажи
         System.sale_special = None
         # Обновляем System.sale_dict
-        System.sale_dict['kol_adult'] = 0
-        System.sale_dict['price_adult'] = 0
-        System.sale_dict['kol_child'] = 0
-        System.sale_dict['price_child'] = 0
-        System.sale_dict['detail'][0] = 0
-        System.sale_dict['detail'][1] = 0
-        System.sale_dict['detail'][2] = 0
-        System.sale_dict['detail'][3] = 0
-        System.sale_dict['detail'][4] = 0
-        System.sale_dict['detail'][5] = 0
-        System.sale_dict['detail'][6] = 0
-        System.sale_dict['detail'][7] = 0
+        # Обнуляем System.sale_dict
+        sale_initial_values = {
+            'kol_adult': 0, 'price_adult': 0,
+            'kol_child': 0, 'price_child': 0,
+            'detail': [0, 0, 0, 0, 0, 0, 0, 0]
+        }
+        System.sale_dict.update(sale_initial_values)
         # сбрасываем id и статус продажи
         System.sale_id = None
         System.sale_status = None
