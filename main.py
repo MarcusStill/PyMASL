@@ -2370,22 +2370,26 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(str(sale[8])))
                 self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(str(sale[2])))
                 self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(str(sale[3])))
-                if int(sale[4]) == 0:
-                    status_type: str = 'создана'
-                elif int(sale[4]) == 1:
-                    status_type: str = 'оплачена'
-                elif int(sale[4]) == 2:
-                    status_type: str = 'возврат'
-                elif int(sale[4]) == 3:
-                    status_type: str = 'требуется повторный возврат по банковскому терминалу'
-                elif int(sale[4]) == 4:
-                    status_type: str = 'повторный возврат по банковскому терминалу'
-                elif int(sale[4]) == 5:
-                    status_type: str = 'требуется частичный возврат'
-                elif int(sale[4]) == 6:
-                    status_type: str = 'частичный возврат'
-                elif int(sale[4]) == 7:
-                    status_type: str = 'возврат по банковским реквизитам'
+                if sale[4] is None:
+                    status_type: str = 'неизвестно'
+                else:
+                    status_value = int(sale[4])
+                    if status_value == 0:
+                        status_type: str = 'создана'
+                    elif status_value == 1:
+                        status_type: str = 'оплачена'
+                    elif status_value == 2:
+                        status_type: str = 'возврат'
+                    elif status_value == 3:
+                        status_type: str = 'требуется повторный возврат по банковскому терминалу'
+                    elif status_value == 4:
+                        status_type: str = 'повторный возврат по банковскому терминалу'
+                    elif status_value == 5:
+                        status_type: str = 'требуется частичный возврат'
+                    elif status_value == 6:
+                        status_type: str = 'частичный возврат'
+                    elif status_value == 7:
+                        status_type: str = 'возврат по банковским реквизитам'
                 self.ui.tableWidget_2.setColumnWidth(4, 350)
                 self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(f'{status_type}'))
                 self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(str(sale[5])))
