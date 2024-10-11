@@ -1078,8 +1078,9 @@ class SaleForm(QDialog):
                 self.ui.checkBox_2.setChecked(True)
                 self.ui.checkBox_2.setEnabled(True)
                 self.ui.comboBox_2.setCurrentIndex(10)
-                self.ui.comboBox_2.setEnabled(True)
+                self.ui.comboBox_2.setEnabled(False)
                 System.sale_dict['detail'][4] = 50
+                self.ui.comboBox.setEnabled(True)
         # Проверяем категорию посетителя - если инвалид
         elif self.ui.tableWidget_2.item(row, 4).text() == 'и':
             System.count_number_of_visitors['invalid'] = 1
