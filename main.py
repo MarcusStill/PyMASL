@@ -990,7 +990,6 @@ class SaleForm(QDialog):
         """
         self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
         duration = System.sale_dict['detail'][6]
-        price: int = 0
         if duration == 1:
             if System.what_a_day == 0:
                 price = System.price['ticket_child_1']
@@ -1011,8 +1010,6 @@ class SaleForm(QDialog):
             else:
                 price = System.what_a_day == 0 and System.price['ticket_child_3'] or System.price['ticket_child_week_3']
         self.update_child_count()
-        if price == 0:
-            logger.error("Не удалось вычислить цену билета для ребенка.")
         logger.debug(f'price child {price}')
         System.sale_dict['price_child'] = price
 
