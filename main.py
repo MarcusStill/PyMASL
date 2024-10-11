@@ -341,6 +341,10 @@ class SaleForm(QDialog):
         # Запрашиваем данные нового клиента
         with Session(engine) as session:
             search_client = session.query(Client).filter_by(id=System.id_new_client_in_sale).one_or_none()
+        # Проверяем, найден ли клиент
+        if search_client is None:
+            logger.error(f"Клиент с ID {System.id_new_client_in_sale} не найден.")
+            return
         logger.debug(f'Найденный клиент: {search_client}')
         # Вычисляем возраст клиента
         age: int = System.calculate_age(search_client.birth_date)
@@ -2048,11 +2052,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logger.info('Запуск функции edit_client_in_sale')
         # Ищем индекс и значение ячейки
         row_number: int = self.ui.tableWidget.currentRow()
+        # Проверяем, что строка выбрана
+        if row_number == -1:
+            logger.error("Строка не выбрана в таблице.")
+            return
         # Получаем содержимое ячейки
         client_id: str = self.ui.tableWidget.item(row_number, 8).text()
-
+        if client_id is None:
+            logger.error("Ячейка пуста или не существует.")
+            return
         with Session(engine) as session:
             search_client: Type[Client] = session.query(Client).filter_by(id=client_id).first()
+            if search_client is None:
+                logger.error(f"Клиент с ID {client_id} не найден.")
         # Сохраняем id клиента
         System.client_id = search_client.id
         # Передаем в форму данные клиента
