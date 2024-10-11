@@ -801,31 +801,27 @@ class SaleForm(QDialog):
         """
         logger.info('Запуск функцию sale_update')
         # Используем для подсчета количества посетителей
-        System.count_number_of_visitors['kol_adult'] = 0
-        System.count_number_of_visitors['kol_child'] = 0
-        # Используем для подсчета количества посетителей со скидкой
-        System.count_number_of_visitors['kol_sale_adult'] = 0
-        System.count_number_of_visitors['kol_sale_child'] = 0
-        # Используем для подсчета количества посетителей с категорией
-        System.count_number_of_visitors['kol_adult_many_child'] = 0
-        System.count_number_of_visitors['kol_child_many_child'] = 0
-        System.count_number_of_visitors['kol_adult_invalid'] = 0
-        System.count_number_of_visitors['kol_child_invalid'] = 0
-        # Запоминаем id для "привязки" продажи ко взрослому
-        System.count_number_of_visitors['id_adult'] = 0
+        # В id_adult запоминаем идентификатор для "привязки" продажи ко взрослому
+        # Флаг "многодетные": 1 - 2 часа бесплатно, 2 - скидка 50%
+        count_initial_values = {
+            'kol_adult': 0, 'kol_child': 0,
+            'kol_sale_adult': 0, 'kol_sale_child': 0,
+            'kol_adult_many_child': 0, 'kol_child_many_child': 0,
+            'kol_adult_invalid': 0, 'kol_child_invalid': 0,
+            'id_adult': 0, 'many_child': 0, 'invalid': 0, 'talent': 0
+        }
+        System.count_number_of_visitors.update(count_initial_values)
         # Учитываем продолжительность посещения
         time_ticket: int = int(self.ui.comboBox.currentText())
         # Сохраняем билеты
         tickets: list[tuple[str, str, str, str, str, str, str, str, int, str]] = []
-        # Флаг "многодетные": 1 - 2 часа бесплатно, 2 - скидка 50%
-        System.count_number_of_visitors['many_child'] = 0
-        System.count_number_of_visitors['invalid'] = 0
-        # Считаем количество золотых талантов
-        System.count_number_of_visitors['talent'] = 0
         # Обнуляем System.sale_dict
-        System.sale_dict = {'kol_adult': 0, 'price_adult': 0,
-                           'kol_child': 0, 'price_child': 0,
-                           'detail': [0, 0, 0, 0, 0, 0, 0, 0]}
+        sale_initial_values = {
+            'kol_adult': 0, 'price_adult': 0,
+            'kol_child': 0, 'price_child': 0,
+            'detail': [0, 0, 0, 0, 0, 0, 0, 0]
+        }
+        System.sale_dict.update(sale_initial_values)
         # Устанавливаем время и количество талантов
         System.sale_dict['detail'][6], System.count_number_of_visitors['talent'] = self.get_talent_based_on_time(time_ticket)
         # Записываем в sale_dict время посещения
