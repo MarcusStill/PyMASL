@@ -877,61 +877,111 @@ class SaleForm(QDialog):
 
     def apply_discounts(self, row: int, price: int, type_ticket: str) -> None:
         """
-            Функция применяет скидки к билетам посетителей.
+        Применяет скидки к билетам посетителей.
 
-            Параметры: None
+        Параметры:
+            row (int): Номер строки.
+            price (int): Цена до применения скидок.
+            type_ticket (str): Тип билета (взрослый, детский).
 
-            Возвращаемое значение: price
-            """
-        logger.info('Запуск функцию ticket_counting')
+        Возвращаемое значение:
+            None
+        """
+        logger.info('Запуск функцию apply_discounts')
         # Устанавливаем цену в таблицу и пересчитываем
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{price}"))
-        # Применяем скидку
-        logger.info('Применяем скидку')
-        # В день многодетных
         if System.count_number_of_visitors['many_child'] == 1:
-            logger.info('Скидка 100% в день многодетных')
-            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
-            logger.debug('В продаже многодетные')
-            # Помечаем продажу как "особенную"
-            System.sale_special = 1
-            logger.debug(f'Продажа особенная: {System.sale_special}')
-        # Скидка 50% в будни
+            self.apply_family_discount(row)
         elif System.count_number_of_visitors['many_child'] == 2:
-            logger.info('Скидка 50% многодетным в будни')
-            self.ui.comboBox_2.setCurrentIndex(10)
-            new_price: int = round(price * 0.5)
-            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f'{new_price}'))
-        # Скидка инвалидам
+            self.apply_weekday_discount(row, price)
         elif System.count_number_of_visitors['invalid'] == 1:
-            logger.info('Скидка 100% инвалидам')
-            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
-            logger.debug('В продаже инвалид')
-            # Помечаем продажу как "особенную"
-            System.sale_special = 1
-            logger.debug(f'Продажа особенная: {System.sale_special}')
-        # Иначе проверяем активен ли checkbox со скидкой и размер > 0
-        if self.ui.checkBox_2.isChecked():
+            self.apply_invalid_discount(row)
+        else:
+            # Иначе проверяем активен ли checkbox со скидкой и размер > 0
+            self.apply_standard_discount(row, price, type_ticket)
+
+    def apply_family_discount(self, row: int) -> None:
+        """
+        Применяет скидку 100% для многодетных семей.
+
+        Параметры:
+            row (int): Номер строки.
+
+        Возвращаемое значение:
+            None
+        """
+        logger.info('Скидка 100% в день многодетных')
+        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
+        # Помечаем продажу как "особенную"
+        System.sale_special = 1
+        logger.debug(f'Продажа особенная: {System.sale_special}')
+
+    def apply_weekday_discount(self, row: int, price: int) -> None:
+        """
+        Применяет скидку 50% для многодетных семей в будние дни.
+
+        Параметры:
+            row (int): Номер строки.
+            price (int): Цена до применения скидки.
+
+        Возвращаемое значение:
+            None
+        """
+        logger.info('Скидка 50% многодетным в будни')
+        self.ui.comboBox_2.setCurrentIndex(10)
+        new_price = round(price * 0.5)
+        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f'{new_price}'))
+
+    def apply_invalid_discount(self, row: int) -> None:
+        """
+        Применяет скидку 100% для инвалидов.
+
+        Параметры:
+            row (int): Номер строки.
+
+        Возвращаемое значение:
+            None
+        """
+        logger.info('Скидка 100% инвалидам')
+        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
+        # Помечаем продажу как "особенную"
+        System.sale_special = 1
+        logger.debug(f'Продажа особенная: {System.sale_special}')
+
+    def apply_standard_discount(self, row: int, price: int, type_ticket: str) -> None:
+        """
+        Применяет стандартные скидки для обычных гостей.
+
+        Параметры:
+            row (int): Номер строки.
+            price (int): Цена до применения скидки.
+            type_ticket (str): Тип билета (взрослый или детский).
+
+        Возвращаемое значение:
+            None
+        """
+        if self.ui.checkBox_2.isChecked() and int(self.ui.comboBox_2.currentText()) > 0:
             logger.info('Checkbox со скидкой активен - обычный гость')
-            if int(self.ui.comboBox_2.currentText()) > 0:
-                System.sale_discount = int(self.ui.comboBox_2.currentText())
-                logger.debug(f'Sale_discount: {System.sale_discount}')
-                System.sale_dict['detail'][4] = System.sale_discount
-                if System.sale_discount > 0:
-                    new_price: int = int(price - (price * System.sale_discount / 100))
-                    # Если checkbox в акт - применяем к этой строке скидку
-                    if self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).isChecked():
-                        if type_ticket == 'взрослый':
-                            System.count_number_of_visitors['kol_sale_adult'] += 1
-                            logger.debug(f"kol_sale_adult: {System.count_number_of_visitors['kol_sale_adult']}")
-                            System.sale_dict['detail'][0] = System.count_number_of_visitors['kol_sale_adult']
-                            System.sale_dict['detail'][1] = new_price
-                        elif type_ticket == 'детский':
-                            System.count_number_of_visitors['kol_sale_child'] += 1
-                            logger.debug(f"kol_sale_child: {System.count_number_of_visitors['kol_sale_child']}")
-                            System.sale_dict['detail'][2] = System.count_number_of_visitors['kol_sale_child']
-                            System.sale_dict['detail'][3] = new_price
-                        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
+            discount = int(self.ui.comboBox_2.currentText())
+            logger.info('Применяем обычную скидку')
+            logger.debug(f'Sale_discount: {discount}')
+            System.sale_discount = discount
+            System.sale_dict['detail'][4] = discount
+            if System.sale_discount > 0:
+                new_price: int = int(price - (price * System.sale_discount / 100))
+                # Если checkbox в акт - применяем к этой строке скидку
+                if self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).isChecked():
+                    if type_ticket == 'взрослый':
+                        System.count_number_of_visitors['kol_sale_adult'] += 1
+                        logger.debug(f"kol_sale_adult: {System.count_number_of_visitors['kol_sale_adult']}")
+                        System.sale_dict['detail'][0] = System.count_number_of_visitors['kol_sale_adult']
+                        System.sale_dict['detail'][1] = new_price
+                    elif type_ticket == 'детский':
+                        System.count_number_of_visitors['kol_sale_child'] += 1
+                        logger.debug(f"kol_sale_child: {System.count_number_of_visitors['kol_sale_child']}")
+                        System.sale_dict['detail'][2] = System.count_number_of_visitors['kol_sale_child']
+                        System.sale_dict['detail'][3] = new_price
+                    self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
 
     def ticket_counting(self, row: int, type_ticket: str) -> int:
         """
