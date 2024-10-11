@@ -722,8 +722,9 @@ class SaleForm(QDialog):
         # Ищем продажи, в которых клиент был ранее
         client_list: set = set()
         with Session(engine) as session:
-            sales = session.query(Client.id, Ticket.id_sale, Ticket.id_sale).filter(and_(Client.id == search_client.id,
-                                                                                         Ticket.id_client == search_client.id))
+            sales = session.query(Client.id, Ticket.id_sale, Ticket.id_sale).filter(
+        and_(Client.id == search_client.id, Ticket.id_client == search_client.id)
+    ).join(Ticket, Client.id == Ticket.id_client)
             for client_in_sales in sales:
                 if client_in_sales:
                     # Находим других посетителей, которые были в этих продажах
