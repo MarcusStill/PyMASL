@@ -12,7 +12,9 @@ except (Exception,) as e:
     windows.info_window(info, '', '')
     logger.warning(info)
 
-
+# Константы для работы с результатами терминала
+TERMINAL_SUCCESS_CODE = 0
+TERMINAL_USER_CANCEL_CODE = 2000
 GOOD = 'ОДОБРЕНО'
 EMAIL = 'test.check@pymasl.ru'
 
@@ -21,42 +23,58 @@ EMAIL = 'test.check@pymasl.ru'
 def terminal_oplata(amount):
     """Операуия оплаты по банковскому терминалу"""
     logger.info('Запуск функции terminal_oplata')
-    result = ''
     status = 0
-    amount += '00'
-    pinpad = 'C:\\sc552\\loadparm.exe'
-    pay_param = ' 1 ' + amount
-    pinpad_run = pinpad + pay_param
+    result = 0
     # проверяем статус проведения операции по банковскому терминалу
     while status != 1:
-        proc = subprocess.run(pinpad_run)
-        plat = proc.returncode
-        logger.info(f'Статус проведения операции по банковскому терминалу: {plat}')
-        if plat in (0, 2000):
-            # оплата прошла успешно (0) или отменена пользователем (2000)
+        plat_code = run_terminal_payment(amount)
+        logger.info(f'Статус проведения операции по банковскому терминалу: {plat_code}')
+
+        if plat_code == TERMINAL_SUCCESS_CODE:
+            # Оплата прошла успешно
             status = 1
+            if check_terminal_file():
+                result = 1  # Успешная операция
+        elif plat_code == TERMINAL_USER_CANCEL_CODE:
+            # Оплата отменена пользователем
+            logger.warning('Оплата отменена пользователем')
+            result = 0
+            status = 1  # Завершаем цикл и возвращаем ошибку
         else:
             dialog = windows.info_dialog_window('Внимание! '
                                                 'Произошла ошибка при проведении платежа по банковской карте.',
                                                 'Хотите повторить операцию?')
-            # пользователь нажал кнопку 'нет'
-            if dialog == 0:
-                status = 1
-    # Проверка файла с результатом работы банковского терминала
-    logger.info('Proverka file')
+            if dialog == 0:  # Пользователь выбрал "Нет"
+                status = 1  # Завершаем операцию с ошибкой
+
+    return result
+
+
+def run_terminal_payment(amount):
+    """Запуск оплаты по банковскому терминалу и возврат кода результата."""
+    pinpad = 'C:\\sc552\\loadparm.exe'
+    pay_param = ' 1 ' + amount + '00'  # Добавляем '00' для копеек
+    pinpad_run = pinpad + pay_param
+
+    proc = subprocess.run(pinpad_run)
+    return proc.returncode
+
+
+def check_terminal_file():
+    """Проверка файла с результатами работы банковского терминала."""
     pinpad_file = r'C:\sc552\p'
-    # Проверяем одобрение операции
     try:
         with open(pinpad_file, encoding='IBM866') as file:
             text = file.read()
         if GOOD in text:
             logger.info('Проверка файла успешно завершена')
-            result = 1
+            return True
+        else:
+            logger.warning('Ошибка при проверке файла: GOOD не найдено')
+            return False
     except FileNotFoundError as not_found:
-        print('File not found:', not_found.filename)
-        logger.warning('Проверка файла завершилась с ошибкой')
-        result = 0
-    return result
+        logger.error(f'Файл {pinpad_file} не найден: {not_found}')
+        return False
 
 
 @logger_wraps()
@@ -498,48 +516,49 @@ def balance_check():
 def operation_on_the_terminal(payment_type, type_operation, price):
     """Проведение операции по банковскому терминалу"""
     logger.info('Запуск функции operation_on_the_terminal')
-    bank = None
+
     if payment_type == 101:
-        payment = 1
-        logger.debug('оплата банковской картой')
-        if type_operation == 1:
-            logger.info('Запускаем оплату по банковскому терминалу')
-            # результат операции по терминалу
-            bank = terminal_oplata(str(price))
-            logger.debug(f'Результат операции по терминалу: {bank}')
-            if bank != 1:
-                info = 'Оплата по банковскому терминалу завершена с ошибкой'
-                logger.warning(info)
-                windows.info_window(info,'', '')
-                return 0, payment
-        elif type_operation == 2:
-            logger.info('Запускаем операцию возврата по банковскому терминалу')
-            # результат операции по терминалу
-            bank = terminal_return(str(price))
-            logger.debug(f'Результат операции по терминалу: {bank}')
-            if bank != 1:
-                info = 'Возврат по банковскому терминалу завершен с ошибкой'
-                logger.warning(info)
-                windows.info_window(info,'', '')
-                return 0, payment
-        elif type_operation == 3:
-            logger.info('Запускаем операцию отмены по банковскому терминалу')
-            # результат операции по терминалу
-            bank = terminal_canceling(str(price))
-            logger.debug(f'Результат операции по терминалу: {bank}')
-            if bank != 1:
-                info = 'Отмена по банковскому терминалу завершена с ошибкой'
-                logger.warning(info)
-                windows.info_window(info,'', '')
-                return 0, payment
-    # если offline оплата банковской картой
+        return handle_terminal_payment(type_operation, price)
     elif payment_type == 100:
-        logger.debug('Продажа новая. Начинаем оплату')
-        payment = 3
-        # результат операции по терминалу
-        logger.info('Запускаем offline оплату по банковскому терминалу')
-        bank = 1
+        logger.debug('Запускаем offline оплату по банковскому терминалу')
+        return 1, 3  # Offline оплата всегда успешна
+
+    return 0, None  # Неверный тип оплаты
+
+
+@logger_wraps()
+def handle_terminal_payment(type_operation, price):
+    """Обработка операций по банковскому терминалу"""
+    payment = 1
+    # Словарь связывает тип операции с её описанием и соответствующей функцией
+    operation_map = {
+        1: ('оплата', terminal_oplata),
+        2: ('возврат', terminal_return),
+        3: ('отмена', terminal_canceling)
+    }
+
+    operation_name, operation_func = operation_map.get(type_operation, (None, None))
+    if not operation_func:
+        logger.error(f'Неизвестный тип операции: {type_operation}')
+        return 0, payment
+
+    logger.info(f'Запускаем {operation_name} по банковскому терминалу')
+    bank = operation_func(str(price))
+    logger.debug(f'Результат операции по терминалу: {bank}')
+
+    if bank != 1:
+        log_terminal_error(operation_name)
+        return 0, payment
+
     return bank, payment
+
+
+def log_terminal_error(operation_name):
+    """Логирование ошибки терминала и отображение сообщения пользователю"""
+    info = f'{operation_name.capitalize()} по банковскому терминалу завершена с ошибкой'
+    logger.warning(info)
+    windows.info_window(info, '', '')
+
 
 @logger_wraps()
 def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank):
