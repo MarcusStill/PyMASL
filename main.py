@@ -835,6 +835,7 @@ class SaleForm(QDialog):
             price = self.ticket_counting(row, type_ticket)
             self.apply_discounts(row, price, type_ticket)
         logger.debug(f'System.sale_dict: {System.sale_dict}')
+        logger.debug(f'System.count_number_of_visitors: {System.count_number_of_visitors}')
         itog: int = self.calculate_itog()
         logger.debug(f'Итого: {itog}')
         self.ui.label_8.setText(str(itog))
@@ -885,98 +886,52 @@ class SaleForm(QDialog):
         logger.info('Запуск функцию apply_discounts')
         # Устанавливаем цену в таблицу и пересчитываем
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{price}"))
+        # Применяем скидку
+        logger.info('Применяем скидку')
+        # В день многодетных
         if System.count_number_of_visitors['many_child'] == 1:
-            self.apply_family_discount(row)
+            logger.info('Скидка 100% в день многодетных')
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
+            logger.debug('В продаже многодетные')
+            # Помечаем продажу как "особенную"
+            System.sale_special = 1
+            logger.debug(f'Продажа особенная: {System.sale_special}')
+        # Скидка 50% в будни
         elif System.count_number_of_visitors['many_child'] == 2:
-            self.apply_weekday_discount(row, price)
+            logger.info('Скидка 50% многодетным в будни')
+            self.ui.comboBox_2.setCurrentIndex(10)
+            new_price: int = round(price * 0.5)
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f'{new_price}'))
+        # Скидка инвалидам
         elif System.count_number_of_visitors['invalid'] == 1:
-            self.apply_invalid_discount(row)
-        else:
-            # Иначе проверяем активен ли checkbox со скидкой и размер > 0
-            self.apply_standard_discount(row, price, type_ticket)
-
-    def apply_family_discount(self, row: int) -> None:
-        """
-        Применяет скидку 100% для многодетных семей.
-
-        Параметры:
-            row (int): Номер строки.
-
-        Возвращаемое значение:
-            None
-        """
-        logger.info('Скидка 100% в день многодетных')
-        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
-        # Помечаем продажу как "особенную"
-        System.sale_special = 1
-        logger.debug(f'Продажа особенная: {System.sale_special}')
-
-    def apply_weekday_discount(self, row: int, price: int) -> None:
-        """
-        Применяет скидку 50% для многодетных семей в будние дни.
-
-        Параметры:
-            row (int): Номер строки.
-            price (int): Цена до применения скидки.
-
-        Возвращаемое значение:
-            None
-        """
-        logger.info('Скидка 50% многодетным в будни')
-        self.ui.comboBox_2.setCurrentIndex(10)
-        new_price = round(price * 0.5)
-        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f'{new_price}'))
-
-    def apply_invalid_discount(self, row: int) -> None:
-        """
-        Применяет скидку 100% для инвалидов.
-
-        Параметры:
-            row (int): Номер строки.
-
-        Возвращаемое значение:
-            None
-        """
-        logger.info('Скидка 100% инвалидам')
-        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
-        # Помечаем продажу как "особенную"
-        System.sale_special = 1
-        logger.debug(f'Продажа особенная: {System.sale_special}')
-
-    def apply_standard_discount(self, row: int, price: int, type_ticket: str) -> None:
-        """
-        Применяет стандартные скидки для обычных гостей.
-
-        Параметры:
-            row (int): Номер строки.
-            price (int): Цена до применения скидки.
-            type_ticket (str): Тип билета (взрослый или детский).
-
-        Возвращаемое значение:
-            None
-        """
-        if self.ui.checkBox_2.isChecked() and int(self.ui.comboBox_2.currentText()) > 0:
+            logger.info('Скидка 100% инвалидам')
+            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{System.price['ticket_free']}"))
+            logger.debug('В продаже инвалид')
+            # Помечаем продажу как "особенную"
+            System.sale_special = 1
+            logger.debug(f'Продажа особенная: {System.sale_special}')
+        # Иначе проверяем активен ли checkbox со скидкой и размер > 0
+        if self.ui.checkBox_2.isChecked():
             logger.info('Checkbox со скидкой активен - обычный гость')
-            discount = int(self.ui.comboBox_2.currentText())
-            logger.info('Применяем обычную скидку')
-            logger.debug(f'Sale_discount: {discount}')
-            System.sale_discount = discount
-            System.sale_dict['detail'][4] = discount
-            if System.sale_discount > 0:
-                new_price: int = int(price - (price * System.sale_discount / 100))
-                # Если checkbox в акт - применяем к этой строке скидку
-                if self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).isChecked():
-                    if type_ticket == 'взрослый':
-                        System.count_number_of_visitors['kol_sale_adult'] += 1
-                        logger.debug(f"kol_sale_adult: {System.count_number_of_visitors['kol_sale_adult']}")
-                        System.sale_dict['detail'][0] = System.count_number_of_visitors['kol_sale_adult']
-                        System.sale_dict['detail'][1] = new_price
-                    elif type_ticket == 'детский':
-                        System.count_number_of_visitors['kol_sale_child'] += 1
-                        logger.debug(f"kol_sale_child: {System.count_number_of_visitors['kol_sale_child']}")
-                        System.sale_dict['detail'][2] = System.count_number_of_visitors['kol_sale_child']
-                        System.sale_dict['detail'][3] = new_price
-                    self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
+            if int(self.ui.comboBox_2.currentText()) > 0:
+                System.sale_discount = int(self.ui.comboBox_2.currentText())
+                logger.debug(f'Sale_discount: {System.sale_discount}')
+                System.sale_dict['detail'][4] = System.sale_discount
+                if System.sale_discount > 0:
+                    new_price: int = int(price - (price * System.sale_discount / 100))
+                    # Если checkbox в акт - применяем к этой строке скидку
+                    if self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).isChecked():
+                        if type_ticket == 'взрослый':
+                            System.count_number_of_visitors['kol_sale_adult'] += 1
+                            logger.debug(f"kol_sale_adult: {System.count_number_of_visitors['kol_sale_adult']}")
+                            System.sale_dict['detail'][0] = System.count_number_of_visitors['kol_sale_adult']
+                            System.sale_dict['detail'][1] = new_price
+                        elif type_ticket == 'детский':
+                            System.count_number_of_visitors['kol_sale_child'] += 1
+                            logger.debug(f"kol_sale_child: {System.count_number_of_visitors['kol_sale_child']}")
+                            System.sale_dict['detail'][2] = System.count_number_of_visitors['kol_sale_child']
+                            System.sale_dict['detail'][3] = new_price
+                        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
 
     def ticket_counting(self, row: int, type_ticket: str) -> int:
         """
@@ -1200,7 +1155,7 @@ class SaleForm(QDialog):
         System.count_number_of_visitors['many_child'] = 2
         # Устанавливаем скидку
         self.ui.checkBox_2.setChecked(True)
-        self.ui.checkBox_2.setEnabled(True)
+        self.ui.checkBox_2.setEnabled(False)
         self.ui.comboBox_2.setCurrentIndex(10)
         self.ui.comboBox_2.setEnabled(False)
         System.sale_dict['detail'][4] = 50
@@ -2873,7 +2828,7 @@ class System:
     exclude_from_sale: int = 0
     # Какой сегодня день: 0 - будний, 1 - выходной
     what_a_day: int | None = None
-    # Первое воскресенье месяца: 0 - нет, 1 - да
+    # Первое воскресенье месяца (день многодлетных): 0 - нет, 1 - да
     sunday: int | None = None
     today: date = date.today()
     # Номер дня недели
@@ -2905,6 +2860,13 @@ class System:
     amount_to_pay_or_deposit: int = 0
     # Сохраняем баланс наличных денег в кассе
     amount_of_money_at_the_cash_desk: int = None
+    # Словарь count_number_of_visitors -> Используем для подсчета количества посетителей: 'kol_adult', 'kol_child'
+    # Используем для подсчета количества посетителей со скидкой: 'kol_sale_adult', 'kol_sale_child'
+    # Используем для подсчета количества посетителей с категорией: 'kol_adult_many_child', 'kol_child_many_child',
+    # 'kol_adult_invalid', 'kol_child_invalid' = 0
+    # Запоминаем id для "привязки" продажи ко взрослому: 'id_adult'
+    # Флаг "многодетные" (1 - два часа бесплатно, 2 - скидка 50%): 'many_child'
+    # Считаем количество золотых талантов: 'talent'
     count_number_of_visitors: dict = {
         'kol_adult': 0, 'kol_child': 0,
         'kol_sale_adult': 0, 'kol_sale_child': 0,
@@ -2912,6 +2874,7 @@ class System:
         'kol_adult_invalid': 0, 'kol_child_invalid': 0,
         'id_adult': 0, 'many_child': 0, 'invalid': 0, 'talent': 0
     }
+
     def user_authorization(self, login, password) -> int:
         """
         Функция проверяет есть ли пользователь в БД с данными, указанными на форме авторизации.
@@ -3015,7 +2978,7 @@ class System:
             # Проверяем день недели равен 5 или 6
             if number_day >= 5:
                 status_day: int = 1
-                # System.what_a_day = 1 TODO: нужно ли
+                System.what_a_day = 1 # TODO: нужно ли
                 logger.info('Сегодня выходной день')
             else:
                 day: str = '-'.join(day)
@@ -3025,7 +2988,7 @@ class System:
                     check_day: Holiday | None = session.execute(query).scalars().first()
                 if check_day:
                     status_day: int = 1
-                    # System.what_a_day = 1 TODO: нужно ли
+                    System.what_a_day = 1 # TODO: нужно ли
                     logger.info('Сегодня дополнительный выходной')
                 else:
                     status_day: int = 0
