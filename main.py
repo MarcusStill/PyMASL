@@ -1311,70 +1311,65 @@ class SaleForm(QDialog):
         """
         logger.info('Запуск функции sale_transaction')
         logger.debug(f'System.sale_status: {System.sale_status}')
-        logger.debug(f'System.sale_id: {System.sale_id}')
+        logger.debug('System.sale_id: {System.sale_id}')
         # Если продажа новая
         if System.sale_id is None:
             self.save_sale()
         # Если продажа особенная - генерируем билеты без оплаты
         if System.sale_special == 1:
             self.sale_generate_saved_tickets()
-            return
-
-        # Если оплата банковской картой или offline
-        if payment_type in (101, 100):
-            bank, payment = kkt.operation_on_the_terminal(payment_type, 1, System.sale_dict['detail'][7])
-            if bank is None or payment is None:
-                logger.error(f"Некорректный результат операции: bank = {bank}, payment = {payment}")
-                return
-            # Проверка результата операции на терминале
-            if bank == 1:
-                logger.debug('Операция оплаты прошла успешно. Сохраняем чек возврата.')
-                check = 'offline' if payment == 3 else kkt.read_slip_check()
-                logger.debug(f'Чек прихода: {check}')
+        else:
+            # Если оплата банковской картой
+            if payment_type in (101, 100):
+                bank, payment = kkt.operation_on_the_terminal(payment_type, 1, System.sale_dict['detail'][7])
+                if bank == 1:
+                    logger.debug('Операция прошла успешно. Сохраняем чек возврата.')
+                    if payment == 3:  # Если оплата offline банковской картой
+                        check = 'offline'
+                    else:
+                        check = kkt.read_slip_check()
+                    logger.debug(f'Чек прихода: {check}')
+                    with Session(engine) as session:
+                        session.execute(
+                            update(Sale).where(Sale.id == System.sale_id).values(bank_pay=check))
+                        session.commit()
+                    # Печать банковский чек: 1 - да, 0 - нет
+                    if print_check == 1:
+                        kkt.print_slip_check()
+            else:
+                payment = 2
+                bank = None
+            state_check = kkt.check_open(System.sale_dict, payment_type, System.user, 1, print_check,
+                                         System.sale_dict['detail'][7], bank)
+            # Если прошла оплата
+            if state_check == 1:
+                logger.info('Оплата прошла успешно')
+                if print_check == 0:
+                    windows.info_window('Оплата прошла успешно.', 'Чек не печатаем.', '')
+                # Обновляем информацию о продаже в БД
+                logger.debug(f'Обновляем информацию в БД о продаже: {System.sale_id}')
                 with Session(engine) as session:
                     session.execute(
-                        update(Sale).where(Sale.id == System.sale_id).values(bank_pay=check))
-                    session.commit()
-                # Печать банковского чека при необходимости
-                if print_check == 1:
-                    kkt.print_slip_check()
-            else:
-                logger.error('Операция завершилась ошибкой.')
-                windows.info_window('Ошибка', 'Операция оплаты не удалась. Повторите попытку.', '')
-                return  # Остановка выполнения, если операция не удалась
-        else:
-            payment = 2
-            bank = None
-        state_check = kkt.check_open(System.sale_dict, payment_type, System.user, 1, print_check, System.sale_dict['detail'][7], bank)
-        # Если прошла оплата
-        if state_check == 1:
-            logger.info('Оплата прошла успешно')
-            if print_check == 0:
-                windows.info_window('Оплата прошла успешно.', 'Чек не печатаем.', '')
-            # Обновляем информацию о продаже в БД
-            logger.debug(f'Обновляем информацию в БД о продаже: {System.sale_id}')
-            with Session(engine) as session:
-                session.execute(
-                    update(Sale).where(Sale.id == System.sale_id).values(
-                        status=1,
-                        id_user=System.user.id,
-                        pc_name=System.pc_name,
-                        payment_type=payment,
-                        datetime=dt.datetime.now()
+                        update(Sale).where(Sale.id == System.sale_id).values(
+                            status=1,
+                            id_user=System.user.id,
+                            pc_name=System.pc_name,
+                            payment_type=payment,
+                            datetime=dt.datetime.now()
+                        )
                     )
-                )
-                session.commit()
-            # генерируем билеты
-            self.sale_generate_saved_tickets()
-            # Сбрасываем статус продажи
-            System.sale_status = 0
-            self.close()
-        else:
-            logger.warning('Оплата не прошла')
-            windows.info_window(
-                'Внимание',
-                'Закройте это окно, откройте сохраненную продажу и проведите'
-                'операцию оплаты еще раз.', '')
+                    session.commit()
+                # генерируем билеты
+                self.sale_generate_saved_tickets()
+                # Сбрасываем статус продажи
+                System.sale_status = 0
+                self.close()
+            else:
+                logger.warning('Оплата не прошла')
+                windows.info_window(
+                    'Внимание',
+                    'Закройте это окно, откройте сохраненную продажу и проведите'
+                    'операцию оплаты еще раз.', '')
 
     @logger.catch()
     def sale_return(self):
@@ -2121,8 +2116,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             elif sale_status == 0:
                 # обновляем данные о продаже
                 System.sale_tickets = None
-                System.sale_dict = None
-                logger.debug(f'System.sale_dict: {System.sale_dict}')
+                System.sale_dict = {}  # Инициализация перед использованием
+                logger.debug(f'Инициализация перед использованием System.sale_dict')
                 sale.ui.pushButton_3.setEnabled(False)
                 sale.ui.pushButton_5.setEnabled(True)
                 sale.ui.pushButton_10.setEnabled(True)
