@@ -1323,25 +1323,25 @@ class SaleForm(QDialog):
         # Если оплата банковской картой или offline
         if payment_type in (101, 100):
             bank, payment = kkt.operation_on_the_terminal(payment_type, 1, System.sale_dict['detail'][7])
-
+            if bank is None or payment is None:
+                logger.error(f"Некорректный результат операции: bank = {bank}, payment = {payment}")
+                return
             # Проверка результата операции на терминале
-            if bank == 0:
-                logger.error('Операция на терминале не прошла.')
+            if bank == 1:
+                logger.debug('Операция оплаты прошла успешно. Сохраняем чек возврата.')
+                check = 'offline' if payment == 3 else kkt.read_slip_check()
+                logger.debug(f'Чек прихода: {check}')
+                with Session(engine) as session:
+                    session.execute(
+                        update(Sale).where(Sale.id == System.sale_id).values(bank_pay=check))
+                    session.commit()
+                # Печать банковского чека при необходимости
+                if print_check == 1:
+                    kkt.print_slip_check()
+            else:
+                logger.error('Операция завершилась ошибкой.')
                 windows.info_window('Ошибка', 'Операция оплаты не удалась. Повторите попытку.', '')
                 return  # Остановка выполнения, если операция не удалась
-
-            logger.debug('Операция прошла успешно. Сохраняем чек возврата.')
-            check = 'offline' if payment == 3 else kkt.read_slip_check()
-            logger.debug(f'Чек прихода: {check}')
-
-            with Session(engine) as session:
-                session.execute(
-                    update(Sale).where(Sale.id == System.sale_id).values(bank_pay=check))
-                session.commit()
-
-            # Печать банковского чека при необходимости
-            if print_check == 1:
-                kkt.print_slip_check()
         else:
             payment = 2
             bank = None

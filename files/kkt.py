@@ -522,8 +522,8 @@ def operation_on_the_terminal(payment_type, type_operation, price):
     elif payment_type == 100:
         logger.debug('Запускаем offline оплату по банковскому терминалу')
         return 1, 3  # Offline оплата всегда успешна
-
-    return 0, None  # Неверный тип оплаты
+    logger.error(f"Неверный тип оплаты: {payment_type}")
+    return 0, 1  # Возвращаем корректное значение вместо None
 
 
 @logger_wraps()
