@@ -809,6 +809,8 @@ class SaleForm(QDialog):
             'kol_adult_invalid': 0, 'kol_child_invalid': 0,
             'id_adult': 0, 'many_child': 0, 'invalid': 0, 'talent': 0
         }
+        if System.count_number_of_visitors is None:
+            System.count_number_of_visitors = {}
         System.count_number_of_visitors.update(count_initial_values)
         # Учитываем продолжительность посещения
         time_ticket: int = int(self.ui.comboBox.currentText())
@@ -820,6 +822,8 @@ class SaleForm(QDialog):
             'kol_child': 0, 'price_child': 0,
             'detail': [0, 0, 0, 0, 0, 0, 0, 0]
         }
+        if System.sale_dict is None:
+            System.sale_dict = {}
         System.sale_dict.update(sale_initial_values)
         # Устанавливаем время и количество талантов
         System.sale_dict['detail'][6], System.count_number_of_visitors['talent'] = self.get_talent_based_on_time(time_ticket)
