@@ -3,7 +3,7 @@ import subprocess
 from files import windows
 from files.libfptr10 import IFptr
 from files.logger import *
-
+from typing import Any, Type
 
 try:
     fptr = IFptr('')
@@ -13,33 +13,66 @@ except (Exception,) as e:
     logger.warning(info)
 
 # Константы для работы с результатами терминала
-TERMINAL_SUCCESS_CODE = 0
-TERMINAL_USER_CANCEL_CODE = 2000
-GOOD = 'ОДОБРЕНО'
-EMAIL = 'test.check@pymasl.ru'
+TERMINAL_SUCCESS_CODE: int = 0
+TERMINAL_USER_CANCEL_CODE: int = 2000
+APPROVE: str = 'ОДОБРЕНО'
+COINCIDENCE: str = 'совпали'
+EMAIL: str = 'test.check@pymasl.ru'
+
+
+def run_terminal_command(command_params: Any, pinpad_file: str =r'C:\sc552\loadparm.exe'):
+    """Запуск оплаты по банковскому терминалу и возврат кода результата."""
+    pinpad_run: str = f"{pinpad_file} {command_params}"
+    logger.info(f'Запуск команды: {pinpad_run}')
+    try:
+        result = subprocess.run(pinpad_run, check=False)  # check=False позволяет самостоятельно обрабатывать коды возврата
+        logger.info(f'Команда завершена с кодом: {result.returncode}')
+        return result
+    except subprocess.SubprocessError as e:
+        logger.error(f'Ошибка выполнения команды: {e}')
+        return None  # Или обрабатывайте ошибку по-своему
+
+
+def check_terminal_file(word: str, pinpad_file: str =r'C:\sc552\p'):
+    """Проверка файла с результатом работы терминала."""
+    try:
+        with open(pinpad_file, encoding='IBM866') as file:
+            text: str = file.read()
+        logger.debug(f'Содержимое файла терминала: {text}')
+        if word in text:
+            logger.info('Проверка файла успешно завершена')
+            return True
+        else:
+            logger.warning(f'Ожидаемый текст "{word}" не найден.')
+            return False
+    except FileNotFoundError as not_found:
+        logger.error(f'Файл {pinpad_file} не найден: {not_found}')
+        return False
+
+
+@logger_wraps()
+def read_terminal_file(pinpad_file=r'C:\sc552\p', skip_lines=0):
+    """Чтение файла с результатами работы банковского терминала c пропуском 2 строк."""
+    with open(pinpad_file, 'r', encoding='IBM866') as file:
+        lines: list[str] = file.readlines()
+        return lines[skip_lines:]
 
 
 @logger_wraps()
 def terminal_oplata(amount):
     """Операуия оплаты по банковскому терминалу"""
     logger.info('Запуск функции terminal_oplata')
-    result = ''
-    status = 0
-    amount += '00'
-    pinpad = 'C:\\sc552\\loadparm.exe'
-    pay_param = ' 1 ' + amount
-    pinpad_run = pinpad + pay_param
-    # проверяем статус проведения операции по банковскому терминалу
+    status: int = 0
     while status != 1:
-        proc = subprocess.run(pinpad_run)
-        plat = proc.returncode
-        logger.info(f'Статус проведения операции по банковскому терминалу: {plat}')
-        if plat == TERMINAL_SUCCESS_CODE:
-            # Операция успешна
-            status = 1
-        elif plat == TERMINAL_USER_CANCEL_CODE:
+        plat_code = run_terminal_command(f"1 {amount}00")  # Добавляем '00' для копеек
+        if plat_code is None:
+            logger.error('Ошибка при выполнении команды терминала')
+            return 0  # Обрабатываем ошибку
+        logger.info(f'Статус проведения операции по банковскому терминалу: {plat_code.returncode}')
+        if plat_code.returncode == TERMINAL_SUCCESS_CODE:
+            return 1 if check_terminal_file(APPROVE) else 0
+        elif plat_code.returncode == TERMINAL_USER_CANCEL_CODE:
             logger.warning('Оплата отменена пользователем')
-            result = 0
             status = 1  # Завершаем цикл и возвращаем ошибку
         else:
             # Произошла ошибка, предлагаем повторить операцию
@@ -49,21 +82,7 @@ def terminal_oplata(amount):
             )
             if dialog == 0:  # Пользователь выбрал "Нет"
                 status = 1
-    # Проверка файла с результатом работы банковского терминала
-    logger.info('Proverka file')
-    pinpad_file = r'C:\sc552\p'
-    # Проверяем одобрение операции
-    try:
-        with open(pinpad_file, encoding='IBM866') as file:
-            text = file.read()
-        if GOOD in text:
-            logger.info('Проверка файла успешно завершена')
-            result = 1
-    except FileNotFoundError as not_found:
-        print('File not found:', not_found.filename)
-        logger.warning('Проверка файла завершилась с ошибкой')
-        result = 0
-    return result
+    return 0
 
 
 @logger_wraps()
@@ -71,78 +90,38 @@ def terminal_return(amount):
     """Операуия возврата по банковскому терминалу"""
     logger.info('Запуск функции terminal_return')
     logger.debug(f'В функцию была передана следующая сумма: {amount}')
-    result = ''
-    pinpad_file = r'C:\sc552\p'
-    amount += '00'
-    pinpad = 'C:\\sc552\\loadparm.exe'
-    pay_param = ' 3 ' + amount
-    pinpad_run = pinpad + pay_param
-    subprocess.call(pinpad_run)
-    #  Проверка файла с результатом работы банковского терминала
-    try:
-        with open(pinpad_file, encoding='IBM866') as file:
-            text = file.read()
-        logger.debug(f'Terminal check: {text}')
-        if GOOD in text:
-            logger.info('Проверка файла успешно завершена')
-            result = 1
-    except FileNotFoundError as not_found:
-        logger.warning('File not found:', not_found.filename)
-        logger.warning('Проверка файла завершилась с ошибкой')
-        result = 0
-    return result
+    result = run_terminal_command(f"3 {amount}00")  # Добавляем '00' для копеек
+    logger.debug(f'Терминал вернул следующий код операции: {result}')
+    # if result == TERMINAL_SUCCESS_CODE: # TODO: проверить статус-код
+    #     return 1 if check_terminal_file() else 0
+    return 1 if check_terminal_file() else 0
 
 
 @logger_wraps()
 def terminal_canceling(amount):
     """Операуия отмены по банковскому терминалу"""
     logger.info('Запуск функции terminal_canceling')
-    result = ''
-    pinpad_file = r'C:\sc552\p'
-    amount += '00'
-    pinpad = 'C:\\sc552\\loadparm.exe'
-    pay_param = ' 8 ' + amount
-    pinpad_run = pinpad + pay_param
-    subprocess.call(pinpad_run)
-    #  Проверка файла с результатом работы банковского терминала
-    try:
-        with open(pinpad_file, encoding='IBM866') as file:
-            text = file.read()
-        if GOOD in text:
-            logger.info('Проверка файла успешно завершена')
-            result = 1
-    except FileNotFoundError as not_found:
-        print('File not found:', not_found.filename)
-        logger.warning('Проверка файла завершилась с ошибкой')
-        result = 0
-    return result
+    logger.debug(f'В функцию была передана следующая сумма: {amount}')
+    result = run_terminal_command(f"8 {amount}00")  # Добавляем '00' для копеек
+    logger.debug(f'Терминал вернул следующий код операции: {result}')
+    # if result == TERMINAL_SUCCESS_CODE: # TODO: проверить статус-код
+    #     return 1 if check_terminal_file() else 0
+    return 1 if check_terminal_file() else 0
 
 
 @logger_wraps()
 def terminal_check_itog():
     """Сверка итогов работы банковского терминала"""
     logger.info('Запуск функции terminal_check_itog')
-    result = ''
-    pinpad_file = r'C:\sc552\p'
-    subprocess.call('C:\\sc552\\loadparm.exe 7')
-    logger.debug('Check itog')
-    file_result = 'совпали'
-    # Выводим результат сверки итогов
-    try:
-        with open(pinpad_file, encoding='IBM866') as file:
-            text = file.read()
-        if file_result in text:
-            logger.info('Проверка файла успешно завершена')
-            result = 1
-    except FileNotFoundError as not_found:
-        print('File not found:', not_found.filename)
-        result = 0
-    return result
+    result = run_terminal_command("7")
+    logger.debug(f'Терминал вернул следующий код операции: {result}')
+    return 1 if check_terminal_file(COINCIDENCE) else 0
+
 
 def terminal_menu():
     """Вызов меню банковского терминала"""
     logger.info('Запуск функции terminal_menu')
-    subprocess.call('C:\\sc552\\loadparm.exe 11')
+    run_terminal_command("11")
 
 
 @logger_wraps()
@@ -150,24 +129,17 @@ def terminal_check_itog_window():
     """Сверка итогов работы банковского терминала
 ••••с выводом результата в QMessageBox"""
     logger.info('Запуск функции terminal_check_itog_window')
-    pinpad_file = r'C:\sc552\p'
-    subprocess.call('C:\\sc552\\loadparm.exe 7')
-    logger.debug('Check itog in QMessageBox')
-    # Выводим результат сверки итогов
+    run_terminal_command("7")
     try:
-        with open(pinpad_file, encoding='IBM866') as file:
-            lines = file.readlines()[2:]
-            logger.info('Сверка итогов завершена')
-            windows.info_window(
-                'Сверка итогов по банковскому терминалу '
-                'завершена.', '', str(lines)
-            )
-    except FileNotFoundError as not_found:
-        lines = 'File not found!'
-        logger.warning(not_found.filename)
+        lines: list[str] = read_terminal_file(skip_lines=2)  # Чтение файла с пропуском первых двух строк
+        logger.info('Сверка итогов завершена')
         windows.info_window(
-            'Ошибка сверки итогов по банковскому '
-            'терминалу!', '', str(lines)
+            'Сверка итогов по банковскому терминалу завершена.', '', ''.join(lines)
+        )
+    except FileNotFoundError as not_found:
+        logger.warning(f'Файл не найден: {not_found.filename}')
+        windows.info_window(
+            'Ошибка сверки итогов по банковскому терминалу!', '', 'File not found!'
         )
 
 
@@ -175,7 +147,7 @@ def terminal_check_itog_window():
 def terminal_svod_check():
     """Сводный чек без детализации"""
     logger.info('Запуск функции terminal_svod_check')
-    subprocess.call('C:\\sc552\\loadparm.exe 9')
+    run_terminal_command("9")
     try:
         print_pinpad_check()
     except FileNotFoundError as not_found:
@@ -186,7 +158,7 @@ def terminal_svod_check():
 def terminal_control_lenta():
     """Печать контрольной ленты"""
     logger.info('Запуск функции terminal_control_lenta')
-    subprocess.call('C:\\sc552\\loadparm.exe 9 1')
+    run_terminal_command("9 1")
     try:
         print_pinpad_check()
     except FileNotFoundError as not_found:
@@ -197,14 +169,6 @@ def terminal_control_lenta():
 def terminal_print_file():
     """Печать файла-отчета"""
     logger.info('Запуск функции terminal_print_file')
-    print_pinpad_check()
-
-
-@logger_wraps()
-def terminal_copy_last_check():
-    """Печать копии последнего чека"""
-    logger.info('Запуск функции terminal_copy_last_check')
-    subprocess.call('C:\\sc552\\loadparm.exe 12')
     try:
         print_pinpad_check()
     except FileNotFoundError as not_found:
@@ -212,52 +176,50 @@ def terminal_copy_last_check():
 
 
 @logger_wraps()
-def read_slip_check():
-    """Чтение слип-чека"""
-    logger.info('Запуск функции read_slip_check')
-    pinpad_file = r'C:\sc552\p'
-    result = ''
+def terminal_copy_last_check():
+    """Печать копии последнего чека"""
+    logger.info('Запуск функции terminal_copy_last_check')
+    run_terminal_command("12")
     try:
-        with open(pinpad_file, 'r', encoding='IBM866') as file:
-            while line := file.readline().rstrip():
-                result = result + line
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-                fptr.printText()
-                # Перенос строки
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+        print_pinpad_check()
     except FileNotFoundError as not_found:
-        logger.warning('Проверка файла завершилась с ошибкой')
         logger.warning(not_found.filename)
-    return result
+
 
 @logger_wraps()
-def read_pinpad_file():
-    """Чтение банковского чека"""
+def read_pinpad_file(remove_newline=True, pinpad_file: str = r'C:\sc552\p'):
+    """
+    Чтение банковского чека с опциональным удалением переноса строки.
+
+    Параметры:
+    remove_newline (bool): Удалять ли символы новой строки в конце строки.
+    pinpad_file  (str): Путь к проверяемому файлу.
+    """
     logger.info('Запуск функции read_pinpad_file')
-    pinpad_file = r'C:\sc552\p'
-    result = ''
+    result_lines: list[str] = []
     try:
         with open(pinpad_file, 'r', encoding='IBM866') as file:
-            while line := file.readline():
-                result = result + line
+            for line in file:
+                # Убираем символ новой строки, если параметр remove_newline=True
+                line: str = line.rstrip() if remove_newline else line
+                result_lines.append(line)
+                # Устанавливаем параметры для печати строки
                 fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
                 fptr.printText()
-                # Перенос строки
+                # Устанавливаем перенос строки
                 fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
     except FileNotFoundError as not_found:
-        logger.warning('Проверка файла завершилась с ошибкой')
-        logger.warning(not_found.filename)
-    return result
-
+        logger.warning('Файл не найден: %s', not_found.filename)
+    return ''.join(result_lines)
 
 @logger_wraps()
-def print_slip_check(kol=2):
+def print_slip_check(kol: int = 2):
     """Печать слип-чека"""
     logger.info('Запуск функции print_slip_check')
     fptr.open()
     # Открытие нефискального документа
     fptr.beginNonfiscalDocument()
-    line = read_slip_check()
+    line: str = read_pinpad_file(remove_newline=True)
     fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
     fptr.printText()
     # Перенос строки
@@ -278,7 +240,7 @@ def print_slip_check(kol=2):
         fptr.beginNonfiscalDocument()
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, '')
         fptr.printText()
-        line = read_slip_check()
+        line = read_pinpad_file(remove_newline=True)
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
         fptr.printText()
         # Промотка чековой ленты на одну строку (пустую)
@@ -295,7 +257,7 @@ def print_slip_check(kol=2):
 
 
 @logger_wraps()
-def print_pinpad_check(count=2):
+def print_pinpad_check(count: int = 2):
     """Печать слип-чека"""
     logger.info('Запуск функции print_pinpad_check')
     while count != 0:
@@ -305,7 +267,7 @@ def print_pinpad_check(count=2):
         # Открытие нефискального документа
         fptr.beginNonfiscalDocument()
         # Читаем чек из файла
-        line = read_pinpad_file()
+        line = read_pinpad_file(remove_newline=False)
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
         fptr.printText()
         # Перенос строки
