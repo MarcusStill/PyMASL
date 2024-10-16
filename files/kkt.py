@@ -51,14 +51,6 @@ def check_terminal_file(word: str, pinpad_file: str =r'C:\sc552\p'):
 
 
 @logger_wraps()
-def read_terminal_file(pinpad_file=r'C:\sc552\p', skip_lines=0):
-    """Чтение файла с результатами работы банковского терминала c пропуском 2 строк."""
-    with open(pinpad_file, 'r', encoding='IBM866') as file:
-        lines: list[str] = file.readlines()
-        return lines[skip_lines:]
-
-
-@logger_wraps()
 def terminal_oplata(amount):
     """Операуия оплаты по банковскому терминалу"""
     logger.info('Запуск функции terminal_oplata')
@@ -125,21 +117,36 @@ def terminal_menu():
 
 
 @logger_wraps()
+# def terminal_check_itog_window():
+#     """Сверка итогов работы банковского терминала
+# ••••с выводом результата в QMessageBox"""
+#     logger.info('Запуск функции terminal_check_itog_window')
+#     run_terminal_command("7")
+#     try:
+#         lines: list[str] = read_terminal_file(skip_lines=2)  # Чтение файла с пропуском первых двух строк
+#         logger.info('Сверка итогов завершена')
+#         windows.info_window(
+#             'Сверка итогов по банковскому терминалу завершена.', '', ''.join(lines)
+#         )
+#     except FileNotFoundError as not_found:
+#         logger.warning(f'Файл не найден: {not_found.filename}')
+#         windows.info_window(
+#             'Ошибка сверки итогов по банковскому терминалу!', '', 'File not found!'
+#         )
+
 def terminal_check_itog_window():
     """Сверка итогов работы банковского терминала
 ••••с выводом результата в QMessageBox"""
     logger.info('Запуск функции terminal_check_itog_window')
     run_terminal_command("7")
     try:
-        lines: list[str] = read_terminal_file(skip_lines=2)  # Чтение файла с пропуском первых двух строк
+        info: str = read_pinpad_file()
         logger.info('Сверка итогов завершена')
-        windows.info_window(
-            'Сверка итогов по банковскому терминалу завершена.', '', ''.join(lines)
-        )
+        windows.info_window('Смотрите подробную информацию.', '', info)
     except FileNotFoundError as not_found:
         logger.warning(f'Файл не найден: {not_found.filename}')
         windows.info_window(
-            'Ошибка сверки итогов по банковскому терминалу!', '', 'File not found!'
+            'Ошибка сверки итогов по банковскому терминалу!', '', not_found.filename
         )
 
 
@@ -176,6 +183,17 @@ def terminal_print_file():
 
 
 @logger_wraps()
+def terminal_file_in_window():
+    """Показ банковского слип-чека в информационном окне"""
+    logger.info('Запуск функции terminal_file_in_window')
+    try:
+        info: str = read_pinpad_file()
+    except FileNotFoundError as not_found:
+        logger.warning(not_found.filename)
+    windows.info_window('Смотрите подробную информацию.', '', info)
+
+
+@logger_wraps()
 def terminal_copy_last_check():
     """Печать копии последнего чека"""
     logger.info('Запуск функции terminal_copy_last_check')
@@ -192,7 +210,7 @@ def read_pinpad_file(remove_newline=True, pinpad_file: str = r'C:\sc552\p'):
     Чтение банковского чека с опциональным удалением переноса строки.
 
     Параметры:
-    remove_newline (bool): Удалять ли символы новой строки в конце строки.
+    remove_newline (bool): Этот параметр определяет, нужно ли удалять символы новой строки при чтении файла.
     pinpad_file  (str): Путь к проверяемому файлу.
     """
     logger.info('Запуск функции read_pinpad_file')
