@@ -1331,7 +1331,7 @@ class SaleForm(QDialog):
                     if payment == 3:  # Если оплата offline банковской картой
                         check = 'offline'
                     else:
-                        check = kkt.read_slip_check()
+                        check = kkt.read_pinpad_file(remove_newline=False)
                     logger.debug(f'Чек прихода: {check}')
                     with Session(engine) as session:
                         session.execute(
@@ -1433,7 +1433,7 @@ class SaleForm(QDialog):
                             bank, payment = kkt.operation_on_the_terminal(payment_type, 2, amount)
                         if bank == 1:
                             logger.debug('Сохраняем чек возврата.')
-                            check = kkt.read_slip_check()
+                            check = kkt.read_pinpad_file(remove_newline=False)
                             logger.debug(f'Чек возврата: {check}')
                             with Session(engine) as session:
                                 session.execute(
@@ -1489,7 +1489,7 @@ class SaleForm(QDialog):
                 bank, payment = kkt.operation_on_the_terminal(payment_type, 2, price)
                 if bank == 1:
                     logger.info('Операция повторного возврата прошла успешно')
-                    check = kkt.read_slip_check()
+                    check = kkt.read_pinpad_file(remove_newline=False)
                     logger.debug(f'Чек возврата: {check}')
                     with Session(engine) as session:
                         session.execute(update(Sale).where(Sale.id == System.sale_id).values(
@@ -1869,7 +1869,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_25.clicked.connect(lambda: kkt.payment(System.amount_to_pay_or_deposit))
         self.ui.pushButton_26.clicked.connect(kkt.balance_check)
         self.ui.pushButton_27.clicked.connect(kkt.terminal_menu)
-        self.ui.pushButton_27.clicked.connect(kkt.terminal_print_file)
+        self.ui.pushButton_28.clicked.connect(kkt.terminal_print_file)
+        # self.ui.pushButton_29.clicked.connect(kkt.terminal_file_in_window)
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
         self.ui.dateEdit_3.setDate(date.today())
