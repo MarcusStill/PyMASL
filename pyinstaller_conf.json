@@ -1,0 +1,85 @@
+{
+ "version": "auto-py-to-exe-configuration_v1",
+ "pyinstallerOptions": [
+  {
+   "optionDest": "noconfirm",
+   "value": true
+  },
+  {
+   "optionDest": "filenames",
+   "value": "PATH/PyMASL/main.py"
+  },
+  {
+   "optionDest": "onefile",
+   "value": false
+  },
+  {
+   "optionDest": "console",
+   "value": false
+  },
+  {
+   "optionDest": "icon_file",
+   "value": "PATH/PyMASL/files/logo.ico"
+  },
+  {
+   "optionDest": "clean_build",
+   "value": false
+  },
+  {
+   "optionDest": "strip",
+   "value": false
+  },
+  {
+   "optionDest": "noupx",
+   "value": false
+  },
+  {
+   "optionDest": "disable_windowed_traceback",
+   "value": false
+  },
+  {
+   "optionDest": "uac_admin",
+   "value": false
+  },
+  {
+   "optionDest": "uac_uiaccess",
+   "value": false
+  },
+  {
+   "optionDest": "argv_emulation",
+   "value": false
+  },
+  {
+   "optionDest": "bootloader_ignore_signals",
+   "value": false
+  },
+  {
+   "optionDest": "datas",
+   "value": "PATH/PyMASL/platforms;platforms/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "PATH/PyMASL/config.ini;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "PATH/PyMASL/debug.log;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "PATH/PyMASL/print.cmd;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "PATH/PyMASL/pylogo.png;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "PATH/PyMASL/files;files/"
+  }
+ ],
+ "nonPyinstallerOptions": {
+  "increaseRecursionLimit": true,
+  "manualArguments": ""
+ }
+}
