@@ -25,6 +25,7 @@ def run_terminal_command(
     command_params: Any, pinpad_file: str = r"C:\sc552\loadparm.exe"
 ):
     """Запуск оплаты по банковскому терминалу и возврат кода результата."""
+    logger.info("Запуск функции run_terminal_command")
     pinpad_run: str = f"{pinpad_file} {command_params}"
     logger.info(f"Запуск команды: {pinpad_run}")
     try:
@@ -40,6 +41,7 @@ def run_terminal_command(
 
 def check_terminal_file(word: str, pinpad_file: str = r"C:\sc552\p"):
     """Проверка файла с результатом работы терминала."""
+    logger.info("Запуск функции check_terminal_file")
     try:
         with open(pinpad_file, encoding="IBM866") as file:
             text: str = file.read()
