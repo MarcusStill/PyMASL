@@ -192,18 +192,23 @@ def otchet_kassira(val, date1, date2, kassir):
     c.line(100, 621, 500, 621)
     c.setFont('DejaVuSerif', 8)
     c.drawString(255, 610, 'ФИО кассира')
-    data = [['№ п/п', 'Тип\nпродажи', 'Сумма, руб.'],
+    data = [['№ п/п', 'Тип продажи', 'Сумма, руб.'],
             ['1', 'Банковская карта', values[0]],
             ['2', 'Наличные', values[1]],
-            ['3', 'Итого', int(values[0]) + int(values[1])]]
-    t = Table(data, 4 * [1.2 * inch], 4 * [0.3 * inch])
-    t.setStyle(TableStyle([('FONT', (0, 0), (4, 4), 'DejaVuSerif', 8),
+            ['3', 'Итого', int(values[0]) + int(values[1])],
+            ['', 'Тип возврата', ''],
+            ['4', 'Банковская карта', values[2]],
+            ['5', 'Наличные', values[3]],
+            ['6', 'Итого', int(values[2]) + int(values[3])],
+            ]
+    t = Table(data, 4 * [1.2 * inch], 8 * [0.3 * inch])
+    t.setStyle(TableStyle([('FONT', (0, 0), (4, 8), 'DejaVuSerif', 8),
                            ('INNERGRID', (0, 0), (-1, -1), 0.2, colors.black),
                            ('BOX', (0, 0), (-1, -1), 0.2, colors.black)]))
     # wrap the table to this width, height in case it spills
     t.wrapOn(c, 100 * mm, 180 * mm)
     # draw it on our pdf at x,y
-    t.drawOn(c, 20 * mm, 170 * mm)
+    t.drawOn(c, 20 * mm, 140 * mm)
     # отчет сдал
     c.drawString(30, 310, 'Отчет сдал:')
     c.drawString(30, 290, 'Кассир')

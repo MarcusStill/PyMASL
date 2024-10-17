@@ -3704,11 +3704,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 values: list[str] = [
                     self.ui.tableWidget_4.item(0, 1).text(),
                     self.ui.tableWidget_4.item(0, 2).text(),
+                    self.ui.tableWidget_4.item(0, 4).text(),
+                    self.ui.tableWidget_4.item(0, 5).text(),
                 ]
             else:
                 values: list[str] = [
                     self.ui.tableWidget_4.item(1, 1).text(),
                     self.ui.tableWidget_4.item(1, 2).text(),
+                    self.ui.tableWidget_4.item(1, 4).text(),
+                    self.ui.tableWidget_4.item(1, 5).text(),
                 ]
             logger.debug(f"Сведения для отчета кассира: {values}")
             otchet.otchet_kassira(values, dt1, dt2, System.user)
