@@ -20,9 +20,9 @@ def info_dialog_window(title, text):
     box.setText(text)
     box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
     buttonY = box.button(QMessageBox.Yes)
-    buttonY.setText('Да')
+    buttonY.setText("Да")
     buttonN = box.button(QMessageBox.No)
-    buttonN.setText('Нет')
+    buttonN.setText("Нет")
     box.exec_()
 
     if box.clickedButton() == buttonY:
