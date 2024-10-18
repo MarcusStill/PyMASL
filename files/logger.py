@@ -32,3 +32,7 @@ def logger_wraps(
         return wrapped
 
     return wrapper
+
+
+# Экспортируем logger для дальнейшего использования
+__all__ = ["logger", "logger_wraps"]
