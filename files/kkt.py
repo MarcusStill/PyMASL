@@ -23,7 +23,15 @@ EMAIL: str = "test.check@pymasl.ru"
 
 # Загружаем конфигурацию
 def read_terminal_config():
-    """Функция для загрузки параметров из файла конфигурации с обработкой ошибок."""
+    """Функция для загрузки параметров из файла конфигурации.
+
+    Параметры:
+        None
+
+    Возвращаемое значение:
+        dict: Словарь с параметрами конфигурации, содержащий следующие ключи:
+            - pinpad_path (str): Путь к терминалу.
+    """
     config = ConfigParser()
     try:
         pinpad_path = config.get("TERMINAL", "pinpad_path")
@@ -33,7 +41,16 @@ def read_terminal_config():
 
 
 def ensure_config_loaded():
-    """Проверка загрузки конфигурации."""
+    """Проверка загрузки конфигурации.
+
+    Параметры:
+        None
+
+    Возвращаемое значение:
+        bool:
+            - True, если конфигурация успешно загружена.
+            - False, если конфигурация не загружена.
+    """
     if config_data is None:
         logger.error("Конфигурация не загружена.")
         return False
@@ -45,7 +62,19 @@ config_data = read_terminal_config()
 
 
 def run_terminal_command(command_params: str, config_data: dict):
-    """Запуск оплаты по банковскому терминалу и возврат кода результата."""
+    """Запуск оплаты по банковскому терминалу и возврат кода результата.
+
+    Параметры:
+        command_params (str):
+            Параметры для команды, которую необходимо выполнить на терминале.
+        config_data (dict):
+            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
+
+    Возвращаемое значение:
+        subprocess.CompletedProcess или None:
+            - Возвращает объект subprocess.CompletedProcess, если команда выполнена успешно.
+            - Возвращает None, если конфигурация не загружена или произошла ошибка выполнения команды.
+    """
     logger.info("Запуск функции run_terminal_command")
     if not ensure_config_loaded():
         return None
@@ -64,7 +93,19 @@ def run_terminal_command(command_params: str, config_data: dict):
 
 
 def check_terminal_file(word: str, config_data: dict):
-    """Проверка файла с результатом работы терминала."""
+    """Проверка файла с результатом работы терминала.
+
+    Параметры:
+        word (str):
+            Ожидаемое слово или текст, который необходимо найти в файле.
+        config_data (dict):
+            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
+
+    Возвращаемое значение:
+        bool:
+            - Возвращает True, если ожидаемое слово найдено в файле.
+            - Возвращает False, если слово не найдено или файл не существует.
+    """
     logger.info("Запуск функции check_terminal_file")
     if not ensure_config_loaded():
         return None
@@ -87,7 +128,19 @@ def check_terminal_file(word: str, config_data: dict):
 
 @logger_wraps()
 def terminal_oplata(amount, config_data):
-    """Операуия оплаты по банковскому терминалу"""
+    """Операуия оплаты по банковскому терминалу.
+
+    Параметры:
+        amount (float):
+            Сумма, которую необходимо оплатить.
+        config_data (dict):
+            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
+
+    Возвращаемое значение:
+        int:
+            - Возвращает 1, если операция успешно завершена.
+            - Возвращает 0, если произошла ошибка или операция была отменена.
+    """
     logger.info("Запуск функции terminal_oplata")
     if not ensure_config_loaded():
         return None
@@ -108,7 +161,19 @@ def terminal_oplata(amount, config_data):
 
 @logger_wraps()
 def terminal_return(amount, config_data):
-    """Операуия возврата по банковскому терминалу"""
+    """Операуия возврата по банковскому терминалу
+
+    Параметры:
+        amount (float):
+            Сумма, которую необходимо вернуть.
+        config_data (dict):
+            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
+
+    Возвращаемое значение:
+        int:
+            - Возвращает 1, если возврат успешно завершен.
+            - Возвращает 0, если произошла ошибка или файл не найден.
+    """
     logger.info("Запуск функции terminal_return")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     if not ensure_config_loaded():
@@ -123,7 +188,19 @@ def terminal_return(amount, config_data):
 
 @logger_wraps()
 def terminal_canceling(amount, config_data):
-    """Операуия отмены по банковскому терминалу"""
+    """Операуия отмены по банковскому терминалу.
+
+    Параметры:
+        amount (float):
+            Сумма, которую необходимо отменить.
+        config_data (dict):
+            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
+
+    Возвращаемое значение:
+        int:
+            - Возвращает 1, если отмена успешно завершена.
+            - Возвращает 0, если произошла ошибка или файл не найден.
+    """
     logger.info("Запуск функции terminal_canceling")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     if not ensure_config_loaded():
@@ -138,7 +215,13 @@ def terminal_canceling(amount, config_data):
 
 @logger_wraps()
 def terminal_check_itog():
-    """Сверка итогов работы банковского терминала"""
+    """Сверка итогов работы банковского терминала.
+
+    Возвращаемое значение:
+        int:
+            - Возвращает 1, если сверка итогов завершена успешно.
+            - Возвращает 0, если файл не найден.
+    """
     logger.info("Запуск функции terminal_check_itog")
     if not ensure_config_loaded():
         return None
@@ -148,7 +231,12 @@ def terminal_check_itog():
 
 
 def terminal_menu():
-    """Вызов меню банковского терминала"""
+    """Вызов меню банковского терминала.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, просто вызывает команду терминала.
+    """
     logger.info("Запуск функции terminal_menu")
     if not ensure_config_loaded():
         return None
@@ -156,8 +244,12 @@ def terminal_menu():
 
 
 def terminal_check_itog_window():
-    """Сверка итогов работы банковского терминала
-    ••••с выводом результата в QMessageBox"""
+    """Сверка итогов работы банковского терминала с выводом результата в QMessageBox.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, просто выводит информацию в окно.
+    """
     logger.info("Запуск функции terminal_check_itog_window")
     if not ensure_config_loaded():
         return None
@@ -175,7 +267,12 @@ def terminal_check_itog_window():
 
 @logger_wraps()
 def terminal_svod_check():
-    """Сводный чек без детализации"""
+    """Сводный чек без детализации.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, просто вызывает команду терминала.
+    """
     logger.info("Запуск функции terminal_svod_check")
     if not ensure_config_loaded():
         return None
@@ -188,7 +285,12 @@ def terminal_svod_check():
 
 @logger_wraps()
 def terminal_control_lenta():
-    """Печать контрольной ленты"""
+    """Печать контрольной ленты.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, просто вызывает команду терминала.
+    """
     logger.info("Запуск функции terminal_control_lenta")
     if not ensure_config_loaded():
         return None
@@ -201,7 +303,12 @@ def terminal_control_lenta():
 
 @logger_wraps()
 def terminal_print_file():
-    """Печать файла-отчета"""
+    """Печать файла-отчета.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, просто вызывает команду терминала.
+    """
     logger.info("Запуск функции terminal_print_file")
     if not ensure_config_loaded():
         return None
@@ -213,7 +320,12 @@ def terminal_print_file():
 
 @logger_wraps()
 def terminal_file_in_window():
-    """Показ банковского слип-чека в информационном окне"""
+    """Показ банковского слип-чека в информационном окне.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, просто выводит информацию в окно.
+    """
     logger.info("Запуск функции terminal_file_in_window")
     if not ensure_config_loaded():
         return None
@@ -226,7 +338,16 @@ def terminal_file_in_window():
 
 @logger_wraps()
 def terminal_copy_last_check():
-    """Печать копии последнего чека"""
+    """Печать копии последнего чека.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но может вызывать исключения в случае ошибок.
+    """
     logger.info("Запуск функции terminal_copy_last_check")
     if not ensure_config_loaded():
         return None
@@ -239,12 +360,18 @@ def terminal_copy_last_check():
 
 @logger_wraps()
 def read_pinpad_file(config_data, remove_newline=True):
-    """
-    Чтение банковского чека с опциональным удалением переноса строки.
+    """Чтение банковского чека с опциональным удалением переноса строки.
 
     Параметры:
-    remove_newline (bool): Этот параметр определяет, нужно ли удалять символы новой строки при чтении файла.
-    pinpad_file  (str): Путь к проверяемому файлу.
+        config_data (dict):
+            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
+        remove_newline (bool):
+            Этот параметр определяет, нужно ли удалять символы новой строки при чтении файла.
+
+    Возвращаемое значение:
+        str или None:
+            - Возвращает содержимое файла как строку, если файл успешно прочитан.
+            - Возвращает None, если файл не найден или конфигурация не загружена.
     """
     logger.info("Запуск функции read_pinpad_file")
     if not ensure_config_loaded():
@@ -270,7 +397,15 @@ def read_pinpad_file(config_data, remove_newline=True):
 
 @logger_wraps()
 def print_slip_check(kol: int = 2):
-    """Печать слип-чека"""
+    """Печать слип-чека.
+
+    Параметры:
+        kol (int): Количество копий слип-чека для печати. По умолчанию 2.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но может вызывать исключения в случае ошибок при печати.
+    """
     logger.info("Запуск функции print_slip_check")
     fptr.open()
     # Открытие нефискального документа
@@ -314,7 +449,15 @@ def print_slip_check(kol: int = 2):
 
 @logger_wraps()
 def print_pinpad_check(count: int = 2):
-    """Печать слип-чека"""
+    """Печать слип-чека.
+
+    Параметры:
+        count (int): 
+            Количество копий слип-чека для печати (по умолчанию 2).
+
+    Возвращаемое значение:
+        None: 
+            Функция не возвращает значений."""
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
         logger.debug("Функция печати нефискального документа")
@@ -345,7 +488,16 @@ def print_pinpad_check(count: int = 2):
 
 @logger_wraps()
 def get_info():
-    """Запрос информации о ККТ"""
+    """Запрос информации о ККТ.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но может открывать окно с информацией о ККТ.
+    """
     logger.info("Запуск функции get_info")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
@@ -363,7 +515,16 @@ def get_info():
 
 @logger_wraps()
 def get_status_obmena():
-    """Статус информационного обмена"""
+    """Статус информационного обмена.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но открывает окно с информацией о статусе обмена.
+    """
     logger.info("Запуск функции get_status_obmena")
     fptr.open()
     fptr.setParam(
@@ -390,7 +551,16 @@ def get_status_obmena():
 
 @logger_wraps()
 def get_time():
-    """Запрос текущих даты и времени ККТ"""
+    """Запрос текущих даты и времени ККТ.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но открывает окно с текущими датой и временем.
+    """
     logger.info("Запуск функции get_time")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
@@ -404,7 +574,16 @@ def get_time():
 
 @logger_wraps()
 def smena_info():
-    """Запрос состояния смены"""
+    """Запрос состояния смены.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        int:
+            Возвращает состояние смены (0 - закрыта, 1 - открыта, 2 - истекла).
+    """
     logger.info("Запуск функции smena_info")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
@@ -433,7 +612,16 @@ def smena_info():
 
 @logger_wraps()
 def last_document():
-    """Копия последнего документа"""
+    """Копия последнего документа.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но выполняет печать последнего документа.
+    """
     logger.info("Запуск функции last_document")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT)
@@ -443,7 +631,16 @@ def last_document():
 
 @logger_wraps()
 def report_payment():
-    """Отчет о состоянии расчетов"""
+    """Отчет о состоянии расчетов.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но выполняет печать отчета о состоянии расчетов.
+    """
     logger.info("Запуск функции report_payment")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS)
@@ -453,7 +650,16 @@ def report_payment():
 
 @logger_wraps()
 def report_x():
-    """X-отчет"""
+    """X-отчет.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но выполняет печать X-отчета.
+    """
     logger.info("Запуск функции report_x")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
@@ -463,7 +669,16 @@ def report_x():
 
 @logger_wraps()
 def kassir_reg(user):
-    """Регистрация кассира"""
+    """Регистрация кассира.
+
+    Параметры:
+        user (object):
+            Объект пользователя, содержащий информацию о кассире (фамилия, имя, ИНН).
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений.
+    """
     logger.info("Запуск функции kassir_reg")
     fptr.open()
     fptr.setParam(1021, f"{user.last_name} {user.first_name}")
@@ -474,7 +689,16 @@ def kassir_reg(user):
 
 @logger_wraps()
 def deposit_of_money(amount):
-    """Функция регистрация внесения денег в кассу"""
+    """Функция регистрации внесения денег в кассу.
+
+    Параметры:
+        amount (float):
+            Сумма, которую необходимо внести в кассу.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений.
+    """
     logger.info("Запуск функции cash_deposit")
     logger.info(f"Внесено в кассу: {amount}")
     fptr.open()
@@ -485,7 +709,16 @@ def deposit_of_money(amount):
 
 @logger_wraps()
 def payment(amount):
-    """Функция регистрация выплаты денег из кассы"""
+    """Функция регистрации выплаты денег из кассы.
+
+    Параметры:
+        amount (float):
+            Сумма, которую необходимо выплатить из кассы.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений.
+    """
     logger.info("Запуск функции payment")
     logger.info(f"Выплачено из кассы: {amount}")
     fptr.open()
@@ -496,7 +729,16 @@ def payment(amount):
 
 @logger_wraps()
 def balance_check():
-    """Функция проверки баланса наличных денег в кассе"""
+    """Функция проверки баланса наличных денег в кассе.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        float:
+            Возвращает баланс наличных денег в кассе.
+    """
     logger.info("Запуск функции balance_check")
     fptr.open()
     fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_CASH_SUM)
@@ -526,7 +768,21 @@ def balance_check():
 
 @logger_wraps()
 def operation_on_the_terminal(payment_type, type_operation, price):
-    """Проведение операции по банковскому терминалу"""
+    """Проведение операции по банковскому терминалу.
+
+    Параметры:
+        payment_type (int):
+            Тип оплаты (например, 101 - оплата картой, 100 - offline оплата).
+        type_operation (int):
+            Тип операции (например, 1 - оплата, 2 - возврат, 3 - отмена).
+        price (float):
+            Сумма, на которую выполняется операция.
+
+    Возвращаемое значение:
+        tuple:
+            - bank (int): Результат операции по терминалу (1 - успех, 0 - ошибка).
+            - payment (int): Код оплаты (1 - оплата, 3 - offline).
+    """
     logger.info("Запуск функции operation_on_the_terminal")
     bank = None
     if payment_type == 101:
@@ -574,7 +830,29 @@ def operation_on_the_terminal(payment_type, type_operation, price):
 
 @logger_wraps()
 def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank):
-    """Проведение операции оплаты"""
+    """Проведение операции оплаты.
+
+    Параметры:
+        sale_dict (dict):
+            Словарь, содержащий информацию о продаже, включая количество и цены билетов.
+        payment_type (int):
+            Тип оплаты (например, 101 - оплата картой, 100 - offline оплата).
+        user (object):
+            Объект пользователя, содержащий информацию о кассире (фамилия, имя, ИНН).
+        type_operation (int):
+            Тип операции (например, 1 - продажа, 2 - возврат, 3 - отмена).
+        print_check (int):
+            Флаг, указывающий, нужно ли печатать чек (0 - не печатать, 1 - печатать).
+        price (float):
+            Сумма, на которую выполняется операция.
+        bank (int):
+            Результат операции по терминалу (например, 1 - успех).
+
+    Возвращаемое значение:
+        int:
+            - 1, если операция выполнена успешно.
+            - 0, если произошла ошибка.
+    """
     logger.info("Запуск функции check_open")
     logger.debug(
         f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type}, type_operation = {type_operation}, bank = {bank}"
@@ -721,7 +999,16 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
 
 @logger_wraps()
 def smena_close(user):
-    """Закрытие кассовой смены"""
+    """Закрытие кассовой смены.
+
+    Параметры:
+        user (object):
+            Объект пользователя, содержащий информацию о кассире (фамилия, имя, ИНН).
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений.
+    """
     logger.info("Запуск функции smena_close")
     state = smena_info()
     if state != 0:
@@ -759,6 +1046,15 @@ def smena_close(user):
 
 
 def continue_print():
-    """Допечатать документ"""
+    """Допечатать документ.
+
+    Параметры:
+        None:
+            Функция не принимает параметров.
+
+    Возвращаемое значение:
+        None:
+            Функция не возвращает значений, но продолжает печать текущего документа.
+    """
     logger.info("Запуск функции continue_print")
     fptr.continuePrint()
