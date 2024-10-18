@@ -5,7 +5,7 @@ from typing import Any
 
 from files import windows
 from files.libfptr10 import IFptr
-from files.logger import *
+from files.logger import logger, logger_wraps
 
 try:
     fptr = IFptr("")
@@ -33,28 +33,12 @@ def read_terminal_config():
             - pinpad_path (str): Путь к терминалу.
     """
     config = ConfigParser()
+    config.read("config.ini")
     try:
         pinpad_path = config.get("TERMINAL", "pinpad_path")
         return {"pinpad_path": pinpad_path}
     except:
         return None
-
-
-def ensure_config_loaded():
-    """Проверка загрузки конфигурации.
-
-    Параметры:
-        None
-
-    Возвращаемое значение:
-        bool:
-            - True, если конфигурация успешно загружена.
-            - False, если конфигурация не загружена.
-    """
-    if config_data is None:
-        logger.error("Конфигурация не загружена.")
-        return False
-    return True
 
 
 # Чтение параметров из файла конфигурации
@@ -76,8 +60,6 @@ def run_terminal_command(command_params: str, config_data: dict):
             - Возвращает None, если конфигурация не загружена или произошла ошибка выполнения команды.
     """
     logger.info("Запуск функции run_terminal_command")
-    if not ensure_config_loaded():
-        return None
     pinpad_path: Any = config_data["pinpad_path"]
     pinpad_file: str = os.path.join(pinpad_path, "loadparm.exe")
     pinpad_run: str = f"{pinpad_file} {command_params}"
@@ -107,8 +89,6 @@ def check_terminal_file(word: str, config_data: dict):
             - Возвращает False, если слово не найдено или файл не существует.
     """
     logger.info("Запуск функции check_terminal_file")
-    if not ensure_config_loaded():
-        return None
     pinpad_path: Any = config_data["pinpad_path"]
     pinpad_file: str = os.path.join(pinpad_path, "p")
     try:
@@ -142,8 +122,6 @@ def terminal_oplata(amount, config_data):
             - Возвращает 0, если произошла ошибка или операция была отменена.
     """
     logger.info("Запуск функции terminal_oplata")
-    if not ensure_config_loaded():
-        return None
     # Добавляем '00' для копеек
     plat_code = run_terminal_command(f"1 {amount}00", config_data)
     if plat_code is None:
@@ -176,8 +154,6 @@ def terminal_return(amount, config_data):
     """
     logger.info("Запуск функции terminal_return")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
-    if not ensure_config_loaded():
-        return None
     # Добавляем '00' для копеек
     result = run_terminal_command(f"3 {amount}00", config_data)
     logger.debug(f"Терминал вернул следующий код операции: {result}")
@@ -203,8 +179,6 @@ def terminal_canceling(amount, config_data):
     """
     logger.info("Запуск функции terminal_canceling")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
-    if not ensure_config_loaded():
-        return None
     # Добавляем '00' для копеек
     result = run_terminal_command(f"8 {amount}00", config_data)
     logger.debug(f"Терминал вернул следующий код операции: {result}")
@@ -223,8 +197,6 @@ def terminal_check_itog():
             - Возвращает 0, если файл не найден.
     """
     logger.info("Запуск функции terminal_check_itog")
-    if not ensure_config_loaded():
-        return None
     result = run_terminal_command("7", config_data)
     logger.debug(f"Терминал вернул следующий код операции: {result}")
     return 1 if check_terminal_file(COINCIDENCE, config_data) else 0
@@ -238,8 +210,6 @@ def terminal_menu():
             Функция не возвращает значений, просто вызывает команду терминала.
     """
     logger.info("Запуск функции terminal_menu")
-    if not ensure_config_loaded():
-        return None
     run_terminal_command("11", config_data)
 
 
@@ -251,8 +221,6 @@ def terminal_check_itog_window():
             Функция не возвращает значений, просто выводит информацию в окно.
     """
     logger.info("Запуск функции terminal_check_itog_window")
-    if not ensure_config_loaded():
-        return None
     run_terminal_command("7", config_data)
     try:
         info: str = read_pinpad_file(config_data)
@@ -274,8 +242,6 @@ def terminal_svod_check():
             Функция не возвращает значений, просто вызывает команду терминала.
     """
     logger.info("Запуск функции terminal_svod_check")
-    if not ensure_config_loaded():
-        return None
     run_terminal_command("9", config_data)
     try:
         print_pinpad_check(1)
@@ -292,8 +258,6 @@ def terminal_control_lenta():
             Функция не возвращает значений, просто вызывает команду терминала.
     """
     logger.info("Запуск функции terminal_control_lenta")
-    if not ensure_config_loaded():
-        return None
     run_terminal_command("9 1", config_data)
     try:
         print_pinpad_check(1)
@@ -310,8 +274,6 @@ def terminal_print_file():
             Функция не возвращает значений, просто вызывает команду терминала.
     """
     logger.info("Запуск функции terminal_print_file")
-    if not ensure_config_loaded():
-        return None
     try:
         print_pinpad_check(1)
     except FileNotFoundError as not_found:
@@ -327,8 +289,6 @@ def terminal_file_in_window():
             Функция не возвращает значений, просто выводит информацию в окно.
     """
     logger.info("Запуск функции terminal_file_in_window")
-    if not ensure_config_loaded():
-        return None
     try:
         info: str = read_pinpad_file(config_data)
     except FileNotFoundError as not_found:
@@ -349,8 +309,6 @@ def terminal_copy_last_check():
             Функция не возвращает значений, но может вызывать исключения в случае ошибок.
     """
     logger.info("Запуск функции terminal_copy_last_check")
-    if not ensure_config_loaded():
-        return None
     run_terminal_command("12", config_data)
     try:
         print_pinpad_check(1)
@@ -374,8 +332,6 @@ def read_pinpad_file(config_data, remove_newline=True):
             - Возвращает None, если файл не найден или конфигурация не загружена.
     """
     logger.info("Запуск функции read_pinpad_file")
-    if not ensure_config_loaded():
-        return None
     pinpad_path = config_data["pinpad_path"]
     pinpad_file = os.path.join(pinpad_path, "p")
     result_lines: list[str] = []
@@ -452,11 +408,11 @@ def print_pinpad_check(count: int = 2):
     """Печать слип-чека.
 
     Параметры:
-        count (int): 
+        count (int):
             Количество копий слип-чека для печати (по умолчанию 2).
 
     Возвращаемое значение:
-        None: 
+        None:
             Функция не возвращает значений."""
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
