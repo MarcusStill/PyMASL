@@ -4,7 +4,7 @@ import os
 import socket
 import subprocess
 import sys
-from configparser import ConfigParser
+from configparser import ConfigParser, NoSectionError, NoOptionError, MissingSectionHeaderError
 from datetime import date, timedelta
 from typing import Any, Type
 
@@ -40,21 +40,48 @@ from files.logger import *
 
 @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
 def read_config():
-    """Функция для загрузки параметров из файла конфигурации"""
+    """Функция для загрузки параметров из файла конфигурации."""
     config = ConfigParser()
-    config.read("config.ini")
-    return {
-        "host": config.get("DATABASE", "host"),
-        "port": config.get("DATABASE", "port"),
-        "database": config.get("DATABASE", "database"),
-        "user": config.get("DATABASE", "user"),
-        "software_version": config.get("OTHER", "version"),
-        "log_file": config.get("OTHER", "log_file"),
-        "kol_pc": config.get("PC", "kol"),
-        "pc_1": config.get("PC", "pc_1"),
-        "pc_2": config.get("PC", "pc_2"),
-    }
+    try:
+        if not os.path.exists("config.ini"):
+            logger.error("Файл конфигурации не найден: config.ini")
+            raise FileNotFoundError("Файл конфигурации не найден.")
 
+        config.read("config.ini")
+
+        # Параметры для загрузки
+        required_keys = {
+            "host": "DATABASE",
+            "port": "DATABASE",
+            "database": "DATABASE",
+            "user": "DATABASE",
+            "version": "OTHER",
+            "log_file": "OTHER",
+            "kol": "PC",
+            "pc_1": "PC",
+            "pc_2": "PC",
+            "pinpad_path": "TERMINAL",
+        }
+
+        # Загружаем параметры и проверяем наличие
+        config_data = {}
+        for key, section in required_keys.items():
+            if not config.has_section(section):
+                logger.error(f"Отсутствует секция: '{section}'")
+                raise ValueError(f"Отсутствует секция: '{section}'")
+            if not config.has_option(section, key):
+                logger.error(f"Отсутствует параметр '{key}' в секции '{section}'")
+                raise ValueError(f"Отсутствует параметр '{key}' в секции '{section}'")
+            config_data[key] = config.get(section, key)
+
+        return config_data
+
+    except (NoSectionError, NoOptionError) as e:
+        raise ValueError(f"Ошибка в файле конфигурации: {e}")
+    except MissingSectionHeaderError:
+        raise ValueError("Ошибка: отсутствует заголовок секции в файле конфигурации.")
+    except Exception as e:
+        raise RuntimeError(f"Неизвестная ошибка при чтении файла конфигурации: {e}")
 
 # Чтение параметров из файла конфигурации
 config_data = read_config()
@@ -62,9 +89,9 @@ host = config_data["host"]
 port = config_data["port"]
 database = config_data["database"]
 user = config_data["user"]
-software_version = config_data["software_version"]
+software_version = config_data["version"]
 log_file = config_data["log_file"]
-kol_pc = config_data["kol_pc"]
+kol_pc = config_data["kol"]
 pc_1 = config_data["pc_1"]
 pc_2 = config_data["pc_2"]
 
@@ -162,7 +189,6 @@ class AuthForm(QDialog):
             System.kol_pc = kol_pc
             System.pc_1 = pc_1
             System.pc_2 = pc_2
-            window.show()
             window.exec_()
         else:
             logger.warning(f"Неудачная авторизация пользователя: {login}")
@@ -1757,7 +1783,11 @@ class SaleForm(QDialog):
                 bank, payment = kkt.operation_on_the_terminal(
                     payment_type, 1, System.sale_dict["detail"][7]
                 )
-                if bank == 1:
+                if bank == 0:
+                    logger.error('Операция на терминале не прошла.')
+                    windows.info_window('Ошибка', 'Операция оплаты не удалась. Повторите попытку.', '')
+                    return # Остановка выполнения, если операция не удалась
+                elif bank == 1:
                     logger.debug("Операция прошла успешно. Сохраняем чек возврата.")
                     if payment == 3:  # Если оплата offline банковской картой
                         check = "offline"
