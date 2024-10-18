@@ -7,6 +7,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle
 
 from files.logger import *
+from main import load_coordinates
 
 
 def generate_saved_tickets(values):
@@ -15,102 +16,111 @@ def generate_saved_tickets(values):
     type_ticket = None
     img_file = "files/qr-code.jpg"
     path = "./ticket.pdf"
+    coordinates = load_coordinates("files/ticket_param.json")
     logger.info("Устанавливаем параметры макета билета")
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
     c = canvas.Canvas(path, pagesize=(landscape(letter)))
     logger.debug("Сохраняем билеты")
+
     for i in range(len(client_in_sale)):
         age = int(client_in_sale[i][6])
         not_go = client_in_sale[i][4]
+
         if age < 5:
             type_ticket = "бесплатный"
         elif 5 <= age < 15:
             type_ticket = "детский"
         elif age >= 15:
             type_ticket = "взрослый"
+
         if type_ticket != "бесплатный" and not_go != "н":
             date_time = str(client_in_sale[i][9])
-            """Сохраняем макет билета"""
+
             c.setFont("DejaVuSerif", 12)
-            # имя
+            # Имя
+            # x - расстояние мм от левого края страницы
+            # y - расстояние мм от нижнего края страницы
             c.drawString(
-                75 * mm,
-                182 * mm,
+                coordinates["name"]["x"] * mm,
+                coordinates["name"]["y"] * mm,
                 str(client_in_sale[i][1])
                 .replace("'", "")
                 .replace("[", "")
                 .replace("]", ""),
             )
-            # фамилия
+            # Фамилия
             c.drawString(
-                75 * mm,
-                177 * mm,
+                coordinates["surname"]["x"] * mm,
+                coordinates["surname"]["y"] * mm,
                 str(client_in_sale[i][0])
                 .replace("'", "")
                 .replace("[", "")
                 .replace("]", ""),
             )
-            # возраст
+            # Возраст
             c.drawString(
-                160 * mm,
-                182 * mm,
+                coordinates["age"]["x"] * mm,
+                coordinates["age"]["y"] * mm,
                 str(age).replace("'", "").replace("[", "").replace("]", ""),
             )
-            # продолжительность
+            # Продолжительность
+            duration_text = f"{client_in_sale[i][7]} ч. пребывания"
             if client_in_sale[i][7] == 3:
-                c.drawString(
-                    80 * mm,
-                    167 * mm,
-                    f"{client_in_sale[i][7]} ч. пребывания-весь день".replace("'", "")
-                    .replace("[", "")
-                    .replace("]", ""),
-                )
-            else:
-                c.drawString(
-                    80 * mm,
-                    167 * mm,
-                    f"{client_in_sale[i][7]} ч. пребывания".replace("'", "")
-                    .replace("[", "")
-                    .replace("]", ""),
-                )
-            # дата и время билета
+                duration_text += "-весь день"
             c.drawString(
-                160 * mm,
-                167 * mm,
+                coordinates["duration"]["x"] * mm,
+                coordinates["duration"]["y"] * mm,
+                duration_text.replace("'", "").replace("[", "").replace("]", ""),
+            )
+            # Дата и время билета
+            c.drawString(
+                coordinates["date"]["x"] * mm,
+                coordinates["date"]["y"] * mm,
                 str(date_time[0:10]).replace("'", "").replace("[", "").replace("]", ""),
             )
-            c.drawString(160 * mm, 177 * mm, "гость")
-            c.drawString(130 * mm, 157 * mm, "БЕЛГОРОД")
-            c.drawString(120 * mm, 152 * mm, "МАСТЕРСЛАВЛЬ")
-            # цена
             c.drawString(
-                190 * mm,
-                155 * mm,
+                coordinates["guest"]["x"] * mm, coordinates["guest"]["y"] * mm, "гость"
+            )
+            c.drawString(
+                coordinates["city"]["x"] * mm, coordinates["city"]["y"] * mm, "БЕЛГОРОД"
+            )
+            c.drawString(
+                coordinates["place"]["x"] * mm,
+                coordinates["place"]["y"] * mm,
+                "МАСТЕРСЛАВЛЬ",
+            )
+            # Цена
+            c.drawString(
+                coordinates["price"]["x"] * mm,
+                coordinates["price"]["y"] * mm,
                 f"{client_in_sale[i][3]} руб.".replace("'", "")
                 .replace("[", "")
                 .replace("]", ""),
             )
-            # тип билета
+            # Тип билета
             c.drawString(
-                101 * mm,
-                138 * mm,
+                coordinates["ticket_type"]["x"] * mm,
+                coordinates["ticket_type"]["y"] * mm,
                 str(type_ticket).replace("'", "").replace("[", "").replace("]", ""),
             )
-            # доп.отметки
-            c.drawString(170 * mm, 138 * mm, str(client_in_sale[i][4]))
-            # таланты
-            # печатаем их только для детских билетов
+            # Доп.отметки
+            c.drawString(
+                coordinates["notes"]["x"] * mm,
+                coordinates["notes"]["y"] * mm,
+                str(client_in_sale[i][4]),
+            )
+            # Таланты
             c.setFont("DejaVuSerif", 24)
             if type_ticket == "взрослый":
                 c.drawString(
-                    225 * mm,
-                    168 * mm,
+                    coordinates["talents"]["x"] * mm,
+                    coordinates["talents"]["y"] * mm,
                     "0".replace("'", "").replace("[", "").replace("]", ""),
                 )
             else:
                 c.drawString(
-                    225 * mm,
-                    168 * mm,
+                    coordinates["talents"]["x"] * mm,
+                    coordinates["talents"]["y"] * mm,
                     str(client_in_sale[i][8])
                     .replace("'", "")
                     .replace("[", "")
@@ -118,13 +128,14 @@ def generate_saved_tickets(values):
                 )
             c.drawImage(
                 img_file,
-                170,
-                370,
+                coordinates["qr_code"]["x"],
+                coordinates["qr_code"]["y"],
                 height=80,
                 width=80,
                 preserveAspectRatio=True,
                 mask="auto",
             )
+
             c.showPage()
     c.save()
 

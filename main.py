@@ -1,5 +1,6 @@
 import calendar
 import datetime as dt
+import json
 import os
 import socket
 import subprocess
@@ -44,6 +45,47 @@ from files.logger import logger, logger_wraps
 
 
 @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
+def load_coordinates(config_file):
+    """Функция для проверки загрузки файла с координатами, необходимыми для генерации билетов.
+
+    Параметры:
+        config_file (str): Путь к файлу конфигурации, содержащему координаты.
+
+    Возвращаемое значение:
+        dict: Словарь с координатами, содержащий следующие ключи:
+            - name (dict): Координаты имени с ключами 'x' и 'y'.
+            - surname (dict): Координаты фамилии с ключами 'x' и 'y'.
+            - age (dict): Координаты возраста с ключами 'x' и 'y'.
+            - duration (dict): Координаты продолжительности с ключами 'x' и 'y'.
+            - date (dict): Координаты даты с ключами 'x' и 'y'.
+            - guest (dict): Координаты статуса "гость" с ключами 'x' и 'y'.
+            - city (dict): Координаты города с ключами 'x' и 'y'.
+            - place (dict): Координаты места с ключами 'x' и 'y'.
+            - price (dict): Координаты цены с ключами 'x' и 'y'.
+            - ticket_type (dict): Координаты типа билета с ключами 'x' и 'y'.
+            - notes (dict): Координаты дополнительных отметок с ключами 'x' и 'y'.
+            - talents (dict): Координаты талантов с ключами 'x' и 'y'.
+            - qr_code (dict): Координаты QR-кода с ключами 'x' и 'y'.
+    """
+    logger.info("Запуск функции load_coordinates")
+    if not os.path.isfile(config_file):
+        raise FileNotFoundError(f"Файл конфигурации '{config_file}' не найден.")
+    try:
+        with open(config_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Проверка, что ключ 'coordinates' существует в загруженных данных
+        if "coordinates" not in data:
+            raise KeyError("В конфигурации отсутствует ключ 'coordinates'.")
+        return data["coordinates"]
+    except json.JSONDecodeError:
+        raise ValueError(
+            "Ошибка в формате файла конфигурации. Убедитесь, что файл является корректным JSON."
+        )
+    except Exception as e:
+        raise RuntimeError(f"Ошибка при загрузке конфигурации: {e}")
+
+
+@logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
 def read_config():
     """Функция для загрузки параметров из файла конфигурации.
 
@@ -63,14 +105,13 @@ def read_config():
             - pc_2 (str): Имя второго ПК.
             - pinpad_path (str): Путь к терминалу.
     """
+    logger.info("Запуск функции read_config")
     config = ConfigParser()
     try:
         if not os.path.exists("config.ini"):
             logger.error("Файл конфигурации не найден: config.ini")
             raise FileNotFoundError("Файл конфигурации не найден.")
-
         config.read("config.ini")
-
         # Параметры для загрузки
         required_keys = {
             "host": "DATABASE",
@@ -84,7 +125,6 @@ def read_config():
             "pc_2": "PC",
             "pinpad_path": "TERMINAL",
         }
-
         # Загружаем параметры и проверяем наличие
         config_data = {}
         for key, section in required_keys.items():
@@ -95,9 +135,7 @@ def read_config():
                 logger.error(f"Отсутствует параметр '{key}' в секции '{section}'")
                 raise ValueError(f"Отсутствует параметр '{key}' в секции '{section}'")
             config_data[key] = config.get(section, key)
-
         return config_data
-
     except (NoSectionError, NoOptionError) as e:
         raise ValueError(f"Ошибка в файле конфигурации: {e}")
     except MissingSectionHeaderError:
@@ -130,6 +168,14 @@ if not pswrd:
 engine = create_engine(f"postgresql+psycopg2://{user}:{pswrd}@{host}:{port}/{database}")
 
 logger.add(log_file, rotation="1 MB")
+
+
+# Проверка загрузки файла с координатами
+try:
+    coordinates = load_coordinates("files/ticket_param.json")
+except (FileNotFoundError, KeyError, ValueError, RuntimeError) as e:
+    logger.error(str(e))
+    raise FileNotFoundError(f"Файл конфигурации '{coordinates}' не найден.")
 
 
 class AuthForm(QDialog):
@@ -1955,7 +2001,9 @@ class SaleForm(QDialog):
                             )
                         if bank == 1:
                             logger.debug("Сохраняем чек возврата.")
-                            check = kkt.read_pinpad_file(config_data, remove_newline=False)
+                            check = kkt.read_pinpad_file(
+                                config_data, remove_newline=False
+                            )
                             logger.debug(f"Чек возврата: {check}")
                             with Session(engine) as session:
                                 session.execute(
