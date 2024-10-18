@@ -40,7 +40,7 @@ from design.slip import Ui_Dialog_Slip
 from files import kkt
 from files import otchet
 from files import windows
-from files.logger import *
+from files.logger import logger, logger_wraps
 
 
 @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
@@ -1824,7 +1824,7 @@ class SaleForm(QDialog):
                     if payment == 3:  # Если оплата offline банковской картой
                         check = "offline"
                     else:
-                        check = kkt.read_pinpad_file(remove_newline=False)
+                        check = kkt.read_pinpad_file(config_data, remove_newline=False)
                     logger.debug(f"Чек прихода: {check}")
                     with Session(engine) as session:
                         session.execute(
@@ -1955,7 +1955,7 @@ class SaleForm(QDialog):
                             )
                         if bank == 1:
                             logger.debug("Сохраняем чек возврата.")
-                            check = kkt.read_pinpad_file(remove_newline=False)
+                            check = kkt.read_pinpad_file(config_data, remove_newline=False)
                             logger.debug(f"Чек возврата: {check}")
                             with Session(engine) as session:
                                 session.execute(
@@ -2033,7 +2033,7 @@ class SaleForm(QDialog):
                 bank, payment = kkt.operation_on_the_terminal(payment_type, 2, price)
                 if bank == 1:
                     logger.info("Операция повторного возврата прошла успешно")
-                    check = kkt.read_pinpad_file(remove_newline=False)
+                    check = kkt.read_pinpad_file(config_data, remove_newline=False)
                     logger.debug(f"Чек возврата: {check}")
                     with Session(engine) as session:
                         session.execute(
