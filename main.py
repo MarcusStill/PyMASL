@@ -2816,14 +2816,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             with Session(engine) as session:
                 query = (
                     select(
-                        Client.first_name,
                         Client.last_name,
-                        Client.middle_name,
+                        Client.first_name,
                         Ticket.ticket_type,
                         Ticket.price,
                         Ticket.description,
                         Client.id,
-                        Ticket.print,
                         Ticket.client_age,
                         Ticket.arrival_time,
                         Ticket.talent,
@@ -2852,8 +2850,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Передаем в форму данные клиента
             sale: SaleForm = SaleForm()
             sale.ui.tableWidget_2.setRowCount(0)
-            sale.ui.dateEdit.setDate(client_in_sale[0][11])
-            sale.ui.comboBox.setCurrentText(str(client_in_sale[0][9]))
+            sale.ui.dateEdit.setDate(client_in_sale[0][9])
+            sale.ui.comboBox.setCurrentText(str(client_in_sale[0][7]))
             # Если продажа оплачена
             if sale_status == 1:
                 # Кнопка сохранить
@@ -2964,7 +2962,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # Кнопка отмены платежа по банковской карте
                 sale.ui.pushButton_14.setEnabled(False)
             for search_client in client_in_sale:
-                if search_client[8] >= System.age["max"]:
+                if search_client[6] >= System.age["max"]:
                     type_ticket = "взрослый"
                     kol_adult += 1
                 else:
@@ -3009,22 +3007,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(type_ticket))
                 # Цена
                 sale.ui.tableWidget_2.setItem(
-                    row, 3, QTableWidgetItem(f"{search_client[4]}")
+                    row, 3, QTableWidgetItem(f"{search_client[3]}")
                 )
                 # Примечание
                 sale.ui.tableWidget_2.setItem(
-                    row, 4, QTableWidgetItem(f"{search_client[5]}")
+                    row, 4, QTableWidgetItem(f"{search_client[4]}")
                 )
                 # id клиента
                 sale.ui.tableWidget_2.setItem(
-                    row, 5, QTableWidgetItem(f"{search_client[6]}")
+                    row, 5, QTableWidgetItem(f"{search_client[5]}")
                 )
                 sale.ui.tableWidget_2.setColumnHidden(5, True)
                 # Возраст
                 sale.ui.tableWidget_2.setItem(
-                    row, 6, QTableWidgetItem(f"{search_client[8]}")
+                    row, 6, QTableWidgetItem(f"{search_client[6]}")
                 )
-                summ += int(search_client[4])
+                summ += int(search_client[3])
             sale.ui.label_5.setText(str(kol_adult))
             sale.ui.label_7.setText(str(kol_child))
             sale.ui.label_8.setText(str(summ))
