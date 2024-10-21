@@ -75,11 +75,11 @@
   },
   {
    "optionDest": "datas",
-   "value": "PATH/PyMASL/files;files/"
+   "value": "PATH/PyMASL/files/ticket_param.json;."
   },
   {
    "optionDest": "datas",
-   "value": "PATH/PyMASL/files/ticket_param.json;."
+   "value": "PATH/PyMASL/open.cmd;."
   }
  ],
  "nonPyinstallerOptions": {
