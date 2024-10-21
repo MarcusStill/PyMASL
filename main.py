@@ -396,7 +396,8 @@ class SaleForm(QDialog):
             lambda: self.open_pay_form(self.ui.label_8.text())
         )
         self.ui.pushButton_6.clicked.connect(self.sale_return)
-        self.ui.pushButton_7.clicked.connect(self.sale_generate_saved_tickets)
+        self.ui.pushButton_7.clicked.connect(self.print_saved_tickets)
+        self.ui.pushButton_8.clicked.connect(self.open_saved_tickets)
         self.ui.tableWidget.doubleClicked.connect(self.adding_client_to_sale)
         cur_today = date.today()
         self.ui.dateEdit.setDate(cur_today)
@@ -1852,7 +1853,7 @@ class SaleForm(QDialog):
             self.save_sale()
         # Если продажа особенная - генерируем билеты без оплаты
         if System.sale_special == 1:
-            self.sale_generate_saved_tickets()
+            self.print_saved_tickets()
         else:
             # Если оплата банковской картой
             if payment_type in (101, 100):
@@ -1917,7 +1918,7 @@ class SaleForm(QDialog):
                     )
                     session.commit()
                 # генерируем билеты
-                self.sale_generate_saved_tickets()
+                self.print_saved_tickets()
                 # Сбрасываем статус продажи
                 System.sale_status = 0
                 self.close()
@@ -2257,51 +2258,6 @@ class SaleForm(QDialog):
                 dct[last_element_title] = [residue_all, 1]
         return dct
 
-    # @logger.catch()
-    # def sale_canceling(self):
-    #     """
-    #     Функция осуществляет операцию отмены продажи, оплаченной по безналу (для текущей незакрытой смены).
-    #
-    #     Параметры:
-    #
-    #     Возвращаемое значение:
-    #     """
-    #     logger.info("Запуск функции sale_canceling")
-    #     # Обновляем данные о продаже
-    #     self.sale_update()
-    #     logger.info('Запрашиваем информацию о продаже в БД')
-    #     with Session(engine) as session:
-    #         query = select(Sale.price).filter(Sale.id == System.sale_id)
-    #         sale = session.execute(query).scalars().one()
-    #     # предполагаем что оплата была банковской картой
-    #     payment_type: int = 101
-    #     state_check = kkt.check_open(System.sale_dict, payment_type, System.user, 3, 1, sale)
-    #     check = None
-    #     # Если возврат прошел
-    #     if state_check == 1:
-    #         logger.info("Операция отмены прошла успешно")
-    #         logger.info("Читаем слип-чек из файла")
-    #         pinpad_file = r"C:\sc552\p"
-    #         with open(pinpad_file, 'r', encoding='IBM866') as file:
-    #             while line := file.readline().rstrip():
-    #                 logger.debug(line)
-    #         check = kkt.read_slip_check()
-    #         kkt.print_pinpad_check()
-    #         logger.info("Записываем информацию об отмене в БД")
-    #         with Session(engine) as session:
-    #             query = update(Sale).where(Sale.id == System.sale_id).values(
-    #                 status=2, id_user=System.user.id, pc_name=System.pc_name,
-    #                 payment_type=1, bank_pay=check, datetime=dt.datetime.now()
-    #             )
-    #             session.execute(query)
-    #         self.close()
-    #     else:
-    #         logger.warning('Операция возврата завершилась с ошибкой')
-    #         windows.info_window(
-    #             "Внимание",
-    #             'Закройте это окно, откройте сохраненную продажу и проведите'
-    #             'операцию возврата еще раз.', '')
-
     @logger.catch()
     def sale_generate_saved_tickets(self):
         """
@@ -2317,15 +2273,57 @@ class SaleForm(QDialog):
         logger.info("Запуск функции sale_generate_saved_tickets")
         logger.info(f"Список билетов: {System.sale_tickets}")
         client_in_sale: tuple = System.sale_tickets
-        # Удаляем существующий файл с билетами
-        os.system("TASKKILL /F /IM SumatraPDF.exe")
-        if os.path.exists("./ticket.pdf"):
-            os.remove("./ticket.pdf")
+        try:
+            # Удаляем существующий файл с билетами
+            if os.path.exists("./ticket.pdf"):
+                os.remove("./ticket.pdf")
+        except Exception as e:
+            logger.error(f"Произошла ошибка при удалении файла с билетами: {e}")
         # Формируем новый файл с билетами
         otchet.generate_saved_tickets(client_in_sale)
-        # Печатаем билеты
-        subprocess.Popen([r"print.cmd"])
-        System.sale_tickets = []
+
+    def print_saved_tickets(self):
+        """
+        Функция для печати сохраненных билетов.
+
+        Параметры:
+        self: object
+            Ссылка на экземпляр текущего объекта класса.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений.
+        """
+        logger.info("Запуск функции print_saved_tickets.")
+        self.sale_generate_saved_tickets()
+        try:
+            logger.info("Завершение процесса SumatraPDF, если он открыт.")
+            os.system("TASKKILL /F /IM SumatraPDF.exe")
+            subprocess.Popen([r"print.cmd"])
+        except FileNotFoundError:
+            logger.error("Файл print.cmd не найден.")
+        except Exception as e:
+            logger.error(f"Произошла ошибка при запуске файла print.cmd: {e}")
+
+    def open_saved_tickets(self):
+        """
+        Функция для открытия созданного PDF файла с билетами.
+
+        Параметры:
+        self: object
+            Ссылка на экземпляр текущего объекта класса.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений.
+        """
+        logger.info("Запуск функции open_saved_tickets.")
+        self.sale_generate_saved_tickets()
+        try:
+            os.system("TASKKILL /F /IM SumatraPDF.exe")
+            subprocess.Popen([r"open.cmd"])
+        except FileNotFoundError:
+            logger.error("Файл open.cmd не найден.")
+        except Exception as e:
+            logger.error(f"Произошла ошибка при запуске файла open.cmd: {e}")
 
     def open_pay_form(self, txt):
         """
