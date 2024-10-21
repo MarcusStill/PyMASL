@@ -413,10 +413,9 @@ class SaleForm(QDialog):
         self.ui.pushButton_10.clicked.connect(self.sale_update)
         self.ui.tableWidget_3.doubleClicked.connect(self.adding_related_client_to_sale)
         self.ui.pushButton_12.clicked.connect(self.clearing_client_list)
-        # self.ui.pushButton_13.clicked.connect(self.get_slip)
         self.ui.pushButton_13.clicked.connect(SlipForm.get_slip)
         # функция отмены платежа
-        # self.ui.pushButton_14.clicked.connect(self.sale_canceling)
+        self.ui.pushButton_14.clicked.connect(self.sale_canceling)
 
     def edit_client_in_sale(self) -> None:
         """
@@ -2111,6 +2110,112 @@ class SaleForm(QDialog):
                     )
 
     @logger.catch()
+    def sale_canceling(self):
+        """
+        Функция осуществляет операцию отмены продажи.
+
+        Параметры:
+        self: object
+            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, вставляет фамилию в поле формы.
+        """
+        logger.info("Запуск функции sale_canceling")
+        # Счетчик для отслеживания корректности проведения возврата за наличный способ расчета
+        tickets = self.generating_items_for_the_return_check()
+        logger.info("Запрашиваем информацию о продаже в БД")
+        with Session(engine) as session:
+            query = select(Sale).filter(Sale.id == System.sale_id)
+            sale = session.execute(query).scalars().one()
+        logger.debug(f"Итоговая сумма: {sale.price}, тип оплаты: {sale.payment_type}")
+        logger.debug(f"Сохраняем id продажи: {sale.id}")
+        System.sale_id = sale.id
+        price: int = sale.price
+        payment_type: int = 0
+        # 1 - карта, 2 - наличные
+        if sale.payment_type == 1:
+            payment_type: int = 101
+        # Продолжаем если возврат по банковской карте
+        if sale.payment_type == 1:
+            logger.debug("Проверяем статус продажи")
+            if sale.status == 1:
+                logger.debug("Продажа оплачена. Запускаем отмену")
+                if payment_type == 101:
+                    logger.debug(
+                        f"Проверяем был ли уже проведен возврат по банковскому терминалу. Sale.bank_return = {sale.bank_return}"
+                    )
+                    if sale.bank_return is None:
+                        logger.debug("Запускаем отмену по банковскому терминалу")
+                        bank, payment = kkt.operation_on_the_terminal(
+                            payment_type, 3, price
+                        )
+                        if bank == 1:
+                            logger.debug("Сохраняем чек возврата.")
+                            check = kkt.read_pinpad_file(
+                                config_data, remove_newline=False
+                            )
+                            logger.debug(f"Чек возврата: {check}")
+                            with Session(engine) as session:
+                                session.execute(
+                                    update(Sale)
+                                    .where(Sale.id == System.sale_id)
+                                    .values(
+                                        bank_return=check,
+                                    )
+                                )
+                                session.commit()
+                            kkt.print_pinpad_check()
+                        else:
+                            logger.warning(
+                                "Отмена по банковскому терминалу прошла не успешно"
+                            )
+                            windows.info_window(
+                                "Внимание",
+                                "Возврат по банковскому терминалу прошел не успешно.\n"
+                                "Закройте это окно, откройте продажу и проведите"
+                                "операцию возврата еще раз.",
+                                "",
+                            )
+                    else:
+                        logger.debug(
+                            "Возврат по банковскому терминалу был произведен ранее, но статус продажи не изменен"
+                        )
+                        bank = 1
+                    if bank == 1:
+                        # Если отмена по банковскому терминалу прошла успешно, то запускаем формирование кассового чека
+                        if sale.status == 1:
+                            state_check = kkt.check_open(
+                                tickets, payment_type, System.user, 2, 1, price, bank
+                            )
+                # Если отмена прошела
+                if state_check == 1:
+                    # Изменяем статус для отмененного платежа
+                    status_info: int = 8
+                    logger.info("Обновляем информацию об отмене в БД")
+                    with Session(engine) as session:
+                        session.execute(
+                            update(Sale)
+                            .where(Sale.id == System.sale_id)
+                            .values(
+                                status=status_info,
+                                id_user=System.user.id,
+                                user_return=System.user.id,
+                                datetime_return=dt.datetime.now(),
+                            )
+                        )
+                        session.commit()
+                    self.close()
+                else:
+                    logger.warning("Операция отмены завершилась с ошибкой")
+                    windows.info_window(
+                        "Внимание",
+                        "Закройте это окно, откройте продажу и проведите"
+                        "операцию отмены еще раз.",
+                        "",
+                    )
+
+    @logger.catch()
     def generating_items_for_the_return_check(self):
         """
         Функция формирует список позиций для чека возврата прихода.
@@ -2948,6 +3053,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_14.setEnabled(False)
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
+            elif sale_status == 8:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(False)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(False)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(False)
+                # Кнопка отмены платежа по банковской карте
+                sale.ui.pushButton_14.setEnabled(False)
+                sale.ui.pushButton_7.setEnabled(False)
+                sale.ui.pushButton_8.setEnabled(False)
             else:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
@@ -3081,6 +3199,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                     Sale.status == 4,
                                     Sale.status == 5,
                                     Sale.status == 6,
+                                    Sale.status == 8,
                                 ),
                             )
                         )
@@ -3202,6 +3321,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         status_type: str = "частичный возврат"
                     elif status_value == 7:
                         status_type: str = "возврат по банковским реквизитам"
+                    elif status_value == 8:
+                        status_type: str = "отмена"
                 self.ui.tableWidget_2.setColumnWidth(4, 350)
                 self.ui.tableWidget_2.setItem(
                     row, 4, QTableWidgetItem(f"{status_type}")
@@ -3852,6 +3973,7 @@ class System:
     # 4 - повторный возврат по банковскому терминалу,
     # 5 - требуется частичный возврат, 6 - частичный возврат
     # 7 - возврат по банковским реквизитам
+    # 8 - отменена
     sale_status: int | None = None
     sale_id: int | None = None
     sale_discount: int | None = None
