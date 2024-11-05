@@ -7,7 +7,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle
 
 from files.logger import *
-from main import load_coordinates
+from system import System
 
 
 def generate_saved_tickets(values):
@@ -16,7 +16,7 @@ def generate_saved_tickets(values):
     type_ticket = None
     img_file = "files/qr-code.jpg"
     path = "./ticket.pdf"
-    coordinates = load_coordinates("files/ticket_param.json")
+    coordinates = System.load_coordinates("files/ticket_param.json")
     logger.info("Устанавливаем параметры макета билета")
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
     c = canvas.Canvas(path, pagesize=(landscape(letter)))
