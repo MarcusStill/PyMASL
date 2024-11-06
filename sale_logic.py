@@ -172,10 +172,9 @@ def calculate_discount(value_1, value_2) -> Decimal:
         Decimal: Новая цена после применения скидки.
     """
     # Проверка на корректность скидки: 0 ≤ value_2 ≤ 100
-    sale_discount = max(0, min(value_2, 100))
     price = Decimal(value_1)
-    discount_amount = price * Decimal(sale_discount) / Decimal(100)
-    return price - discount_amount
+    sale_discount = Decimal(value_2)
+    return price - (price * sale_discount)
 
 
 def calculate_itog() -> int:
