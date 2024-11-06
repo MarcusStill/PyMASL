@@ -20,12 +20,17 @@ def calculate_age(birth_date: date) -> int:
     Возвращаемое значение:
         int: Возраст.
     """
-    today = date.today()
+    today = get_today_date()  # Используем функцию get_today_date для получения текущей даты
     return (
-        today.year
-        - birth_date.year
-        - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            today.year
+            - birth_date.year
+            - ((today.month, today.day) < (birth_date.month, birth_date.day))
     )
+
+
+def get_today_date():
+    """Функция для получения текущей даты (можно подменить в тестах)."""
+    return date.today()
 
 
 def calculate_ticket_type(age: int) -> str:
@@ -59,13 +64,17 @@ def calculated_ticket_price(type_ticket: str, time: int) -> int:
     Возвращаемое значение:
         str: Тип билета (бесплатный, детский, взрослый).
     """
-    if type_ticket == "бесплатный":
-        return System.price["ticket_free"]
-    elif type_ticket == "взрослый":
-        return System.price[f"ticket_adult_{time}"]
-    else:
-        return System.price[f"ticket_child_{time}"]
-
+    try:
+        if type_ticket == "бесплатный":
+            return System.price["ticket_free"]
+        elif type_ticket == "взрослый":
+            key = f"ticket_adult_{time}"
+            return System.price[key]
+        else:
+            key = f"ticket_child_{time}"
+            return System.price[key]
+    except KeyError as e:
+        raise KeyError(f"Не найден ключ для типа билета {type_ticket} на {time} час. Ошибка: {e}")
 
 def calculate_adult_price() -> int:
     """
