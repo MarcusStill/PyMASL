@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QTableWidgetItem, QWidget
 from sqlalchemy import and_, select, func, update, desc, or_
 from sqlalchemy.orm import Session
 
+from auth_logic import perform_pre_sale_checks
 from db.models import Client
 from db.models import Sale
 from db.models import Ticket
@@ -40,7 +41,6 @@ from sale_logic import (
     update_child_count,
 )
 from system import System, config_data
-from auth_logic import perform_pre_sale_checks
 
 logger.add(System.log_file, rotation="1 MB")
 
