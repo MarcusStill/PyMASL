@@ -40,6 +40,7 @@ from sale_logic import (
     update_child_count,
 )
 from system import System, config_data
+from auth_logic import perform_pre_sale_checks
 
 logger.add(System.log_file, rotation="1 MB")
 
@@ -61,14 +62,10 @@ class AuthForm(QDialog):
     def starting_the_main_form(self) -> None:
         """
         Функция запускает предпродажные проверки и устанавливает системные параметры.
-        Она выполняет следующее:
-        - проверяет правильность ввода пользователем данных на форме авторизации;
-        - проверяет статус текущего дня (обычный день, праздничный, день многодетных);
-        - устанавливает параметров главной формы (размер окна, отображение списка продаж, загрузка доп. параметров).
 
         Параметры:
             self: object
-                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к атрибутам и методам GUI (например, полям ввода логина и пароля).
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к атрибутам и методам GUI.
 
         Возвращаемое значение:
             None: Функция не возвращает значений, но открывает главную форму приложения или показывает окно с ошибкой авторизации.
@@ -76,54 +73,18 @@ class AuthForm(QDialog):
         logger.info("Запуск функции starting_the_main_form")
         login: str = self.ui.lineEdit.text()
         password: str = self.ui.lineEdit_2.text()
-        kassir: int = System.user_authorization(self, login, password)
-        if kassir == 1:
-            # После закрытия окна авторизации открываем главную форму
+        # Запуск предпродажных проверок
+        if perform_pre_sale_checks(self, login, password) == 1:
             auth.close()
-            # Устанавливаем размер окна
             window = MainWindow()
             window.showMaximized()
-            System.get_price(self)
-            # Добавляем в заголовок дополнительную информацию
+            # Установка заголовка окна
+            user_full_name = f"{System.user.last_name} {System.user.first_name}"
             window.setWindowTitle(
-                "PyMASL ver. "
-                + System.software_version
-                + ". Пользователь: "
-                + str(System.user.first_name)
-                + " "
-                + str(System.user.last_name)
-                + ". БД: "
-                + System.database
+                f"PyMASL ver. {System.software_version}. Пользователь: {user_full_name}. БД: {System.database}"
             )
-            # отображаем записи на форме продаж
+            # Отображение формы продаж
             window.main_button_all_sales()
-            # проверяем статус текущего дня
-            day_today: int = System.check_day(self)
-            logger.info(f"Статус текущего дня: {day_today}")
-            if day_today == 0:
-                System.what_a_day = 0
-                logger.info(
-                    f"Сегодня будний день. System.what_a_day = {System.what_a_day}"
-                )
-            elif day_today == 1:
-                System.what_a_day = 1
-                logger.info(
-                    f"Сегодня выходной день. System.what_a_day = {System.what_a_day}"
-                )
-            # проверяем номер дня в неделе
-            number_day_of_the_week: int = dt.datetime.today().isoweekday()
-            logger.debug(f"Номер дня в неделе: {number_day_of_the_week}")
-            System.num_of_week = number_day_of_the_week
-            # проверяем номер дня в месяце
-            number_day_of_the_month: int = date.today().day
-            logger.info(f"Номер дня в месяце: {number_day_of_the_month}")
-            if number_day_of_the_week == 7 and number_day_of_the_month <= 7:
-                logger.info("Сегодня день многодетных")
-                System.sunday = 1
-            # считываем количество РМ и имена
-            System.kol_pc = System.kol_pc
-            System.pc_1 = System.pc_1
-            System.pc_2 = System.pc_2
             window.exec_()
         else:
             logger.warning(f"Неудачная авторизация пользователя: {login}")
