@@ -26,7 +26,9 @@ from files import kkt
 from files import otchet
 from files import windows
 from files.logger import logger, logger_wraps
-from sale_logic import calculate_age, calculate_ticket_type
+from sale_logic import calculate_age, calculate_ticket_type, calculated_ticket_price, calculate_adult_price, \
+    calculate_child_price, calculate_discounted_price, calculate_discount, calculate_itog, get_talent_based_on_time, \
+    update_adult_count, update_child_count
 from system import System, config_data
 
 logger.add(System.log_file, rotation="1 MB")
@@ -350,22 +352,7 @@ class SaleForm(QDialog):
         type_ticket: str = calculate_ticket_type(age)
         # Определяем тип билета и цену
         time: int = int(self.ui.comboBox.currentText())
-        if type_ticket == "бесплатный":
-            price = System.price["ticket_free"]
-        elif type_ticket == "взрослый":
-            if time == 1:
-                price = System.price["ticket_adult_1"]
-            elif time == 2:
-                price = System.price["ticket_adult_2"]
-            else:
-                price = System.price["ticket_adult_3"]
-        else:
-            if time == 1:
-                price = System.price["ticket_child_1"]
-            elif time == 2:
-                price = System.price["ticket_child_2"]
-            else:
-                price = System.price["ticket_child_3"]
+        price = calculated_ticket_price(type_ticket, time)
         # Создаем виджет checkbox
         widget = QWidget()
         checkbox = QCheckBox()
@@ -1006,7 +993,7 @@ class SaleForm(QDialog):
         System.sale_dict.update(sale_initial_values)
         # Устанавливаем время и количество талантов
         System.sale_dict["detail"][6], System.count_number_of_visitors["talent"] = (
-            self.get_talent_based_on_time(time_ticket)
+            get_talent_based_on_time(time_ticket)
         )
         # Записываем в sale_dict время посещения
         date_time: str = self.ui.dateEdit.date().toString("yyyy-MM-dd")
@@ -1023,7 +1010,7 @@ class SaleForm(QDialog):
         logger.debug(
             f"System.count_number_of_visitors: {System.count_number_of_visitors}"
         )
-        itog: int = self.calculate_itog()
+        itog: int = calculate_itog()
         logger.debug(f"Итого: {itog}")
         self.ui.label_8.setText(str(itog))
         System.sale_dict["detail"][7] = itog
@@ -1083,43 +1070,21 @@ class SaleForm(QDialog):
         logger.info("Запуск функцию apply_discounts")
         # Устанавливаем цену в таблицу и пересчитываем
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{price}"))
+        System.sale_discount = int(self.ui.comboBox_2.currentText())
+        new_price, category, discount_status = calculate_discounted_price(price, type_ticket)
         # Применяем скидку
         logger.info("Применяем скидку")
-        # В день многодетных
-        if System.count_number_of_visitors["many_child"] == 1:
-            logger.info("Скидка 100% в день многодетных")
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{System.price['ticket_free']}")
-            )
-            logger.debug("В продаже многодетные")
-            # Помечаем продажу как "особенную"
-            System.sale_special = 1
-            logger.debug(f"Продажа особенная: {System.sale_special}")
-        # Скидка 50% в будни
-        elif System.count_number_of_visitors["many_child"] == 2:
-            logger.info("Скидка 50% многодетным в будни")
-            self.ui.comboBox_2.setCurrentIndex(10)
-            new_price: int = round(price * 0.5)
-            self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
-        # Скидка инвалидам
-        elif System.count_number_of_visitors["invalid"] == 1:
-            logger.info("Скидка 100% инвалидам")
-            self.ui.tableWidget_2.setItem(
-                row, 3, QTableWidgetItem(f"{System.price['ticket_free']}")
-            )
-            logger.debug("В продаже инвалид")
-            # Помечаем продажу как "особенную"
-            System.sale_special = 1
-            logger.debug(f"Продажа особенная: {System.sale_special}")
+        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
+        # Если категория изменена, устанавливаем ее в таблицу
+        if category:
+            self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(category))
         # Иначе проверяем активен ли checkbox со скидкой и размер > 0
         if self.ui.checkBox_2.isChecked():
             logger.info("Checkbox со скидкой активен - обычный гость")
-            if int(self.ui.comboBox_2.currentText()) > 0:
-                System.sale_discount = int(self.ui.comboBox_2.currentText())
-                logger.debug(f"Sale_discount: {System.sale_discount}")
+            if System.sale_discount > 0:
                 System.sale_dict["detail"][4] = System.sale_discount
                 if System.sale_discount > 0:
-                    new_price: int = int(price - (price * System.sale_discount / 100))
+                    new_price = calculate_discount(price, System.sale_discount)
                     # Если checkbox в акт - применяем к этой строке скидку
                     if (
                         self.ui.tableWidget_2.cellWidget(row, 7)
@@ -1128,25 +1093,14 @@ class SaleForm(QDialog):
                     ):
                         if type_ticket == "взрослый":
                             System.count_number_of_visitors["kol_sale_adult"] += 1
-                            logger.debug(
-                                f"kol_sale_adult: {System.count_number_of_visitors['kol_sale_adult']}"
-                            )
-                            System.sale_dict["detail"][0] = (
-                                System.count_number_of_visitors["kol_sale_adult"]
-                            )
+                            System.sale_dict["detail"][0] = (System.count_number_of_visitors["kol_sale_adult"])
                             System.sale_dict["detail"][1] = new_price
                         elif type_ticket == "детский":
                             System.count_number_of_visitors["kol_sale_child"] += 1
-                            logger.debug(
-                                f"kol_sale_child: {System.count_number_of_visitors['kol_sale_child']}"
-                            )
-                            System.sale_dict["detail"][2] = (
-                                System.count_number_of_visitors["kol_sale_child"]
-                            )
+                            System.sale_dict["detail"][2] = (System.count_number_of_visitors["kol_sale_child"])
                             System.sale_dict["detail"][3] = new_price
-                        self.ui.tableWidget_2.setItem(
-                            row, 3, QTableWidgetItem(f"{new_price}")
-                        )
+                        self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
+
 
     def ticket_counting(self, row: int, type_ticket: str) -> int:
         """
@@ -1162,15 +1116,13 @@ class SaleForm(QDialog):
         logger.info("Запуск функцию ticket_counting")
 
         if type_ticket == "взрослый":
-            price: int = self.calculate_adult_ticket(row)
+            return self.calculate_adult(row)
         elif type_ticket == "детский":
-            price: int = self.calculate_child_ticket(row)
+            return self.calculate_child(row)
         else:
-            price: int = self.calculate_free_ticket()
+            return System.price["ticket_free"]
 
-        return price
-
-    def calculate_adult_ticket(self, row: int) -> int:
+    def calculate_adult(self, row: int) -> int:
         """
         Считает цену взрослого билета в зависимости от продолжительности и категорий.
 
@@ -1180,41 +1132,17 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             int: Цена взрослого билета.
         """
-        duration = System.sale_dict["detail"][6]
-        # Если продолжительность посещения 1 час
-        if duration == 1:
-            price: int = System.price["ticket_adult_1"]
-        elif duration == 2:
-            # Если день многодетных
-            if System.count_number_of_visitors["many_child"] == 1:
-                price: int = System.price["ticket_free"]
-                System.count_number_of_visitors["kol_adult_many_child"] += 1
-                # Изменяем цену и записываем размер скидки
-                self.update_sale_dict_adult_many_child()
-            # Если обычный день
-            else:
-                price: int = System.price["ticket_adult_2"]
-        else:
-            # Если продолжительность 3 часа
-            # Если в продаже инвалид
-            if System.count_number_of_visitors["invalid"] == 1:
-                price: int = System.price["ticket_free"]
-                System.count_number_of_visitors["kol_adult_invalid"] += 1
-                self.update_sale_dict_adult_invalid(row)
-                # Меняем категорию билета на 'с' - сопровождающий
-                self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("с"))
-            else:
-                price: int = System.price["ticket_adult_3"]
+        price = calculate_adult_price()
         self.bind_adult_to_sale(row)
         # Если checkbox активен - взрослый в оплату не добавляется
         self.adult_exclusion(row)
-        self.update_adult_count()
+        update_adult_count()
         logger.debug(f"price adult {price}")
         System.sale_dict["price_adult"] = price
 
         return price
 
-    def calculate_child_ticket(self, row: int) -> int:
+    def calculate_child(self, row: int) -> int:
         """
         Считает цену детского билета в зависимости от продолжительности и категорий.
 
@@ -1225,119 +1153,12 @@ class SaleForm(QDialog):
             int: Цена детского билета.
         """
         self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
-        duration = System.sale_dict["detail"][6]
-        if duration == 1:
-            if System.what_a_day == 0:
-                price = System.price["ticket_child_1"]
-            else:
-                price = System.price["ticket_child_week_1"]
-        elif duration == 2:
-            if System.count_number_of_visitors["many_child"] == 1:
-                price = System.price["ticket_free"]
-                System.count_number_of_visitors["kol_child_many_child"] += 1
-                self.update_sale_dict_child_many_child()
-            else:
-                price = (
-                    System.what_a_day == 0
-                    and System.price["ticket_child_2"]
-                    or System.price["ticket_child_week_2"]
-                )
-        else:
-            if System.count_number_of_visitors["invalid"] == 1:
-                price = System.price["ticket_free"]
-                System.count_number_of_visitors["kol_child_invalid"] += 1
-                self.update_sale_dict_child_invalid()
-            else:
-                price = (
-                    System.what_a_day == 0
-                    and System.price["ticket_child_3"]
-                    or System.price["ticket_child_week_3"]
-                )
-        self.update_child_count()
+        price = calculate_child_price()
+        update_child_count()
         logger.debug(f"price child {price}")
         System.sale_dict["price_child"] = price
 
         return price
-
-    def calculate_free_ticket(self) -> int:
-        """
-        Возвращает цену для бесплатного билета.
-
-        Параметры:
-        self: object
-            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
-        """
-        return System.price["ticket_free"]
-
-    def update_sale_dict_adult_many_child(self) -> None:
-        """
-        Обновляет словарь продаж для взрослого с многодетной скидкой.
-
-        Параметры:
-        self: object
-            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
-        """
-        logger.debug("Добавляем взрослого многодетного в sale_dict[detail]")
-        System.sale_dict["detail"][0] = System.count_number_of_visitors[
-            "kol_adult_many_child"
-        ]
-        System.sale_dict["detail"][1] = System.price["ticket_free"]
-
-    def update_sale_dict_adult_invalid(self, row: int) -> None:
-        """
-        Обновляет словарь продаж для взрослого с инвалидной скидкой.
-
-        Параметры:
-        self: object
-            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
-        """
-        System.sale_dict["detail"][0] = System.count_number_of_visitors[
-            "kol_adult_invalid"
-        ]
-        System.sale_dict["detail"][1] = System.price["ticket_free"]
-        # # Меняем категорию билета на 'с' - сопровождающий
-        # self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("с"))
-
-    def update_sale_dict_child_many_child(self) -> None:
-        """
-        Обновляет словарь продаж для ребенка с многодетной скидкой.
-
-        Параметры:
-        self: object
-            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
-        """
-        System.sale_dict["detail"][2] = System.count_number_of_visitors[
-            "kol_child_many_child"
-        ]
-        System.sale_dict["detail"][3] = System.price["ticket_free"]
-
-    def update_sale_dict_child_invalid(self) -> None:
-        """
-        Обновляет словарь продаж для ребенка с инвалидной скидкой.
-
-        Параметры:
-        self: object
-            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
-        """
-        System.sale_dict["detail"][2] = System.count_number_of_visitors[
-            "kol_child_invalid"
-        ]
-        System.sale_dict["detail"][3] = System.price["ticket_free"]
 
     def bind_adult_to_sale(self, row: int) -> None:
         """
@@ -1355,33 +1176,33 @@ class SaleForm(QDialog):
             System.count_number_of_visitors["id_adult"] += 1
             System.sale_dict["detail"][5] = self.ui.tableWidget_2.item(row, 5).text()
 
-    def update_adult_count(self) -> None:
-        """
-        Обновляет счетчик взрослых посетителей.
+    # def update_adult_count(self) -> None:
+    #     """
+    #     Обновляет счетчик взрослых посетителей.
+    #
+    #     Параметры:
+    #     self: object
+    #         Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+    #
+    #     Возвращаемое значение:
+    #         None: Функция не возвращает значений, вставляет фамилию в поле формы.
+    #     """
+    #     System.count_number_of_visitors["kol_adult"] += 1
+    #     System.sale_dict["kol_adult"] = System.count_number_of_visitors["kol_adult"]
 
-        Параметры:
-        self: object
-            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений, вставляет фамилию в поле формы.
-        """
-        System.count_number_of_visitors["kol_adult"] += 1
-        System.sale_dict["kol_adult"] = System.count_number_of_visitors["kol_adult"]
-
-    def update_child_count(self) -> None:
-        """
-        Обновляет счетчик детских билетов.
-
-        Параметры:
-        self: object
-            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений, вставляет фамилию в поле формы.
-        """
-        System.count_number_of_visitors["kol_child"] += 1
-        System.sale_dict["kol_child"] = System.count_number_of_visitors["kol_child"]
+    # def update_child_count(self) -> None:
+    #     """
+    #     Обновляет счетчик детских билетов.
+    #
+    #     Параметры:
+    #     self: object
+    #         Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+    #
+    #     Возвращаемое значение:
+    #         None: Функция не возвращает значений, вставляет фамилию в поле формы.
+    #     """
+    #     System.count_number_of_visitors["kol_child"] += 1
+    #     System.sale_dict["kol_child"] = System.count_number_of_visitors["kol_child"]
 
     def analyzing_visitor_category(self, row: int) -> None:
         """
@@ -1553,47 +1374,6 @@ class SaleForm(QDialog):
                     System.sale_dict["detail"][4] = 0
                     System.sale_checkbox_row = None
                     System.exclude_from_sale = 0
-
-    def calculate_itog(self) -> int:
-        """
-        Функция рассчитывает итоговую сумму заказа.
-
-        Параметры:
-        self: object
-            Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений, вставляет фамилию в поле формы.
-        """
-        logger.info("Запуск функцию calculate_itog")
-        adult_ticket: int = (
-            System.sale_dict["kol_adult"] - System.sale_dict["detail"][0]
-        ) * System.sale_dict["price_adult"]
-        child_ticket: int = (
-            System.sale_dict["kol_child"] - System.sale_dict["detail"][2]
-        ) * System.sale_dict["price_child"]
-        adult_sale: int = System.sale_dict["detail"][0] * System.sale_dict["detail"][1]
-        child_sale: int = System.sale_dict["detail"][2] * System.sale_dict["detail"][3]
-        # Вычисляем итоговую сумму
-        result: int = adult_ticket + child_ticket + adult_sale + child_sale
-        return result
-
-    def get_talent_based_on_time(self, time_ticket):
-        """Возвращает количество талантов в зависимости от времени.
-
-        Параметры:
-            time_ticket (int): Время в часах.
-
-        Возвращаемое значение:
-            tuple[int, int]: Количество талантов и соответствующее значение таланта из системы.
-        """
-        if time_ticket == 1:
-            return 1, System.talent["1_hour"]
-        elif time_ticket == 2:
-            return 2, System.talent["2_hour"]
-        elif time_ticket == 3:
-            return 3, System.talent["3_hour"]
-        return 0, 0
 
     def generate_ticket_list(
         self,

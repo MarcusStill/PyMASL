@@ -324,7 +324,7 @@ class System:
             # Проверяем день недели равен 5 или 6
             if number_day >= 5:
                 status_day: int = 1
-                System.what_a_day = 1  # TODO: нужно ли
+                System.what_a_day = 1
                 logger.info("Сегодня выходной день")
             else:
                 day: str = "-".join(day)
@@ -334,7 +334,7 @@ class System:
                     check_day: Holiday | None = session.execute(query).scalars().first()
                 if check_day:
                     status_day: int = 1
-                    System.what_a_day = 1  # TODO: нужно ли
+                    System.what_a_day = 1
                     logger.info("Сегодня дополнительный выходной")
                 else:
                     status_day: int = 0
@@ -376,7 +376,6 @@ class System:
             result = "взрослый"
         return result
 
-    ###
     @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
     def load_coordinates(config_file):
         """Функция для проверки загрузки файла с координатами, необходимыми для генерации билетов.
