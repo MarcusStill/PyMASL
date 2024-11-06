@@ -82,6 +82,7 @@ def read_config():
     except Exception as e:
         raise RuntimeError(f"Неизвестная ошибка при чтении файла конфигурации: {e}")
 
+
 # Чтение параметров из файла конфигурации
 config_data = read_config()
 
@@ -94,15 +95,16 @@ if not pswrd:
     logger.error("Переменная окружения DB_PASSWORD не установлена!")
     raise ValueError("Переменная окружения DB_PASSWORD не установлена!")
 
+
 class System:
     """Класс для хранения системной информации и функций"""
+
     _instance = None
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(System, cls).__new__(cls, *args, **kwargs)
         return cls._instance
-
 
     host = config_data["host"]
     port = config_data["port"]
@@ -113,7 +115,9 @@ class System:
     kol_pc = config_data["kol"]
     pc_1 = config_data["pc_1"]
     pc_2 = config_data["pc_2"]
-    engine = create_engine(f"postgresql+psycopg2://{user}:{pswrd}@{host}:{port}/{database}")
+    engine = create_engine(
+        f"postgresql+psycopg2://{user}:{pswrd}@{host}:{port}/{database}"
+    )
     # Данные успешно авторизованного пользователя
     user: User | None = None
     # Флаг для обновления клиента

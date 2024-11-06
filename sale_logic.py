@@ -21,7 +21,11 @@ def calculate_age(birth_date: date) -> int:
         int: Возраст.
     """
     today = date.today()
-    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+    return (
+        today.year
+        - birth_date.year
+        - ((today.month, today.day) < (birth_date.month, birth_date.day))
+    )
 
 
 def calculate_ticket_type(age: int) -> str:
@@ -110,19 +114,31 @@ def calculate_child_price() -> int:
     duration = System.sale_dict["detail"][6]
     is_weekend = System.what_a_day != 0
     if duration == 1:
-        return System.price["ticket_child_week_1"] if is_weekend else System.price["ticket_child_1"]
+        return (
+            System.price["ticket_child_week_1"]
+            if is_weekend
+            else System.price["ticket_child_1"]
+        )
     elif duration == 2:
         if System.count_number_of_visitors["many_child"] == 1:
             System.count_number_of_visitors["kol_child_many_child"] += 1
             update_sale_dict_child_many_child()
             return System.price["ticket_free"]
-        return System.price["ticket_child_week_2"] if is_weekend else System.price["ticket_child_2"]
+        return (
+            System.price["ticket_child_week_2"]
+            if is_weekend
+            else System.price["ticket_child_2"]
+        )
     else:
         if System.count_number_of_visitors["invalid"] == 1:
             System.count_number_of_visitors["kol_child_invalid"] += 1
             update_sale_dict_child_invalid()
             return System.price["ticket_free"]
-        return System.price["ticket_child_week_3"] if is_weekend else System.price["ticket_child_3"]
+        return (
+            System.price["ticket_child_week_3"]
+            if is_weekend
+            else System.price["ticket_child_3"]
+        )
 
 
 def calculate_discounted_price(price: int, type_ticket: str):
@@ -137,7 +153,7 @@ def calculate_discounted_price(price: int, type_ticket: str):
         tuple[int, bool, str]: Итоговая цена, флаг особой продажи, категория билета.
     """
     new_price = price
-    category = ''
+    category = ""
     discount_status = False
     # В день многодетных
     if System.count_number_of_visitors["many_child"] == 1:
@@ -156,7 +172,7 @@ def calculate_discounted_price(price: int, type_ticket: str):
         System.sale_special = 1
         new_price = System.price["ticket_free"]
         if type_ticket == "взрослый":
-            category = 'с'  # сопровождающий
+            category = "с"  # сопровождающий
     return new_price, category, discount_status
 
 
@@ -246,9 +262,7 @@ def update_sale_dict_adult_invalid() -> None:
     Возвращаемое значение:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
-    System.sale_dict["detail"][0] = System.count_number_of_visitors[
-        "kol_adult_invalid"
-    ]
+    System.sale_dict["detail"][0] = System.count_number_of_visitors["kol_adult_invalid"]
     System.sale_dict["detail"][1] = System.price["ticket_free"]
 
 
@@ -278,9 +292,7 @@ def update_sale_dict_child_invalid() -> None:
     Возвращаемое значение:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
-    System.sale_dict["detail"][2] = System.count_number_of_visitors[
-        "kol_child_invalid"
-    ]
+    System.sale_dict["detail"][2] = System.count_number_of_visitors["kol_child_invalid"]
     System.sale_dict["detail"][3] = System.price["ticket_free"]
 
 
