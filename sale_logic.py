@@ -4,10 +4,9 @@ from decimal import Decimal
 
 from system import System
 
-logger = logging.getLogger(__name__)
+system = System()
 
-# Возраст посетителей
-age_client: dict = {"min": 5, "max": 15}
+logger = logging.getLogger(__name__)
 
 
 def calculate_age(birth_date: date) -> int:
@@ -21,11 +20,14 @@ def calculate_age(birth_date: date) -> int:
         int: Возраст.
     """
     logger.info("Запуск функцию calculate_age")
-    today = get_today_date()  # Используем функцию get_today_date для получения текущей даты
+    # Используем функцию get_today_date для получения текущей даты
+    today = (
+        get_today_date()
+    )
     return (
-            today.year
-            - birth_date.year
-            - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        today.year
+        - birth_date.year
+        - ((today.month, today.day) < (birth_date.month, birth_date.day))
     )
 
 
@@ -47,11 +49,11 @@ def calculate_ticket_type(age: int) -> str:
     """
     logger.info("Запуск функцию calculate_ticket_type")
     result: str = ""
-    if age < age_client["min"]:
+    if age < system.age["min"]:
         result = "бесплатный"
-    elif age_client["min"] <= age < age_client["max"]:
+    elif system.age["min"] <= age < system.age["max"]:
         result = "детский"
-    elif age >= age_client["max"]:
+    elif age >= system.age["max"]:
         result = "взрослый"
     return result
 
@@ -70,15 +72,18 @@ def calculated_ticket_price(type_ticket: str, time: int) -> int:
     logger.info("Запуск функцию calculated_ticket_price")
     try:
         if type_ticket == "бесплатный":
-            return System.price["ticket_free"]
+            return system.price["ticket_free"]
         elif type_ticket == "взрослый":
             key = f"ticket_adult_{time}"
-            return System.price[key]
+            return system.price[key]
         else:
             key = f"ticket_child_{time}"
-            return System.price[key]
+            return system.price[key]
     except KeyError as e:
-        raise KeyError(f"Не найден ключ для типа билета {type_ticket} на {time} час. Ошибка: {e}")
+        raise KeyError(
+            f"Не найден ключ для типа билета {type_ticket} на {time} час. Ошибка: {e}"
+        )
+
 
 def calculate_adult_price() -> int:
     """
@@ -91,28 +96,31 @@ def calculate_adult_price() -> int:
         int: Цена взрослого билета.
     """
     logger.info("Запуск функцию calculate_adult_price")
-    duration = System.sale_dict["detail"][6]
+    duration = system.sale_dict["detail"][6]
     # Если продолжительность посещения 1 час
     if duration == 1:
-        return System.price["ticket_adult_1"]
+        return system.price["ticket_adult_1"]
     elif duration == 2:
         # Проверка многодетной скидки только в будний день
-        if System.count_number_of_visitors["many_child"] == 1 and System.what_a_day == 0:
-            System.count_number_of_visitors["kol_adult_many_child"] += 1
+        if (
+            system.count_number_of_visitors["many_child"] == 1
+            and system.what_a_day == 0
+        ):
+            system.count_number_of_visitors["kol_adult_many_child"] += 1
             # Изменяем цену и записываем размер скидки
             update_sale_dict_adult_many_child()
-            return System.price["ticket_free"]
+            return system.price["ticket_free"]
         # Если обычный день
         else:
-            return System.price["ticket_adult_2"]
+            return system.price["ticket_adult_2"]
     else:
         # Если продолжительность 3 часа
         # Если в продаже инвалид
-        if System.count_number_of_visitors["invalid"] == 1:
-            System.count_number_of_visitors["kol_adult_invalid"] += 1
+        if system.count_number_of_visitors["invalid"] == 1:
+            system.count_number_of_visitors["kol_adult_invalid"] += 1
             update_sale_dict_adult_invalid()
-            return System.price["ticket_free"]
-        return System.price["ticket_adult_3"]
+            return system.price["ticket_free"]
+        return system.price["ticket_adult_3"]
 
 
 def calculate_child_price() -> int:
@@ -126,33 +134,33 @@ def calculate_child_price() -> int:
         int: Цена взрослого билета.
     """
     logger.info("Запуск функцию calculate_child_price")
-    duration = System.sale_dict["detail"][6]
-    is_weekend = System.what_a_day != 0
+    duration = system.sale_dict["detail"][6]
+    is_weekend = system.what_a_day != 0
     if duration == 1:
         return (
-            System.price["ticket_child_week_1"]
+            system.price["ticket_child_week_1"]
             if is_weekend
-            else System.price["ticket_child_1"]
+            else system.price["ticket_child_1"]
         )
     elif duration == 2:
-        if System.count_number_of_visitors["many_child"] == 1:
-            System.count_number_of_visitors["kol_child_many_child"] += 1
+        if system.count_number_of_visitors["many_child"] == 1:
+            system.count_number_of_visitors["kol_child_many_child"] += 1
             update_sale_dict_child_many_child()
-            return System.price["ticket_free"]
+            return system.price["ticket_free"]
         return (
-            System.price["ticket_child_week_2"]
+            system.price["ticket_child_week_2"]
             if is_weekend
-            else System.price["ticket_child_2"]
+            else system.price["ticket_child_2"]
         )
     else:
-        if System.count_number_of_visitors["invalid"] == 1:
-            System.count_number_of_visitors["kol_child_invalid"] += 1
+        if system.count_number_of_visitors["invalid"] == 1:
+            system.count_number_of_visitors["kol_child_invalid"] += 1
             update_sale_dict_child_invalid()
-            return System.price["ticket_free"]
+            return system.price["ticket_free"]
         return (
-            System.price["ticket_child_week_3"]
+            system.price["ticket_child_week_3"]
             if is_weekend
-            else System.price["ticket_child_3"]
+            else system.price["ticket_child_3"]
         )
 
 
@@ -172,21 +180,21 @@ def calculate_discounted_price(price: int, type_ticket: str):
     category = ""
     discount_status = False
     # В день многодетных
-    if System.count_number_of_visitors["many_child"] == 1:
+    if system.count_number_of_visitors["many_child"] == 1:
         logger.info("Скидка 100% в день многодетных")
         # Помечаем продажу как "особенную"
-        System.sale_special = 1
-        new_price = System.price["ticket_free"]
+        system.sale_special = 1
+        new_price = system.price["ticket_free"]
     # Скидка 50% в будни
-    elif System.count_number_of_visitors["many_child"] == 2:
+    elif system.count_number_of_visitors["many_child"] == 2:
         logger.info("Скидка 50% многодетным в будни")
         new_price: int = round(price * 0.5)
     # Скидка инвалидам
-    elif System.count_number_of_visitors["invalid"] == 1:
+    elif system.count_number_of_visitors["invalid"] == 1:
         logger.info("Скидка 100% инвалидам")
         # Помечаем продажу как "особенную"
-        System.sale_special = 1
-        new_price = System.price["ticket_free"]
+        system.sale_special = 1
+        new_price = system.price["ticket_free"]
         if type_ticket == "взрослый":
             category = "с"  # сопровождающий
     return new_price, category, discount_status
@@ -222,18 +230,22 @@ def calculate_itog() -> int:
     """
     logger.info("Запуск функцию calculate_itog")
     # Проверка на корректность данных (например, отрицательные значения)
-    if System.sale_dict["kol_adult"] < 0 or System.sale_dict["kol_child"] < 0 or \
-            System.sale_dict["price_adult"] < 0 or System.sale_dict["price_child"] < 0:
+    if (
+        system.sale_dict["kol_adult"] < 0
+        or system.sale_dict["kol_child"] < 0
+        or system.sale_dict["price_adult"] < 0
+        or system.sale_dict["price_child"] < 0
+    ):
         raise ValueError("Некорректные данные для расчета итоговой суммы")
 
     adult_ticket: int = (
-        System.sale_dict["kol_adult"] - System.sale_dict["detail"][0]
-    ) * System.sale_dict["price_adult"]
+        system.sale_dict["kol_adult"] - system.sale_dict["detail"][0]
+    ) * system.sale_dict["price_adult"]
     child_ticket: int = (
-        System.sale_dict["kol_child"] - System.sale_dict["detail"][2]
-    ) * System.sale_dict["price_child"]
-    adult_sale: int = System.sale_dict["detail"][0] * System.sale_dict["detail"][1]
-    child_sale: int = System.sale_dict["detail"][2] * System.sale_dict["detail"][3]
+        system.sale_dict["kol_child"] - system.sale_dict["detail"][2]
+    ) * system.sale_dict["price_child"]
+    adult_sale: int = system.sale_dict["detail"][0] * system.sale_dict["detail"][1]
+    child_sale: int = system.sale_dict["detail"][2] * system.sale_dict["detail"][3]
     # Вычисляем итоговую сумму
     result: int = adult_ticket + child_ticket + adult_sale + child_sale
     return result
@@ -250,11 +262,11 @@ def get_talent_based_on_time(time_ticket: int):
     """
     logger.info("Запуск функцию get_talent_based_on_time")
     if time_ticket == 1:
-        return 1, System.talent["1_hour"]
+        return 1, system.talent["1_hour"]
     elif time_ticket == 2:
-        return 2, System.talent["2_hour"]
+        return 2, system.talent["2_hour"]
     elif time_ticket == 3:
-        return 3, System.talent["3_hour"]
+        return 3, system.talent["3_hour"]
     return 0, 0
 
 
@@ -270,10 +282,10 @@ def update_sale_dict_adult_many_child() -> None:
     """
     logger.info("Запуск функцию update_sale_dict_adult_many_child")
     logger.debug("Добавляем взрослого многодетного в sale_dict[detail]")
-    System.sale_dict["detail"][0] = System.count_number_of_visitors[
+    system.sale_dict["detail"][0] = system.count_number_of_visitors[
         "kol_adult_many_child"
     ]
-    System.sale_dict["detail"][1] = System.price["ticket_free"]
+    system.sale_dict["detail"][1] = system.price["ticket_free"]
 
 
 def update_sale_dict_adult_invalid() -> None:
@@ -287,8 +299,8 @@ def update_sale_dict_adult_invalid() -> None:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
     logger.info("Запуск функцию update_sale_dict_adult_invalid")
-    System.sale_dict["detail"][0] = System.count_number_of_visitors["kol_adult_invalid"]
-    System.sale_dict["detail"][1] = System.price["ticket_free"]
+    system.sale_dict["detail"][0] = system.count_number_of_visitors["kol_adult_invalid"]
+    system.sale_dict["detail"][1] = system.price["ticket_free"]
 
 
 def update_sale_dict_child_many_child() -> None:
@@ -302,10 +314,10 @@ def update_sale_dict_child_many_child() -> None:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
     logger.info("Запуск функцию update_sale_dict_child_many_child")
-    System.sale_dict["detail"][2] = System.count_number_of_visitors[
+    system.sale_dict["detail"][2] = system.count_number_of_visitors[
         "kol_child_many_child"
     ]
-    System.sale_dict["detail"][3] = System.price["ticket_free"]
+    system.sale_dict["detail"][3] = system.price["ticket_free"]
 
 
 def update_sale_dict_child_invalid() -> None:
@@ -319,8 +331,8 @@ def update_sale_dict_child_invalid() -> None:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
     logger.info("Запуск функцию update_sale_dict_child_invalid")
-    System.sale_dict["detail"][2] = System.count_number_of_visitors["kol_child_invalid"]
-    System.sale_dict["detail"][3] = System.price["ticket_free"]
+    system.sale_dict["detail"][2] = system.count_number_of_visitors["kol_child_invalid"]
+    system.sale_dict["detail"][3] = system.price["ticket_free"]
 
 
 def update_adult_count() -> None:
@@ -334,8 +346,8 @@ def update_adult_count() -> None:
         None: Функция не возвращает значений, вставляет фамилию в поле формы.
     """
     logger.info("Запуск функцию update_adult_count")
-    System.count_number_of_visitors["kol_adult"] += 1
-    System.sale_dict["kol_adult"] = System.count_number_of_visitors["kol_adult"]
+    system.count_number_of_visitors["kol_adult"] += 1
+    system.sale_dict["kol_adult"] = system.count_number_of_visitors["kol_adult"]
 
 
 def update_child_count() -> None:
@@ -349,5 +361,5 @@ def update_child_count() -> None:
         None: Функция не возвращает значений, вставляет фамилию в поле формы.
     """
     logger.info("Запуск функцию update_child_count")
-    System.count_number_of_visitors["kol_child"] += 1
-    System.sale_dict["kol_child"] = System.count_number_of_visitors["kol_child"]
+    system.count_number_of_visitors["kol_child"] += 1
+    system.sale_dict["kol_child"] = system.count_number_of_visitors["kol_child"]

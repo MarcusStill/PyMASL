@@ -40,9 +40,10 @@ from sale_logic import (
     update_adult_count,
     update_child_count,
 )
-from system import System, config_data
-
-logger.add(System.log_file, rotation="1 MB")
+from system import System
+system = System()
+config_data = system.config
+logger.add(system.log_file, rotation="1 MB")
 
 
 class AuthForm(QDialog):
@@ -55,7 +56,7 @@ class AuthForm(QDialog):
         # Добавляем логотип на форму
         pixmap = QPixmap("pylogo.png")
         self.ui.label_4.setPixmap(pixmap)
-        self.ui.label_7.setText(System.software_version)
+        self.ui.label_7.setText(system.software_version)
         self.ui.pushButton.clicked.connect(self.starting_the_main_form)
         self.ui.pushButton_2.clicked.connect(self.close)
 
@@ -74,14 +75,14 @@ class AuthForm(QDialog):
         login: str = self.ui.lineEdit.text()
         password: str = self.ui.lineEdit_2.text()
         # Запуск предпродажных проверок
-        if perform_pre_sale_checks(self, login, password) == 1:
+        if perform_pre_sale_checks(login, password) == 1:
             auth.close()
             window = MainWindow()
             window.showMaximized()
             # Установка заголовка окна
-            user_full_name = f"{System.user.last_name} {System.user.first_name}"
+            user_full_name = f"{system.user.last_name} {system.user.first_name}"
             window.setWindowTitle(
-                f"PyMASL ver. {System.software_version}. Пользователь: {user_full_name}. БД: {System.database}"
+                f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
             )
             # Отображение формы продаж
             window.main_button_all_sales()
@@ -120,7 +121,7 @@ class ClientForm(QDialog):
             None: Функция не возвращает значений, просто сохраняет фамилию клиента в системную переменную.
         """
         logger.info("Запуск функции client_data_copy")
-        System.last_name = str(self.ui.lineEdit.text()).title()
+        system.last_name = str(self.ui.lineEdit.text()).title()
 
     def client_data_paste(self):
         """
@@ -135,7 +136,7 @@ class ClientForm(QDialog):
         None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции client_data_paste")
-        self.ui.lineEdit.setText(System.last_name)
+        self.ui.lineEdit.setText(system.last_name)
 
     def client_data_save(self):
         """
@@ -150,22 +151,22 @@ class ClientForm(QDialog):
         """
         logger.info("Запуск функции client_data_save")
         # сбрасываем id последнего добавленного клиента
-        System.add_new_client_in_sale = 0
+        system.add_new_client_in_sale = 0
         # делаем заглавными первые буквы фамилии и имени
-        System.last_name = str(self.ui.lineEdit.text()).title()
+        system.last_name = str(self.ui.lineEdit.text()).title()
         first_name = str(self.ui.lineEdit_2.text()).title()
         # проверяем заполнены ли поля имени и фамилии
-        if len(System.last_name) >= 2 and len(first_name) >= 2:
-            if System.client_update != 1:
+        if len(system.last_name) >= 2 and len(first_name) >= 2:
+            if system.client_update != 1:
                 logger.info("Добавляем нового клиента")
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     # # получаем максимальный id в таблице клиентов
                     query = func.max(Client.id)
                     client_index: int = session.execute(query).scalars().first()
                     logger.debug(f"Количество клиентов в бд: {client_index}")
                     new_client = Client(
                         id=client_index + 1,
-                        last_name=System.last_name,
+                        last_name=system.last_name,
                         first_name=str(self.ui.lineEdit_2.text()),
                         middle_name=str(self.ui.lineEdit_3.text()),
                         birth_date=(self.ui.dateEdit.date().toString("yyyy-MM-dd")),
@@ -177,16 +178,16 @@ class ClientForm(QDialog):
                     session.add(new_client)
                     session.commit()
                 # сохраняем id нового клиента
-                System.id_new_client_in_sale = client_index + 1
-            elif System.client_update == 1:
+                system.id_new_client_in_sale = client_index + 1
+            elif system.client_update == 1:
                 # обновляем информацию о клиенте
                 logger.info("Обновляем информацию о клиенте")
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     session.execute(
                         update(Client)
-                        .where(Client.id == System.client_id)
+                        .where(Client.id == system.client_id)
                         .values(
-                            id=System.client_id,
+                            id=system.client_id,
                             last_name=str(self.ui.lineEdit.text()),
                             first_name=str(self.ui.lineEdit_2.text()),
                             middle_name=str(self.ui.lineEdit_3.text()),
@@ -199,8 +200,8 @@ class ClientForm(QDialog):
                     )
                     session.commit()
             self.close()
-            System.client_update = None
-            System.client_id = None
+            system.client_update = None
+            system.client_id = None
         else:
             windows.info_window(
                 "Внимание!", "Необходимо заполнить обязательные поля: имя и фамилия", ""
@@ -260,12 +261,12 @@ class SaleForm(QDialog):
         row_number: int = self.ui.tableWidget.currentRow()
         # Получаем содержимое ячейки
         client_id: str = self.ui.tableWidget.item(row_number, 5).text()
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             search_client: Type[Client] = (
                 session.query(Client).filter_by(id=client_id).first()
             )
         # Сохраняем id клиента
-        System.client_id = search_client.id
+        system.client_id = search_client.id
         # Передаем в форму данные клиента
         client = ClientForm()
         client.ui.lineEdit.setText(search_client.last_name)
@@ -288,9 +289,9 @@ class SaleForm(QDialog):
             client.ui.comboBox_2.setCurrentIndex(index_privilege)
         client.show()
         # Сохраняем параметры данных об уже существующем клиенте
-        System.client_update = 1
-        logger.info(f"Обновляем инф. клиента {System.client_update}")
-        logger.debug(f"id клиента: {System.client_id}")
+        system.client_update = 1
+        logger.info(f"Обновляем инф. клиента {system.client_update}")
+        logger.debug(f"id клиента: {system.client_id}")
         client.exec_()
 
     def adding_new_client_to_sale(self) -> None:
@@ -306,21 +307,21 @@ class SaleForm(QDialog):
         """
         logger.info("Запуск функции adding_new_client_to_sale")
         # Запрашиваем данные нового клиента
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             search_client = (
                 session.query(Client)
-                .filter_by(id=System.id_new_client_in_sale)
+                .filter_by(id=system.id_new_client_in_sale)
                 .one_or_none()
             )
         # Проверяем, найден ли клиент
         if search_client is None:
-            logger.error(f"Клиент с ID {System.id_new_client_in_sale} не найден.")
+            logger.error(f"Клиент с ID {system.id_new_client_in_sale} не найден.")
             return
         logger.debug(f"Найденный клиент: {search_client}")
         # Вычисляем возраст клиента
         age: int = calculate_age(
             search_client.birth_date
-        )  # System.calculate_age(search_client.birth_date)
+        )  # system.calculate_age(search_client.birth_date)
         # Определяем тип билета и цену
         type_ticket: str = calculate_ticket_type(age)
         # Определяем тип билета и цену
@@ -398,28 +399,28 @@ class SaleForm(QDialog):
                     .findChild(QCheckBox)
                     .isChecked()
                 ):
-                    System.sale_dict["detail"][0] -= 1
+                    system.sale_dict["detail"][0] -= 1
                 else:
-                    System.sale_dict["kol_adult"] -= 1
+                    system.sale_dict["kol_adult"] -= 1
                 # Если активирована скидка
                 if self.ui.checkBox_2.isChecked():
                     index: int = self.ui.comboBox_2.currentIndex()
                     if index > 0:
-                        System.sale_dict["detail"][0] -= 1
+                        system.sale_dict["detail"][0] -= 1
             elif type_ticket == "детский":
                 if (
                     self.ui.tableWidget_2.cellWidget(current_row, 7)
                     .findChild(QCheckBox)
                     .isChecked()
                 ):
-                    System.sale_dict["detail"][2] -= 1
+                    system.sale_dict["detail"][2] -= 1
                 else:
-                    System.sale_dict["kol_child"] -= 1
+                    system.sale_dict["kol_child"] -= 1
                 # Если активирована скидка
                 if self.ui.checkBox_2.isChecked():
                     index: int = self.ui.comboBox_2.currentIndex()
                     if index > 0:
-                        System.sale_dict["detail"][2] -= 1
+                        system.sale_dict["detail"][2] -= 1
             self.ui.tableWidget_2.removeRow(current_row)
             self.sale_update()
         row: int = self.ui.tableWidget_2.rowCount()
@@ -433,7 +434,7 @@ class SaleForm(QDialog):
             # активируем кнопки оплаты и возврата
             self.ui.pushButton_5.setEnabled(True)
             self.ui.pushButton_6.setEnabled(True)
-            # Обновляем System.sale_dict
+            # Обновляем system.sale_dict
             sale_initial_values = {
                 "kol_adult": 0,
                 "price_adult": 0,
@@ -441,8 +442,8 @@ class SaleForm(QDialog):
                 "price_child": 0,
                 "detail": [0, 0, 0, 0, 0, 0, 0, 0],
             }
-            System.sale_dict.update(sale_initial_values)
-            System.sale_discount = 0
+            system.sale_dict.update(sale_initial_values)
+            system.sale_discount = 0
             self.sale_update()
 
     def check_filter_update(self) -> None:
@@ -472,11 +473,14 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
         """
         logger.info("Запуск функции changing_color_of_calendar")
+        # Получаем строковое представление даты
         get_date: str = str(self.ui.dateEdit.date())
-        date_slice: str = get_date[21 : (len(get_date) - 1)]
+        date_slice: str = get_date[21: (len(get_date) - 1)]
         logger.debug(date_slice)
         get_date: str = date_slice.replace(", ", "-")
-        if System.check_day(get_date) == 1:
+
+        # Поскольку check_day не требует аргументов, вызываем его без параметра
+        if system.check_day() == 1:
             self.ui.dateEdit.setStyleSheet("background-color: red;")
         else:
             self.ui.dateEdit.setStyleSheet("background-color: white;")
@@ -499,13 +503,13 @@ class SaleForm(QDialog):
             self.ui.comboBox_2.setEnabled(False)
             self.ui.comboBox_2.setCurrentIndex(0)
             # отменяем скидку
-            System.sale_discount = 0
-            System.sale_dict["detail"][4] = 0
-            # Обновляем в System.sale_dict информацию о скидках
-            System.sale_dict["detail"][0] = 0
-            System.sale_dict["detail"][1] = 0
-            System.sale_dict["detail"][2] = 0
-            System.sale_dict["detail"][3] = 0
+            system.sale_discount = 0
+            system.sale_dict["detail"][4] = 0
+            # Обновляем в system.sale_dict информацию о скидках
+            system.sale_dict["detail"][0] = 0
+            system.sale_dict["detail"][1] = 0
+            system.sale_dict["detail"][2] = 0
+            system.sale_dict["detail"][3] = 0
             self.sale_update()
 
     def filling_client_table_widget(
@@ -621,14 +625,14 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
         """
         logger.info("Запуск функции sale_search_clients")
-        if System.what_a_day == 1:
+        if system.what_a_day == 1:
             self.ui.dateEdit.setStyleSheet("background-color: red;")
         # Вычисляем индекс значения
         index: int = self.ui.comboBox_4.currentIndex()
         if index == 2:
             # Поиск по номеру телефона
             user_filter: str = "%" + self.ui.lineEdit.text() + "%"
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 search = (
                     session.query(Client).filter(Client.phone.ilike(user_filter)).all()
                 )
@@ -647,7 +651,7 @@ class SaleForm(QDialog):
             # Поиск по фамилии
             query: str = "%" + self.ui.lineEdit.text() + "%"
             self.ui.tableWidget.setRowCount(0)
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 search: list[Type[Client]] = (
                     session.query(Client).filter(Client.last_name.ilike(query)).all()
                 )
@@ -668,7 +672,7 @@ class SaleForm(QDialog):
             # Разбиваем поисковую фразу на две
             lst: Any = search.split()
             if len(lst) == 2:
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     search: list[Type[Client]] = (
                         session.query(Client)
                         .filter(
@@ -698,7 +702,7 @@ class SaleForm(QDialog):
         elif index == 3:
             # Поиск инвалидов
             self.ui.tableWidget.setRowCount(0)
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 search: list[Type[Client]] = (
                     session.query(Client)
                     .filter(Client.privilege.ilike("%" + "и"))
@@ -717,7 +721,7 @@ class SaleForm(QDialog):
         elif index == 4:
             # Поиск многодетных
             self.ui.tableWidget.setRowCount(0)
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 search: list[Type[Client]] = (
                     session.query(Client)
                     .filter(Client.privilege.ilike("%" + "м"))
@@ -769,11 +773,11 @@ class SaleForm(QDialog):
         self.ui.tableWidget_2.setColumnWidth(8, 5)
         self.ui.tableWidget_3.setColumnWidth(3, 7)
         # Если продажа новая - обновляем статус
-        System.sale_status = 0
-        logger.warning(f"Статус продажи - новая: {System.sale_status}")
+        system.sale_status = 0
+        logger.warning(f"Статус продажи - новая: {system.sale_status}")
         row_number: int = self.ui.tableWidget.currentRow()
         res: str = self.ui.tableWidget.item(row_number, 5).text()
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             search_client: Type[Client] = (
                 session.query(Client).filter_by(id=res).first()
             )
@@ -820,7 +824,7 @@ class SaleForm(QDialog):
             self.ui.tableWidget_3.removeRow(0)
         # Ищем продажи, в которых клиент был ранее
         client_list: set = set()
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             sales = (
                 session.query(Client.id, Ticket.id_sale, Ticket.id_sale)
                 .filter(
@@ -878,7 +882,7 @@ class SaleForm(QDialog):
         res: str = self.ui.tableWidget_3.item(row_number, 4).text()
         age: int = int(self.ui.tableWidget_3.item(row_number, 2).text())
         # Находим выделенного в таблице клиента
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             search_client = session.query(Client).filter_by(id=res).first()
         # Определяем тип билета и цену
         type_ticket: str = calculate_ticket_type(age)
@@ -946,14 +950,14 @@ class SaleForm(QDialog):
             "invalid": 0,
             "talent": 0,
         }
-        if System.count_number_of_visitors is None:
-            System.count_number_of_visitors = {}
-        System.count_number_of_visitors.update(count_initial_values)
+        if system.count_number_of_visitors is None:
+            system.count_number_of_visitors = {}
+        system.count_number_of_visitors.update(count_initial_values)
         # Учитываем продолжительность посещения
         time_ticket: int = int(self.ui.comboBox.currentText())
         # Сохраняем билеты
         tickets: list[tuple[str, str, str, str, str, str, str, str, int, str]] = []
-        # Обнуляем System.sale_dict
+        # Обнуляем system.sale_dict
         sale_initial_values = {
             "kol_adult": 0,
             "price_adult": 0,
@@ -961,11 +965,11 @@ class SaleForm(QDialog):
             "price_child": 0,
             "detail": [0, 0, 0, 0, 0, 0, 0, 0],
         }
-        if System.sale_dict is None:
-            System.sale_dict = {}
-        System.sale_dict.update(sale_initial_values)
+        if system.sale_dict is None:
+            system.sale_dict = {}
+        system.sale_dict.update(sale_initial_values)
         # Устанавливаем время и количество талантов
-        System.sale_dict["detail"][6], System.count_number_of_visitors["talent"] = (
+        system.sale_dict["detail"][6], system.count_number_of_visitors["talent"] = (
             get_talent_based_on_time(time_ticket)
         )
         # Записываем в sale_dict время посещения
@@ -979,24 +983,24 @@ class SaleForm(QDialog):
             type_ticket: str = self.ui.tableWidget_2.item(row, 2).text()
             price = self.ticket_counting(row, type_ticket)
             self.apply_discounts(row, price, type_ticket)
-        logger.debug(f"System.sale_dict: {System.sale_dict}")
+        logger.debug(f"system.sale_dict: {system.sale_dict}")
         logger.debug(
-            f"System.count_number_of_visitors: {System.count_number_of_visitors}"
+            f"system.count_number_of_visitors: {system.count_number_of_visitors}"
         )
         itog: int = calculate_itog()
         logger.debug(f"Итого: {itog}")
         self.ui.label_8.setText(str(itog))
-        System.sale_dict["detail"][7] = itog
-        self.ui.label_5.setText(str(System.count_number_of_visitors["kol_adult"]))
-        self.ui.label_7.setText(str(System.count_number_of_visitors["kol_child"]))
+        system.sale_dict["detail"][7] = itog
+        self.ui.label_5.setText(str(system.count_number_of_visitors["kol_adult"]))
+        self.ui.label_7.setText(str(system.count_number_of_visitors["kol_child"]))
         self.ui.label_17.setText(
-            str(System.count_number_of_visitors["kol_adult_many_child"])
+            str(system.count_number_of_visitors["kol_adult_many_child"])
         )
         self.ui.label_19.setText(
-            str(System.count_number_of_visitors["kol_child_many_child"])
+            str(system.count_number_of_visitors["kol_child_many_child"])
         )
         # Сохраняем данные продажи
-        logger.debug(f"Sale_dict: {System.sale_dict}")
+        logger.debug(f"Sale_dict: {system.sale_dict}")
         # Генерируем список с билетами
         for row in range(rows):
             # Если установлена метка "не идет"
@@ -1004,20 +1008,20 @@ class SaleForm(QDialog):
                 # Изменяем цену
                 logger.debug("Изменяем цену в билете посетителя!")
                 self.ui.tableWidget_2.setItem(
-                    row, 3, QTableWidgetItem(f"{System.price['ticket_free']}")
+                    row, 3, QTableWidgetItem(f"{system.price['ticket_free']}")
                 )
             self.generate_ticket_list(row, tickets, date_time)
-        System.sale_tickets = tickets
-        logger.info(f"System.sale_tickets: {System.sale_tickets}")
+        system.sale_tickets = tickets
+        logger.info(f"system.sale_tickets: {system.sale_tickets}")
         # Проверяем есть ли в продаже взрослый
-        if System.sale_dict["kol_adult"] >= 1:
+        if system.sale_dict["kol_adult"] >= 1:
             self.ui.pushButton_5.setEnabled(True)
         else:
             self.ui.pushButton_5.setEnabled(False)
         # Отключаем checkbox исключения из продажи для других позиций
-        if System.exclude_from_sale == 1:
+        if system.exclude_from_sale == 1:
             for row in range(rows):
-                if row != System.sale_checkbox_row:
+                if row != system.sale_checkbox_row:
                     self.ui.tableWidget_2.cellWidget(row, 8).findChild(
                         QCheckBox
                     ).setEnabled(False)
@@ -1043,7 +1047,7 @@ class SaleForm(QDialog):
         logger.info("Запуск функцию apply_discounts")
         # Устанавливаем цену в таблицу и пересчитываем
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{price}"))
-        System.sale_discount = int(self.ui.comboBox_2.currentText())
+        system.sale_discount = int(self.ui.comboBox_2.currentText())
         new_price, category, discount_status = calculate_discounted_price(
             price, type_ticket
         )
@@ -1056,10 +1060,10 @@ class SaleForm(QDialog):
         # Иначе проверяем активен ли checkbox со скидкой и размер > 0
         if self.ui.checkBox_2.isChecked():
             logger.info("Checkbox со скидкой активен - обычный гость")
-            if System.sale_discount > 0:
-                System.sale_dict["detail"][4] = System.sale_discount
-                if System.sale_discount > 0:
-                    new_price = calculate_discount(price, System.sale_discount)
+            if system.sale_discount > 0:
+                system.sale_dict["detail"][4] = system.sale_discount
+                if system.sale_discount > 0:
+                    new_price = calculate_discount(price, system.sale_discount)
                     # Если checkbox в акт - применяем к этой строке скидку
                     if (
                         self.ui.tableWidget_2.cellWidget(row, 7)
@@ -1067,17 +1071,17 @@ class SaleForm(QDialog):
                         .isChecked()
                     ):
                         if type_ticket == "взрослый":
-                            System.count_number_of_visitors["kol_sale_adult"] += 1
-                            System.sale_dict["detail"][0] = (
-                                System.count_number_of_visitors["kol_sale_adult"]
+                            system.count_number_of_visitors["kol_sale_adult"] += 1
+                            system.sale_dict["detail"][0] = (
+                                system.count_number_of_visitors["kol_sale_adult"]
                             )
-                            System.sale_dict["detail"][1] = new_price
+                            system.sale_dict["detail"][1] = new_price
                         elif type_ticket == "детский":
-                            System.count_number_of_visitors["kol_sale_child"] += 1
-                            System.sale_dict["detail"][2] = (
-                                System.count_number_of_visitors["kol_sale_child"]
+                            system.count_number_of_visitors["kol_sale_child"] += 1
+                            system.sale_dict["detail"][2] = (
+                                system.count_number_of_visitors["kol_sale_child"]
                             )
-                            System.sale_dict["detail"][3] = new_price
+                            system.sale_dict["detail"][3] = new_price
                         self.ui.tableWidget_2.setItem(
                             row, 3, QTableWidgetItem(f"{new_price}")
                         )
@@ -1100,7 +1104,7 @@ class SaleForm(QDialog):
         elif type_ticket == "детский":
             return self.calculate_child(row)
         else:
-            return System.price["ticket_free"]
+            return system.price["ticket_free"]
 
     def calculate_adult(self, row: int) -> int:
         """
@@ -1118,7 +1122,7 @@ class SaleForm(QDialog):
         self.adult_exclusion(row)
         update_adult_count()
         logger.debug(f"price adult {price}")
-        System.sale_dict["price_adult"] = price
+        system.sale_dict["price_adult"] = price
 
         return price
 
@@ -1136,7 +1140,7 @@ class SaleForm(QDialog):
         price = calculate_child_price()
         update_child_count()
         logger.debug(f"price child {price}")
-        System.sale_dict["price_child"] = price
+        system.sale_dict["price_child"] = price
 
         return price
 
@@ -1152,9 +1156,9 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
-        if System.count_number_of_visitors["id_adult"] == 0:
-            System.count_number_of_visitors["id_adult"] += 1
-            System.sale_dict["detail"][5] = self.ui.tableWidget_2.item(row, 5).text()
+        if system.count_number_of_visitors["id_adult"] == 0:
+            system.count_number_of_visitors["id_adult"] += 1
+            system.sale_dict["detail"][5] = self.ui.tableWidget_2.item(row, 5).text()
 
     def analyzing_visitor_category(self, row: int) -> None:
         """
@@ -1187,11 +1191,11 @@ class SaleForm(QDialog):
         self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).setCheckState(
             Qt.Checked
         )
-        if System.sunday == 1 and self.ui.checkBox_3.isChecked():
+        if system.sunday == 1 and self.ui.checkBox_3.isChecked():
             self.apply_extended_many_children_discount()
-        elif System.sunday == 1:
+        elif system.sunday == 1:
             self.apply_full_many_children_discount()
-        elif System.num_of_week <= 5:
+        elif system.num_of_week <= 5:
             self.apply_half_many_children_discount()
 
     def handle_invalid_discount(self) -> None:
@@ -1206,8 +1210,8 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Применение скидки для инвалида")
-        System.count_number_of_visitors["invalid"] = 1
-        System.sale_dict["detail"][4] = 100
+        system.count_number_of_visitors["invalid"] = 1
+        system.sale_dict["detail"][4] = 100
         # Изменяем продолжительность времени посещения
         self.ui.comboBox.setCurrentIndex(2)
         self.ui.comboBox.setEnabled(False)
@@ -1231,7 +1235,7 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Продление билетов многодетным")
-        System.count_number_of_visitors["many_child"] = 0
+        system.count_number_of_visitors["many_child"] = 0
         self.ui.checkBox_2.setEnabled(True)
         self.ui.checkBox_2.setChecked(True)
         self.ui.comboBox_2.setCurrentIndex(0)
@@ -1249,7 +1253,7 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Сегодня день многодетных")
-        System.count_number_of_visitors["many_child"] = 1
+        system.count_number_of_visitors["many_child"] = 1
         # Устанавливаем продолжительность посещения 2 часа
         self.ui.comboBox.setCurrentIndex(1)
         self.ui.comboBox.setEnabled(False)
@@ -1257,7 +1261,7 @@ class SaleForm(QDialog):
         self.ui.checkBox_2.setEnabled(False)
         self.ui.comboBox_2.setCurrentIndex(15)
         self.ui.comboBox_2.setEnabled(False)
-        System.sale_dict["detail"][4] = 100
+        system.sale_dict["detail"][4] = 100
         # Отключаем кнопку возврата
         self.ui.pushButton_6.setEnabled(False)
 
@@ -1273,13 +1277,13 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Многодетным скидка 50%")
-        System.count_number_of_visitors["many_child"] = 2
+        system.count_number_of_visitors["many_child"] = 2
         # Устанавливаем скидку
         self.ui.checkBox_2.setChecked(True)
         self.ui.checkBox_2.setEnabled(False)
         self.ui.comboBox_2.setCurrentIndex(10)
         self.ui.comboBox_2.setEnabled(False)
-        System.sale_dict["detail"][4] = 50
+        system.sale_dict["detail"][4] = 50
         self.ui.comboBox.setEnabled(True)
 
     def adult_exclusion(self, row: int) -> None:
@@ -1295,39 +1299,39 @@ class SaleForm(QDialog):
         logger.info("Запуск функцию adult_exclusion")
         if self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).isChecked():
             # Исключаем взрослого из продажи номер строки не запоминали
-            if System.sale_checkbox_row is None:
+            if system.sale_checkbox_row is None:
                 logger.info("Исключаем взрослого из продажи")
-                System.sale_dict["detail"][0] = 1
-                System.sale_dict["detail"][4] = 100
+                system.sale_dict["detail"][0] = 1
+                system.sale_dict["detail"][4] = 100
                 # Запоминаем номер строки с активным QCheckBox
-                System.sale_checkbox_row = row
+                system.sale_checkbox_row = row
                 # Изменяем флаг активности QCheckBox
-                System.exclude_from_sale = 1
+                system.exclude_from_sale = 1
                 # Ставим метку "не идет"
                 self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("н"))
             else:
                 # Если взрослый исключен из продажи, корректируем цену билета и наличие скидки
                 self.ui.tableWidget_2.setItem(
-                    row, 3, QTableWidgetItem(f"{System.price['ticket_free']}")
+                    row, 3, QTableWidgetItem(f"{system.price['ticket_free']}")
                 )
-                System.sale_dict["detail"][0] = 1
-                System.sale_dict["detail"][4] = 100
+                system.sale_dict["detail"][0] = 1
+                system.sale_dict["detail"][4] = 100
         else:
-            if System.exclude_from_sale == 1:
+            if system.exclude_from_sale == 1:
                 logger.info("Возвращаем взрослого в продажу")
                 if (
-                    not self.ui.tableWidget_2.cellWidget(System.sale_checkbox_row, 8)
+                    not self.ui.tableWidget_2.cellWidget(system.sale_checkbox_row, 8)
                     .findChild(QCheckBox)
                     .isChecked()
                 ):
                     self.ui.tableWidget_2.setItem(
-                        System.sale_checkbox_row, 4, QTableWidgetItem("-")
+                        system.sale_checkbox_row, 4, QTableWidgetItem("-")
                     )
-                    System.sale_dict["detail"][0] = 0
-                    System.sale_dict["detail"][1] = 0
-                    System.sale_dict["detail"][4] = 0
-                    System.sale_checkbox_row = None
-                    System.exclude_from_sale = 0
+                    system.sale_dict["detail"][0] = 0
+                    system.sale_dict["detail"][1] = 0
+                    system.sale_dict["detail"][4] = 0
+                    system.sale_checkbox_row = None
+                    system.exclude_from_sale = 0
 
     def generate_ticket_list(
         self,
@@ -1348,8 +1352,8 @@ class SaleForm(QDialog):
         ticket_list.append(
             (
                 *map(lambda col: self.ui.tableWidget_2.item(row, col).text(), range(7)),
-                System.sale_dict["detail"][6],
-                System.count_number_of_visitors["talent"],
+                system.sale_dict["detail"][6],
+                system.count_number_of_visitors["talent"],
                 date_time,
             )
         )
@@ -1366,52 +1370,52 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции save_sale")
-        logger.debug(f"Статус сохраняемой продажи: {System.sale_status}")
+        logger.debug(f"Статус сохраняемой продажи: {system.sale_status}")
         # Если продажа особенная - сохраним ее статус оплаченной
-        if System.sale_special == 1:
-            System.sale_status = 1
-        if System.sale_dict["kol_adult"] >= 1:
+        if system.sale_special == 1:
+            system.sale_status = 1
+        if system.sale_dict["kol_adult"] >= 1:
             add_sale: Sale = Sale(
-                price=System.sale_dict["detail"][7],
-                id_user=System.user.id,
-                id_client=System.sale_dict["detail"][5],
-                status=System.sale_status,
-                discount=System.sale_dict["detail"][4],
-                pc_name=System.pc_name,
+                price=system.sale_dict["detail"][7],
+                id_user=system.user.id,
+                id_client=system.sale_dict["detail"][5],
+                status=system.sale_status,
+                discount=system.sale_dict["detail"][4],
+                pc_name=system.pc_name,
                 datetime=dt.datetime.now(),
             )
             logger.debug(f"Получена продажа: {add_sale}")
             # Сохраняем продажу
             logger.debug("Сохраняем продажу в БД")
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 session.add(add_sale)
                 session.commit()
             # Получаем номер сохраненной продажи
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 query = func.max(Sale.id)
-                System.sale_id = session.execute(query).scalars().first()
+                system.sale_id = session.execute(query).scalars().first()
             # Сохраняем билеты
             type_ticket: int | None = None
             logger.debug("Сохраняем билеты в БД")
-            for i in range(len(System.sale_tickets)):
+            for i in range(len(system.sale_tickets)):
                 # Считаем количество начисленных талантов
-                if System.sale_tickets[i][2] == "взрослый":
+                if system.sale_tickets[i][2] == "взрослый":
                     type_ticket = 0
-                elif System.sale_tickets[i][2] == "детский":
+                elif system.sale_tickets[i][2] == "детский":
                     type_ticket = 1
-                elif System.sale_tickets[i][2] == "бесплатный":
+                elif system.sale_tickets[i][2] == "бесплатный":
                     type_ticket = 2
                 add_ticket = Ticket(
-                    id_client=System.sale_tickets[i][5],
-                    id_sale=int(System.sale_id),
-                    arrival_time=System.sale_tickets[i][7],
-                    talent=System.sale_tickets[i][8],
-                    price=System.sale_tickets[i][3],
-                    description=System.sale_tickets[i][4],
+                    id_client=system.sale_tickets[i][5],
+                    id_sale=int(system.sale_id),
+                    arrival_time=system.sale_tickets[i][7],
+                    talent=system.sale_tickets[i][8],
+                    price=system.sale_tickets[i][3],
+                    description=system.sale_tickets[i][4],
                     ticket_type=type_ticket,
-                    client_age=System.sale_tickets[i][6],
+                    client_age=system.sale_tickets[i][6],
                 )
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     session.add(add_ticket)
                     session.commit()
             self.close()
@@ -1435,19 +1439,19 @@ class SaleForm(QDialog):
             None
         """
         logger.info("Запуск функции sale_transaction")
-        logger.debug(f"System.sale_status: {System.sale_status}")
-        logger.debug("System.sale_id: {System.sale_id}")
+        logger.debug(f"system.sale_status: {system.sale_status}")
+        logger.debug("system.sale_id: {system.sale_id}")
         # Если продажа новая
-        if System.sale_id is None:
+        if system.sale_id is None:
             self.save_sale()
         # Если продажа особенная - генерируем билеты без оплаты
-        if System.sale_special == 1:
+        if system.sale_special == 1:
             self.print_saved_tickets()
         else:
             # Если оплата банковской картой
             if payment_type in (101, 100):
                 bank, payment = kkt.operation_on_the_terminal(
-                    payment_type, 1, System.sale_dict["detail"][7]
+                    payment_type, 1, system.sale_dict["detail"][7]
                 )
                 if bank == 0:
                     logger.error("Операция на терминале не прошла.")
@@ -1460,12 +1464,12 @@ class SaleForm(QDialog):
                     if payment == 3:  # Если оплата offline банковской картой
                         check = "offline"
                     else:
-                        check = kkt.read_pinpad_file(config_data, remove_newline=False)
+                        check = kkt.read_pinpad_file(system.config, remove_newline=False)
                     logger.debug(f"Чек прихода: {check}")
-                    with Session(System.engine) as session:
+                    with Session(system.engine) as session:
                         session.execute(
                             update(Sale)
-                            .where(Sale.id == System.sale_id)
+                            .where(Sale.id == system.sale_id)
                             .values(bank_pay=check)
                         )
                         session.commit()
@@ -1492,15 +1496,15 @@ class SaleForm(QDialog):
                         "Оплата прошла успешно.", "Чек не печатаем.", ""
                     )
                 # Обновляем информацию о продаже в БД
-                logger.debug(f"Обновляем информацию в БД о продаже: {System.sale_id}")
-                with Session(System.engine) as session:
+                logger.debug(f"Обновляем информацию в БД о продаже: {system.sale_id}")
+                with Session(system.engine) as session:
                     session.execute(
                         update(Sale)
-                        .where(Sale.id == System.sale_id)
+                        .where(Sale.id == system.sale_id)
                         .values(
                             status=1,
-                            id_user=System.user.id,
-                            pc_name=System.pc_name,
+                            id_user=system.user.id,
+                            pc_name=system.pc_name,
                             payment_type=payment,
                             datetime=dt.datetime.now(),
                         )
@@ -1509,7 +1513,7 @@ class SaleForm(QDialog):
                 # генерируем билеты
                 self.print_saved_tickets()
                 # Сбрасываем статус продажи
-                System.sale_status = 0
+                system.sale_status = 0
                 self.close()
             else:
                 logger.warning("Оплата не прошла")
@@ -1537,12 +1541,12 @@ class SaleForm(QDialog):
         balance_error: int = 0
         tickets = self.generating_items_for_the_return_check()
         logger.info("Запрашиваем информацию о продаже в БД")
-        with Session(System.engine) as session:
-            query = select(Sale).filter(Sale.id == System.sale_id)
+        with Session(system.engine) as session:
+            query = select(Sale).filter(Sale.id == system.sale_id)
             sale = session.execute(query).scalars().one()
         logger.debug(f"Итоговая сумма: {sale.price}, тип оплаты: {sale.payment_type}")
         logger.debug(f"Сохраняем id продажи: {sale.id}")
-        System.sale_id = sale.id
+        system.sale_id = sale.id
         price: int = sale.price
         if sale.status == 5:
             logger.debug("Требуется частичный возврат.")
@@ -1554,8 +1558,8 @@ class SaleForm(QDialog):
             payment_type: int = 101
         else:
             payment_type: int = 102
-            System.amount_of_money_at_the_cash_desk = kkt.balance_check()
-            if sale.price > System.amount_of_money_at_the_cash_desk:
+            system.amount_of_money_at_the_cash_desk = kkt.balance_check()
+            if sale.price > system.amount_of_money_at_the_cash_desk:
                 balance_error: int = 1
                 windows.info_window(
                     "Внимание",
@@ -1572,7 +1576,7 @@ class SaleForm(QDialog):
                 logger.debug("Продажа оплачена. Запускаем возврат")
                 if payment_type == 102:
                     state_check = kkt.check_open(
-                        tickets, payment_type, System.user, 2, 1, price, None
+                        tickets, payment_type, system.user, 2, 1, price, None
                     )
                 elif payment_type == 101:
                     logger.debug(
@@ -1592,13 +1596,13 @@ class SaleForm(QDialog):
                         if bank == 1:
                             logger.debug("Сохраняем чек возврата.")
                             check = kkt.read_pinpad_file(
-                                config_data, remove_newline=False
+                                system.config, remove_newline=False
                             )
                             logger.debug(f"Чек возврата: {check}")
-                            with Session(System.engine) as session:
+                            with Session(system.engine) as session:
                                 session.execute(
                                     update(Sale)
-                                    .where(Sale.id == System.sale_id)
+                                    .where(Sale.id == system.sale_id)
                                     .values(
                                         bank_return=check,
                                     )
@@ -1625,13 +1629,13 @@ class SaleForm(QDialog):
                         # Если возврат по банковскому терминалу прошел успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
                             state_check = kkt.check_open(
-                                tickets, payment_type, System.user, 2, 1, price, bank
+                                tickets, payment_type, system.user, 2, 1, price, bank
                             )
                         elif sale.status == 5:
                             state_check = kkt.check_open(
                                 new_tickets,
                                 payment_type,
-                                System.user,
+                                system.user,
                                 2,
                                 1,
                                 amount,
@@ -1645,14 +1649,14 @@ class SaleForm(QDialog):
                     else:
                         status_info: int = 2
                     logger.info("Обновляем информацию о возврате в БД")
-                    with Session(System.engine) as session:
+                    with Session(system.engine) as session:
                         session.execute(
                             update(Sale)
-                            .where(Sale.id == System.sale_id)
+                            .where(Sale.id == system.sale_id)
                             .values(
                                 status=status_info,
-                                id_user=System.user.id,
-                                user_return=System.user.id,
+                                id_user=system.user.id,
+                                user_return=system.user.id,
                                 datetime_return=dt.datetime.now(),
                             )
                         )
@@ -1671,12 +1675,12 @@ class SaleForm(QDialog):
                 bank, payment = kkt.operation_on_the_terminal(payment_type, 2, price)
                 if bank == 1:
                     logger.info("Операция повторного возврата прошла успешно")
-                    check = kkt.read_pinpad_file(config_data, remove_newline=False)
+                    check = kkt.read_pinpad_file(system.config, remove_newline=False)
                     logger.debug(f"Чек возврата: {check}")
-                    with Session(System.engine) as session:
+                    with Session(system.engine) as session:
                         session.execute(
                             update(Sale)
-                            .where(Sale.id == System.sale_id)
+                            .where(Sale.id == system.sale_id)
                             .values(
                                 bank_return=check,
                                 status=4,
@@ -1715,12 +1719,12 @@ class SaleForm(QDialog):
         # Счетчик для отслеживания корректности проведения возврата за наличный способ расчета
         tickets = self.generating_items_for_the_return_check()
         logger.info("Запрашиваем информацию о продаже в БД")
-        with Session(System.engine) as session:
-            query = select(Sale).filter(Sale.id == System.sale_id)
+        with Session(system.engine) as session:
+            query = select(Sale).filter(Sale.id == system.sale_id)
             sale = session.execute(query).scalars().one()
         logger.debug(f"Итоговая сумма: {sale.price}, тип оплаты: {sale.payment_type}")
         logger.debug(f"Сохраняем id продажи: {sale.id}")
-        System.sale_id = sale.id
+        system.sale_id = sale.id
         price: int = sale.price
         payment_type: int = 0
         # 1 - карта, 2 - наличные
@@ -1743,13 +1747,13 @@ class SaleForm(QDialog):
                         if bank == 1:
                             logger.debug("Сохраняем чек возврата.")
                             check = kkt.read_pinpad_file(
-                                config_data, remove_newline=False
+                                system.config, remove_newline=False
                             )
                             logger.debug(f"Чек возврата: {check}")
-                            with Session(System.engine) as session:
+                            with Session(system.engine) as session:
                                 session.execute(
                                     update(Sale)
-                                    .where(Sale.id == System.sale_id)
+                                    .where(Sale.id == system.sale_id)
                                     .values(
                                         bank_return=check,
                                     )
@@ -1776,21 +1780,21 @@ class SaleForm(QDialog):
                         # Если отмена по банковскому терминалу прошла успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
                             state_check = kkt.check_open(
-                                tickets, payment_type, System.user, 2, 1, price, bank
+                                tickets, payment_type, system.user, 2, 1, price, bank
                             )
                 # Если отмена прошела
                 if state_check == 1:
                     # Изменяем статус для отмененного платежа
                     status_info: int = 8
                     logger.info("Обновляем информацию об отмене в БД")
-                    with Session(System.engine) as session:
+                    with Session(system.engine) as session:
                         session.execute(
                             update(Sale)
-                            .where(Sale.id == System.sale_id)
+                            .where(Sale.id == system.sale_id)
                             .values(
                                 status=status_info,
-                                id_user=System.user.id,
-                                user_return=System.user.id,
+                                id_user=system.user.id,
+                                user_return=system.user.id,
                                 datetime_return=dt.datetime.now(),
                             )
                         )
@@ -1818,20 +1822,20 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции generating_items_for_the_return_check")
-        logger.debug(f"Билеты сохраненной продажи: {System.sale_tickets}")
+        logger.debug(f"Билеты сохраненной продажи: {system.sale_tickets}")
         dct: dict = dict(list())
         adult = 0
         adult_promotion = 0
         child = 0
         child_promotion = 0
-        for ticket_in_sale in System.sale_tickets:
-            if ticket_in_sale[8] >= System.age["max"]:
+        for ticket_in_sale in system.sale_tickets:
+            if ticket_in_sale[8] >= system.age["max"]:
                 # Взрослый билет
                 # исключаем из списка нулевые билеты
                 if ticket_in_sale[4] != 0:
                     # проверяем продолжительность
                     if ticket_in_sale[9] == 1:
-                        if ticket_in_sale[4] == System.price["ticket_adult_1"]:
+                        if ticket_in_sale[4] == system.price["ticket_adult_1"]:
                             type_ticket = "Билет взрослый 1 ч."
                             adult += 1
                             ticket = [ticket_in_sale[4], adult]
@@ -1840,7 +1844,7 @@ class SaleForm(QDialog):
                             adult_promotion += 1
                             ticket = [ticket_in_sale[4], adult_promotion]
                     elif ticket_in_sale[9] == 2:
-                        if ticket_in_sale[4] == System.price["ticket_adult_2"]:
+                        if ticket_in_sale[4] == system.price["ticket_adult_2"]:
                             type_ticket = "Билет взрослый 2 ч."
                             adult += 1
                             ticket = [ticket_in_sale[4], adult]
@@ -1849,7 +1853,7 @@ class SaleForm(QDialog):
                             adult_promotion += 1
                             ticket = [ticket_in_sale[4], adult_promotion]
                     elif ticket_in_sale[9] == 3:
-                        if ticket_in_sale[4] == System.price["ticket_adult_3"]:
+                        if ticket_in_sale[4] == system.price["ticket_adult_3"]:
                             type_ticket = "Билет взрослый 3 ч."
                             adult += 1
                             ticket = [ticket_in_sale[4], adult]
@@ -1865,8 +1869,8 @@ class SaleForm(QDialog):
                     # проверяем продолжительность
                     if ticket_in_sale[9] == 1:
                         if (
-                            ticket_in_sale[4] == System.price["ticket_child_1"]
-                            or ticket_in_sale[4] == System.price["ticket_child_week_1"]
+                            ticket_in_sale[4] == system.price["ticket_child_1"]
+                            or ticket_in_sale[4] == system.price["ticket_child_week_1"]
                         ):
                             type_ticket = "Билет детский 1 ч."
                             child += 1
@@ -1877,8 +1881,8 @@ class SaleForm(QDialog):
                             ticket = [ticket_in_sale[4], child_promotion]
                     elif ticket_in_sale[9] == 2:
                         if (
-                            ticket_in_sale[4] == System.price["ticket_child_2"]
-                            or ticket_in_sale[4] == System.price["ticket_child_week_2"]
+                            ticket_in_sale[4] == system.price["ticket_child_2"]
+                            or ticket_in_sale[4] == system.price["ticket_child_week_2"]
                         ):
                             type_ticket = "Билет детский 2 ч."
                             child += 1
@@ -1889,8 +1893,8 @@ class SaleForm(QDialog):
                             ticket = [ticket_in_sale[4], child_promotion]
                     elif ticket_in_sale[9] == 3:
                         if (
-                            ticket_in_sale[4] == System.price["ticket_child_3"]
-                            or ticket_in_sale[4] == System.price["ticket_child_week_3"]
+                            ticket_in_sale[4] == system.price["ticket_child_3"]
+                            or ticket_in_sale[4] == system.price["ticket_child_week_3"]
                         ):
                             type_ticket = "Билет детский 3 ч."
                             child += 1
@@ -1966,8 +1970,8 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции sale_generate_saved_tickets")
-        logger.info(f"Список билетов: {System.sale_tickets}")
-        client_in_sale: tuple = System.sale_tickets
+        logger.info(f"Список билетов: {system.sale_tickets}")
+        client_in_sale: tuple = system.sale_tickets
         try:
             # Удаляем существующий файл с билетами
             if os.path.exists("./ticket.pdf"):
@@ -2011,7 +2015,7 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений.
         """
         logger.info("Запуск функции open_saved_tickets.")
-        self.sale_generate_saved_tickets()
+        self.sale_generate_saved_tickets(self)
         try:
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             subprocess.Popen([r"open.cmd"])
@@ -2049,15 +2053,15 @@ class SaleForm(QDialog):
             logger.info("Оплата банковской картой")
             payment_type: int = Payment.Card
             # запускаем оплату по терминалу
-            self.sale_transaction(payment_type, System.print_check)
+            self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Cash:
             logger.info("Оплата наличными")
             payment_type: int = Payment.Cash
-            self.sale_transaction(payment_type, System.print_check)
+            self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Offline:
             logger.info("Оплата банковской картой offline")
             payment_type: int = Payment.Offline
-            self.sale_transaction(payment_type, System.print_check)
+            self.sale_transaction(payment_type, system.print_check)
         # Закрываем окно продажи и возвращаем QDialog.Accepted
         self.accept()
 
@@ -2096,7 +2100,7 @@ class PayForm(QDialog):
         logger.info("Запуск функции setText")
         self.ui.label_2.setText(txt)
         # По умолчанию печатаем чек
-        System.print_check = 1
+        system.print_check = 1
 
     def check_print(self) -> None:
         """
@@ -2111,9 +2115,9 @@ class PayForm(QDialog):
         """
         logger.info("Запуск функции check_print")
         if self.ui.checkBox.isChecked():
-            System.print_check = 1
+            system.print_check = 1
         else:
-            System.print_check = 0
+            system.print_check = 0
 
 
 class SlipForm(QDialog):
@@ -2136,8 +2140,8 @@ class SlipForm(QDialog):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции get_slip")
-        with Session(System.engine) as session:
-            query = select(Sale.bank_pay).where(Sale.id == System.sale_id)
+        with Session(system.engine) as session:
+            query = select(Sale.bank_pay).where(Sale.id == system.sale_id)
             load_slip = session.execute(query).scalars().one()
         words = load_slip.split()
         try:
@@ -2181,7 +2185,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_11.clicked.connect(kkt.last_document)
         self.ui.pushButton_9.clicked.connect(kkt.get_time)
         self.ui.pushButton_5.clicked.connect(kkt.report_x)
-        self.ui.pushButton_6.clicked.connect(lambda: kkt.smena_close(System.user))
+        self.ui.pushButton_6.clicked.connect(lambda: kkt.smena_close(system.user))
         self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
         self.ui.pushButton_15.clicked.connect(kkt.continue_print)
         self.ui.pushButton_10.clicked.connect(kkt.smena_info)
@@ -2196,10 +2200,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.tableWidget_2.doubleClicked.connect(self.main_search_selected_sale)
         self.ui.pushButton_17.clicked.connect(self.main_get_statistic)
         self.ui.pushButton_24.clicked.connect(
-            lambda: kkt.deposit_of_money(System.amount_to_pay_or_deposit)
+            lambda: kkt.deposit_of_money(system.amount_to_pay_or_deposit)
         )
         self.ui.pushButton_25.clicked.connect(
-            lambda: kkt.payment(System.amount_to_pay_or_deposit)
+            lambda: kkt.payment(system.amount_to_pay_or_deposit)
         )
         self.ui.pushButton_26.clicked.connect(kkt.balance_check)
         self.ui.pushButton_27.clicked.connect(kkt.terminal_menu)
@@ -2210,7 +2214,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.dateEdit_3.setDate(date.today())
         self.ui.lineEdit_2.returnPressed.connect(self.main_search_clients)
         self.ui.comboBox_3.currentTextChanged.connect(self.main_filter_clear)
-        # при вводе в поле lineEdit сохраняем значение в System.amount_to_pay_or_deposit
+        # при вводе в поле lineEdit сохраняем значение в system.amount_to_pay_or_deposit
         self.ui.lineEdit.textEdited.connect(
             self.main_transfer_of_deposit_or_payment_amount
         )
@@ -2229,7 +2233,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции main_transfer_of_deposit_or_payment_amount")
-        System.amount_to_pay_or_deposit = int(self.ui.lineEdit.text())
+        system.amount_to_pay_or_deposit = int(self.ui.lineEdit.text())
 
     def filling_client_table_widget_main_form(
         self,
@@ -2298,7 +2302,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if index == 2:
             # Поиск по номеру телефона
             self.ui.tableWidget.setRowCount(0)
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 search: list[Type[Client]] = (
                     session.query(Client).filter(Client.phone.ilike(user_filter)).all()
                 )
@@ -2317,7 +2321,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         elif index == 1:
             # Поиск по фамилии
             self.ui.tableWidget.setRowCount(0)
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 search: list[Type[Client]] = (
                     session.query(Client)
                     .filter(Client.last_name.ilike(user_filter))
@@ -2342,7 +2346,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Разбиваем поисковую фразу на две
             lst: Any = user_filter.split()
             if len(lst) == 2:
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     search: list[Type[Client]] = (
                         session.query(Client)
                         .filter(
@@ -2374,7 +2378,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         elif index == 3:
             # Поиск инвалидов
             self.ui.tableWidget.setRowCount(0)
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 search: list[Type[Client]] = (
                     session.query(Client)
                     .filter(Client.privilege.ilike("%" + "и"))
@@ -2395,7 +2399,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         elif index == 4:
             # Поиск многодетных
             self.ui.tableWidget.setRowCount(0)
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 search: list[Type[Client]] = (
                     session.query(Client)
                     .filter(Client.privilege.ilike("%" + "м"))
@@ -2437,14 +2441,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if client_id is None:
             logger.error("Ячейка пуста или не существует.")
             return
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             search_client: Type[Client] = (
                 session.query(Client).filter_by(id=client_id).first()
             )
             if search_client is None:
                 logger.error(f"Клиент с ID {client_id} не найден.")
         # Сохраняем id клиента
-        System.client_id = search_client.id
+        system.client_id = search_client.id
         # Передаем в форму данные клиента
         client = ClientForm()
         client.ui.lineEdit.setText(search_client.last_name)
@@ -2467,9 +2471,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             client.ui.comboBox_2.setCurrentIndex(index_privilege)
         client.show()
         # Сохраняем параметры данных об уже существующем клиенте
-        System.client_update = 1
-        logger.info(f"Обновляем информацию о клиенте: {System.client_update}")
-        logger.debug(f"id клиента: {System.client_id}")
+        system.client_update = 1
+        logger.info(f"Обновляем информацию о клиенте: {system.client_update}")
+        logger.debug(f"id клиента: {system.client_id}")
         client.exec_()
 
     def main_filter_clear(self) -> None:
@@ -2506,7 +2510,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             row_number: int = idx.row()
             # Получаем содержимое ячейки
             sale_number: str = self.ui.tableWidget_2.item(row_number, 0).text()
-            with Session(System.engine) as session:
+            with Session(system.engine) as session:
                 query = (
                     select(
                         Client.last_name,
@@ -2574,9 +2578,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Если продажа не оплачена
             elif sale_status == 0:
                 # обновляем данные о продаже
-                System.sale_tickets = None
-                System.sale_dict = {}  # Инициализация перед использованием
-                logger.debug(f"Инициализация перед использованием System.sale_dict")
+                system.sale_tickets = None
+                system.sale_dict = {}  # Инициализация перед использованием
+                logger.debug(f"Инициализация перед использованием system.sale_dict")
                 sale.ui.pushButton_3.setEnabled(False)
                 sale.ui.pushButton_5.setEnabled(True)
                 sale.ui.pushButton_10.setEnabled(True)
@@ -2668,7 +2672,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # Кнопка отмены платежа по банковской карте
                 sale.ui.pushButton_14.setEnabled(False)
             for search_client in client_in_sale:
-                if search_client[6] >= System.age["max"]:
+                if search_client[6] >= system.age["max"]:
                     type_ticket = "взрослый"
                     kol_adult += 1
                 else:
@@ -2737,10 +2741,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 "Внимание", "Перед проведением оплаты нажмите на кнопку обновить", ""
             )
             # Передаем сведения о сохраненной продаже
-            System.sale_status = sale_status
-            System.sale_id = int(sale_number)
-            System.sale_tickets = client_in_sale
-            logger.debug(f"Билеты сохраненной продажи: {System.sale_tickets}")
+            system.sale_status = sale_status
+            system.sale_id = int(sale_number)
+            system.sale_tickets = client_in_sale
+            logger.debug(f"Билеты сохраненной продажи: {system.sale_tickets}")
             sale.exec_()
 
     @logger_wraps(entry=True, exit=True, level="DEBUG")
@@ -2766,7 +2770,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             dt1: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + start_time
             dt2: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + end_time
             if self.ui.checkBox.isChecked():
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     sales = (
                         session.query(
                             Sale.id,
@@ -2796,7 +2800,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         .order_by(desc(Sale.id))
                     )
             else:
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     sales = (
                         session.query(
                             Sale.id,
@@ -2830,7 +2834,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             elif self.ui.radioButton_3.isChecked():
                 filter_day = dt.datetime.today() - timedelta(days=7)
             if self.ui.checkBox.isChecked():
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     sales = (
                         session.query(
                             Sale.id,
@@ -2859,7 +2863,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         .order_by(desc(Sale.id))
                     )
             else:
-                with Session(System.engine) as session:
+                with Session(system.engine) as session:
                     sales = (
                         session.query(
                             Sale.id,
@@ -2981,15 +2985,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         sale.ui.tableWidget_2.setEnabled(True)
         # поле скидка
         sale.ui.checkBox_2.setEnabled(True)
-        System.sale_discount = 0
+        system.sale_discount = 0
         # сбрасываем номер строки QCheckBox для исключения из продажи
-        System.sale_checkbox_row = None
+        system.sale_checkbox_row = None
         # флаг состояния QCheckBox для исключения из продажи 0 - не активен
-        System.exclude_from_sale = 0
+        system.exclude_from_sale = 0
         # флаг состояния особенной (бесплатной) продажи
-        System.sale_special = None
-        # Обновляем System.sale_dict
-        # Обнуляем System.sale_dict
+        system.sale_special = None
+        # Обновляем system.sale_dict
+        # Обнуляем system.sale_dict
         sale_initial_values = {
             "kol_adult": 0,
             "price_adult": 0,
@@ -2997,10 +3001,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             "price_child": 0,
             "detail": [0, 0, 0, 0, 0, 0, 0, 0],
         }
-        System.sale_dict.update(sale_initial_values)
+        system.sale_dict.update(sale_initial_values)
         # сбрасываем id и статус продажи
-        System.sale_id = None
-        System.sale_status = None
+        system.sale_id = None
+        system.sale_status = None
         sale.exec_()
 
     def main_get_statistic(self) -> None:
@@ -3020,7 +3024,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         end_time: str = " 23:59:59"
         dt1: str = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
         dt2: str = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             query = select(
                 Sale.pc_name, Sale.payment_type, Sale.price, Sale.status
             ).where(and_(Sale.status == "1", Sale.datetime.between(dt1, dt2)))
@@ -3028,7 +3032,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logger.debug(f"Продажи за выбранный период: {sales}")
         # Предполагаем что кассовых РМ два
         pc_1: dict[str, int | str] = {
-            "Name PC": f"{System.pc_1}",
+            "Name PC": f"{system.pc_1}",
             "card": 0,
             "cash": 0,
             "return": 0,
@@ -3038,7 +3042,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             "return_cash": 0,
         }
         pc_2: dict[str, int | str] = {
-            "Name PC": f"{System.pc_2}",
+            "Name PC": f"{system.pc_2}",
             "card": 0,
             "cash": 0,
             "return": 0,
@@ -3066,7 +3070,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         cash: int = int(pc_1["cash"]) + int(pc_2["cash"])
         summa: int = card + cash
         # Считаем возвраты
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             query = select(
                 Sale.pc_name, Sale.payment_type, Sale.price, Sale.status
             ).where(
@@ -3164,7 +3168,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             2, 6, QTableWidgetItem(f"{pc_1_return + pc_2_return}")
         )
         # Считаем оплаченные билеты
-        with Session(System.engine) as session:
+        with Session(system.engine) as session:
             query = select(
                 Ticket.ticket_type,
                 Ticket.arrival_time,
@@ -3335,35 +3339,35 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
             dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
             # Промежуточные расчеты
-            adult_1: int = System.price["ticket_adult_1"] * int(table[0])
-            adult_2: int = System.price["ticket_adult_2"] * int(table[1])
-            adult_3: int = System.price["ticket_adult_3"] * int(table[2])
+            adult_1: int = system.price["ticket_adult_1"] * int(table[0])
+            adult_2: int = system.price["ticket_adult_2"] * int(table[1])
+            adult_3: int = system.price["ticket_adult_3"] * int(table[2])
             kol_adult: int = int(table[0]) + int(table[1]) + int(table[2])
             sum_adult: int = adult_1 + adult_2 + adult_3
-            child_1: int = System.price["ticket_child_1"] * int(table[3])
-            child_2: int = System.price["ticket_child_2"] * int(table[4])
-            child_3: int = System.price["ticket_child_3"] * int(table[5])
+            child_1: int = system.price["ticket_child_1"] * int(table[3])
+            child_2: int = system.price["ticket_child_2"] * int(table[4])
+            child_3: int = system.price["ticket_child_3"] * int(table[5])
             kol_child: int = int(table[3]) + int(table[4]) + int(table[5])
             sum_child: int = child_1 + child_2 + child_3
             many_adult_1: int = round(
-                System.price["ticket_adult_1"] / 2 * int(table[6])
+                system.price["ticket_adult_1"] / 2 * int(table[6])
             )
             many_adult_2: int = round(
-                System.price["ticket_adult_2"] / 2 * int(table[7])
+                system.price["ticket_adult_2"] / 2 * int(table[7])
             )
             many_adult_3: int = round(
-                System.price["ticket_adult_3"] / 2 * int(table[8])
+                system.price["ticket_adult_3"] / 2 * int(table[8])
             )
             kol_many_adult: int = int(table[6]) + int(table[7]) + int(table[8])
             sum_many_adult: int = many_adult_1 + many_adult_2 + many_adult_3
             many_child_1: int = round(
-                System.price["ticket_child_1"] / 2 * int(table[9])
+                system.price["ticket_child_1"] / 2 * int(table[9])
             )
             many_child_2: int = round(
-                System.price["ticket_child_2"] / 2 * int(table[10])
+                system.price["ticket_child_2"] / 2 * int(table[10])
             )
             many_child_3: int = round(
-                System.price["ticket_child_3"] / 2 * int(table[11])
+                system.price["ticket_child_3"] / 2 * int(table[11])
             )
             kol_many_child: int = int(table[9]) + int(table[10]) + int(table[11])
             sum_many_child: int = many_child_1 + many_child_2 + many_child_3
@@ -3380,21 +3384,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 [
                     "1",
                     type_ticket[0],
-                    System.price["ticket_adult_1"],
+                    system.price["ticket_adult_1"],
                     table[0],
                     adult_1,
                 ],
                 [
                     "2",
                     type_ticket[1],
-                    System.price["ticket_adult_2"],
+                    system.price["ticket_adult_2"],
                     table[1],
                     adult_2,
                 ],
                 [
                     "3",
                     type_ticket[2],
-                    System.price["ticket_adult_3"],
+                    system.price["ticket_adult_3"],
                     table[2],
                     adult_3,
                 ],
@@ -3403,21 +3407,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 [
                     "5",
                     type_ticket[3],
-                    System.price["ticket_child_1"],
+                    system.price["ticket_child_1"],
                     table[3],
                     child_1,
                 ],
                 [
                     "6",
                     type_ticket[4],
-                    System.price["ticket_child_2"],
+                    system.price["ticket_child_2"],
                     table[4],
                     child_2,
                 ],
                 [
                     "7",
                     type_ticket[5],
-                    System.price["ticket_child_3"],
+                    system.price["ticket_child_3"],
                     table[5],
                     child_3,
                 ],
@@ -3426,21 +3430,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 [
                     "9",
                     type_ticket[6],
-                    round(System.price["ticket_adult_1"] / 2),
+                    round(system.price["ticket_adult_1"] / 2),
                     table[6],
                     many_adult_1,
                 ],
                 [
                     "10",
                     type_ticket[7],
-                    round(System.price["ticket_adult_2"] / 2),
+                    round(system.price["ticket_adult_2"] / 2),
                     table[7],
                     many_adult_2,
                 ],
                 [
                     "11",
                     type_ticket[8],
-                    round(System.price["ticket_adult_3"] / 2),
+                    round(system.price["ticket_adult_3"] / 2),
                     table[8],
                     many_adult_3,
                 ],
@@ -3455,21 +3459,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 [
                     "13",
                     type_ticket[9],
-                    round(System.price["ticket_child_1"] / 2),
+                    round(system.price["ticket_child_1"] / 2),
                     table[9],
                     many_child_1,
                 ],
                 [
                     "14",
                     type_ticket[10],
-                    round(System.price["ticket_child_2"] / 2),
+                    round(system.price["ticket_child_2"] / 2),
                     table[10],
                     many_child_2,
                 ],
                 [
                     "15",
                     type_ticket[11],
-                    round(System.price["ticket_child_3"] / 2),
+                    round(system.price["ticket_child_3"] / 2),
                     table[11],
                     many_child_3,
                 ],
@@ -3520,8 +3524,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             logger.info(
                 f"Формируем сведения для отчета: {self.ui.tableWidget_3.item(0, 0).text()}"
             )
-            logger.info(f"Имя ПК: {System.pc_name}")
-            if System.pc_name == self.ui.tableWidget_4.item(0, 0).text():
+            logger.info(f"Имя ПК: {system.pc_name}")
+            if system.pc_name == self.ui.tableWidget_4.item(0, 0).text():
                 values: list[str] = [
                     self.ui.tableWidget_4.item(0, 1).text(),
                     self.ui.tableWidget_4.item(0, 2).text(),
@@ -3536,7 +3540,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.ui.tableWidget_4.item(1, 5).text(),
                 ]
             logger.debug(f"Сведения для отчета кассира: {values}")
-            otchet.otchet_kassira(values, dt1, dt2, System.user)
+            otchet.otchet_kassira(values, dt1, dt2, system.user)
             os.startfile(path)
 
 
@@ -3553,5 +3557,5 @@ if __name__ == "__main__":
 
     auth = AuthForm()
     auth.show()
-    auth.ui.label_9.setText(System.database)
+    auth.ui.label_9.setText(system.database)
     sys.exit(app.exec())
