@@ -3,7 +3,9 @@ import os
 import subprocess
 import sys
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any, Type
+from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Qt, Signal
@@ -13,7 +15,6 @@ from PySide6.QtWidgets import QTableWidgetItem, QWidget
 from sqlalchemy import and_, select, func, update, desc, or_
 from sqlalchemy.orm import Session
 
-from modules.auth_logic import perform_pre_sale_checks
 from db.models import Client
 from db.models import Sale
 from db.models import Ticket
@@ -26,6 +27,7 @@ from design.logic.slip import Ui_Dialog_Slip
 from modules import kkt
 from modules import otchet
 from modules import windows
+from modules.auth_logic import perform_pre_sale_checks
 from modules.logger import logger, logger_wraps
 from modules.sale_logic import (
     calculate_age,
@@ -41,7 +43,7 @@ from modules.sale_logic import (
     update_child_count,
 )
 from modules.system import System
-from pathlib import Path
+
 system = System()
 config_data = system.config
 logger.add(system.log_file, rotation="1 MB")
@@ -262,12 +264,17 @@ class SaleForm(QDialog):
         row_number: int = self.ui.tableWidget.currentRow()
         # Получаем содержимое ячейки
         client_id: str = self.ui.tableWidget.item(row_number, 5).text()
+        # При типизации указываем, что search_client может быть либо экземпляром Client, либо None
         with Session(system.engine) as session:
-            search_client: Type[Client] = (
-                session.query(Client).filter_by(id=client_id).first()
-            )
-        # Сохраняем id клиента
-        system.client_id = search_client.id
+            search_client: Optional[Client] = session.query(Client).filter_by(id=client_id).first()
+        # Проверяем, найден ли клиент
+        if search_client:
+            # Сохраняем id клиента
+            system.client_id = search_client.id  # Присваиваем id клиента
+        else:
+            logger.error(f"Клиент с id {client_id} не найден.")
+        # Сохраняем id клиента # TODO: what?
+        # system.client_id = int(search_client.id)
         # Передаем в форму данные клиента
         client = ClientForm()
         client.ui.lineEdit.setText(search_client.last_name)
@@ -2752,181 +2759,78 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции main_button_all_sales")
-        filter_day = 0
         # Устанавливаем временной период
-        start_time: str = " 00:00:00"
-        end_time: str = " 23:59:59"
+        start_time = " 00:00:00"
+        end_time = " 23:59:59"
         self.ui.tableWidget_2.setRowCount(0)
-        # Фильтр продаж за определенную дату
+
+        # Определяем диапазон дат в зависимости от выбора
         if self.ui.radioButton_7.isChecked():
-            dt1: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + start_time
-            dt2: str = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + end_time
-            if self.ui.checkBox.isChecked():
-                with Session(system.engine) as session:
-                    sales = (
-                        session.query(
-                            Sale.id,
-                            Sale.id_client,
-                            Sale.price,
-                            Sale.datetime,
-                            Sale.status,
-                            Sale.discount,
-                            Sale.pc_name,
-                            Sale.payment_type,
-                            Client.last_name,
-                        )
-                        .filter(
-                            and_(
-                                Sale.id_client == Client.id,
-                                Sale.datetime_return.between(dt1, dt2),
-                                or_(
-                                    Sale.status == 2,
-                                    Sale.status == 3,
-                                    Sale.status == 4,
-                                    Sale.status == 5,
-                                    Sale.status == 6,
-                                    Sale.status == 8,
-                                ),
-                            )
-                        )
-                        .order_by(desc(Sale.id))
-                    )
-            else:
-                with Session(system.engine) as session:
-                    sales = (
-                        session.query(
-                            Sale.id,
-                            Sale.id_client,
-                            Sale.price,
-                            Sale.datetime,
-                            Sale.status,
-                            Sale.discount,
-                            Sale.pc_name,
-                            Sale.payment_type,
-                            Client.last_name,
-                        )
-                        .filter(
-                            and_(
-                                Sale.id_client == Client.id,
-                                Sale.datetime.between(dt1, dt2),
-                            )
-                        )
-                        .order_by(desc(Sale.id))
-                    )
-        # Фильтр продаж за 1, 3 и 7 дней
+            filter_start = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + start_time
+            filter_end = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + end_time
         else:
+            # Определение периода для 1, 3 и 7 дней
             if self.ui.radioButton.isChecked():
-                filter_day = dt.datetime(
-                    dt.datetime.today().year,
-                    dt.datetime.today().month,
-                    dt.datetime.today().day,
-                )
+                filter_start = dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
             elif self.ui.radioButton_2.isChecked():
-                filter_day = dt.datetime.today() - timedelta(days=3)
+                filter_start = dt.datetime.today() - timedelta(days=3)
             elif self.ui.radioButton_3.isChecked():
-                filter_day = dt.datetime.today() - timedelta(days=7)
-            if self.ui.checkBox.isChecked():
-                with Session(system.engine) as session:
-                    sales = (
-                        session.query(
-                            Sale.id,
-                            Sale.id_client,
-                            Sale.price,
-                            Sale.datetime,
-                            Sale.status,
-                            Sale.discount,
-                            Sale.pc_name,
-                            Sale.payment_type,
-                            Client.last_name,
-                        )
-                        .filter(
-                            and_(
-                                Sale.id_client == Client.id,
-                                Sale.datetime_return >= filter_day,
-                                or_(
-                                    Sale.status == 2,
-                                    Sale.status == 3,
-                                    Sale.status == 4,
-                                    Sale.status == 5,
-                                    Sale.status == 6,
-                                ),
-                            )
-                        )
-                        .order_by(desc(Sale.id))
-                    )
-            else:
-                with Session(system.engine) as session:
-                    sales = (
-                        session.query(
-                            Sale.id,
-                            Sale.id_client,
-                            Sale.price,
-                            Sale.datetime,
-                            Sale.status,
-                            Sale.discount,
-                            Sale.pc_name,
-                            Sale.payment_type,
-                            Client.last_name,
-                        )
-                        .filter(
-                            and_(
-                                Sale.id_client == Client.id, Sale.datetime >= filter_day
-                            )
-                        )
-                        .order_by(desc(Sale.id))
-                    )
+                filter_start = dt.datetime.today() - timedelta(days=7)
+
+            filter_end = None  # Нет необходимости в end_time для 1, 3 и 7 дней
+
+        # Определяем, какие статусы фильтровать
+        sale_status_filter = [2, 3, 4, 5, 6, 8] if self.ui.checkBox.isChecked() else []
+
+        # Генерация запроса
+        with Session(system.engine) as session:
+            query = session.query(
+                Sale.id, Sale.id_client, Sale.price, Sale.datetime, Sale.status, Sale.discount,
+                Sale.pc_name, Sale.payment_type, Client.last_name
+            ).filter(Sale.id_client == Client.id)
+
+            if filter_end:  # Если фильтруем по конкретной дате
+                query = query.filter(Sale.datetime_return.between(filter_start, filter_end))
+            else:  # Фильтруем по дням (например, последние 1, 3 или 7 дней)
+                query = query.filter(Sale.datetime >= filter_start)
+
+            if sale_status_filter:  # Если есть фильтрация по статусу
+                query = query.filter(Sale.status.in_(sale_status_filter))
+
+            query = query.order_by(desc(Sale.id))
+            sales = query.all()
+
+        # Заполнение таблицы
         if sales:
             for sale in sales:
                 row = self.ui.tableWidget_2.rowCount()
                 self.ui.tableWidget_2.insertRow(row)
                 self.ui.tableWidget_2.setItem(row, 0, QTableWidgetItem(str(sale[0])))
-                # Изменяем ширину колонки
+
+                # Устанавливаем данные для колонок
                 self.ui.tableWidget_2.setColumnWidth(1, 150)
                 self.ui.tableWidget_2.setItem(row, 1, QTableWidgetItem(str(sale[8])))
                 self.ui.tableWidget_2.setItem(row, 2, QTableWidgetItem(str(sale[2])))
                 self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(str(sale[3])))
-                if sale[4] is None:
-                    status_type: str = "неизвестно"
-                else:
-                    status_value = int(sale[4])
-                    if status_value == 0:
-                        status_type: str = "создана"
-                    elif status_value == 1:
-                        status_type: str = "оплачена"
-                    elif status_value == 2:
-                        status_type: str = "возврат"
-                    elif status_value == 3:
-                        status_type: str = (
-                            "требуется повторный возврат по банковскому терминалу"
-                        )
-                    elif status_value == 4:
-                        status_type: str = "повторный возврат по банковскому терминалу"
-                    elif status_value == 5:
-                        status_type: str = "требуется частичный возврат"
-                    elif status_value == 6:
-                        status_type: str = "частичный возврат"
-                    elif status_value == 7:
-                        status_type: str = "возврат по банковским реквизитам"
-                    elif status_value == 8:
-                        status_type: str = "отмена"
+
+                # Обрабатываем статус
+                status_dict = {
+                    0: "создана", 1: "оплачена", 2: "возврат",
+                    3: "требуется повторный возврат по банковскому терминалу",
+                    4: "повторный возврат по банковскому терминалу", 5: "требуется частичный возврат",
+                    6: "частичный возврат",
+                    7: "возврат по банковским реквизитам", 8: "отмена"
+                }
+                status_type = status_dict.get(sale[4], "неизвестно")
                 self.ui.tableWidget_2.setColumnWidth(4, 350)
-                self.ui.tableWidget_2.setItem(
-                    row, 4, QTableWidgetItem(f"{status_type}")
-                )
+                self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(status_type))
                 self.ui.tableWidget_2.setItem(row, 5, QTableWidgetItem(str(sale[5])))
                 self.ui.tableWidget_2.setItem(row, 6, QTableWidgetItem(str(sale[6])))
-                if sale[7] is not None:
-                    if int(sale[7]) == 1:
-                        payment_type: str = "карта"
-                    elif int(sale[7]) == 2:
-                        payment_type: str = "наличные"
-                    elif int(sale[7]) == 3:
-                        payment_type: str = "карта offline"
-                else:
-                    payment_type = "-"
-                self.ui.tableWidget_2.setItem(
-                    row, 7, QTableWidgetItem(f"{payment_type}")
-                )
+
+                # Обрабатываем тип оплаты
+                payment_dict = {1: "карта", 2: "наличные", 3: "карта offline"}
+                payment_type = payment_dict.get(int(sale[7]), "-")
+                self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(payment_type))
 
     def main_open_client(self) -> None:
         """
