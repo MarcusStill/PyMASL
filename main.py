@@ -41,6 +41,7 @@ from sale_logic import (
     update_child_count,
 )
 from system import System
+
 system = System()
 config_data = system.config
 logger.add(system.log_file, rotation="1 MB")
@@ -475,9 +476,9 @@ class SaleForm(QDialog):
         logger.info("Запуск функции changing_color_of_calendar")
         # Получаем строковое представление даты
         get_date: str = str(self.ui.dateEdit.date())
-        date_slice: str = get_date[21: (len(get_date) - 1)]
+        date_slice: str = get_date[21 : (len(get_date) - 1)]
         logger.debug(date_slice)
-        get_date: str = date_slice.replace(", ", "-")
+        # get_date: str = date_slice.replace(", ", "-") TODO: надо ли
 
         # Поскольку check_day не требует аргументов, вызываем его без параметра
         if system.check_day() == 1:
@@ -1464,7 +1465,9 @@ class SaleForm(QDialog):
                     if payment == 3:  # Если оплата offline банковской картой
                         check = "offline"
                     else:
-                        check = kkt.read_pinpad_file(system.config, remove_newline=False)
+                        check = kkt.read_pinpad_file(
+                            system.config, remove_newline=False
+                        )
                     logger.debug(f"Чек прихода: {check}")
                     with Session(system.engine) as session:
                         session.execute(

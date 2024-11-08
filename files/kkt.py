@@ -1,6 +1,6 @@
 import os
 import subprocess
-from configparser import ConfigParser, NoSectionError, NoOptionError
+from configparser import ConfigParser
 from typing import Any
 
 from files import windows

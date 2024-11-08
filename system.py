@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from config import Config
 from db.models import Holiday, Workday, Price, User
 from files.logger import logger, logger_wraps
-from config import Config
+
 
 class System:
     """Класс для хранения системной информации и функций"""
@@ -68,10 +68,13 @@ class System:
         self.sale_tickets = ()
         self.sale_tuple = ()
         self.sale_special = None
-        self.sale_checkbox_row = None  # Номер строки с активным CheckBox для исключения взрослого из продажи
-        self.exclude_from_sale = 0  # Состояние CheckBox для искл. взрослого из продажи: 0 - есть, 1 - нет
+        # Номер строки с активным CheckBox для исключения взрослого из продажи
+        self.sale_checkbox_row = None
+        # Состояние CheckBox для искл. взрослого из продажи: 0 - есть, 1 - нет
+        self.exclude_from_sale = 0
         self.what_a_day = None
-        self.sunday = None  # Первое воскресенье месяца (день многодлетных): 0 - нет, 1 - да
+        # Первое воскресенье месяца (день многодлетных): 0 - нет, 1 - да
+        self.sunday = None
         self.today = date.today()
         self.num_of_week = 0  # Номер дня недели
         self.pc_name = socket.gethostname()
@@ -89,7 +92,8 @@ class System:
             "ticket_free": 0,
         }
         self.price_service = {}
-        self.talent = {"1_hour": 25, "2_hour": 35, "3_hour": 50}  # Количество начисляемых талантов
+        # Количество начисляемых талантов
+        self.talent = {"1_hour": 25, "2_hour": 35, "3_hour": 50}
         self.age = {"min": 5, "max": 15}  # Возраст посетителей
         # Содержание detail: [kol_adult, price_adult, kol_child, price_child, discount, id_adult, time, sum]
         self.sale_dict = {
@@ -101,8 +105,10 @@ class System:
         }
         self.id_new_client_in_sale = 0  # Храним id нового клиента
         self.print_check = 1  # Флаг печати кассовых и банковских чеков
-        self.amount_to_pay_or_deposit = 0  # Сохраняем сумму для внесения или выплаты из кассы
-        self.amount_of_money_at_the_cash_desk = None  # Сохраняем баланс наличных денег в кассе
+        # Сохраняем сумму для внесения или выплаты из кассы
+        self.amount_to_pay_or_deposit = 0
+        # Сохраняем баланс наличных денег в кассе
+        self.amount_of_money_at_the_cash_desk = None
         # Словарь count_number_of_visitors -> Используем для подсчета количества посетителей: 'kol_adult', 'kol_child'
         # Используем для подсчета количества посетителей со скидкой: 'kol_sale_adult', 'kol_sale_child'
         # Используем для подсчета количества посетителей с категорией: 'kol_adult_many_child', 'kol_child_many_child',
@@ -237,9 +243,7 @@ class System:
         else:
             # Преобразуем текущую дату в список
             day: list[str] = day.split("-")
-            number_day = calendar.weekday(
-                int(day[0]), int(day[1]), int(day[2])
-            )
+            number_day = calendar.weekday(int(day[0]), int(day[1]), int(day[2]))
             if number_day >= 5:
                 status_day = 1
                 self.what_a_day = 1
@@ -321,7 +325,9 @@ class System:
         if not coordinates_file:
             raise KeyError("Не указан путь к файлу координат в конфигурации.")
         if not os.path.isfile(coordinates_file):
-            raise FileNotFoundError(f"Файл с координатами '{coordinates_file}' не найден.")
+            raise FileNotFoundError(
+                f"Файл с координатами '{coordinates_file}' не найден."
+            )
         # Загрузка данных из файла с координатами
         try:
             with open(coordinates_file, "r", encoding="utf-8") as f:

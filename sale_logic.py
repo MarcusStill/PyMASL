@@ -21,9 +21,7 @@ def calculate_age(birth_date: date) -> int:
     """
     logger.info("Запуск функцию calculate_age")
     # Используем функцию get_today_date для получения текущей даты
-    today = (
-        get_today_date()
-    )
+    today = get_today_date()
     return (
         today.year
         - birth_date.year
