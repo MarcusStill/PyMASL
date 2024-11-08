@@ -32,7 +32,8 @@ class Config:
                 - kol (str): Количество ПК.
                 - pc_1 (str): Имя первого ПК.
                 - pc_2 (str): Имя второго ПК.
-                - pinpad_path (str): Путь к терминалу.
+                - pinpad_path (str): Путь к каталогу с ПО эквайрингового терминалу.
+                - ticket_coordinates_file (str): Путь к файлу с координатами для макета билета.
         """
         config = ConfigParser()
         try:
@@ -48,11 +49,11 @@ class Config:
                 "user": "DATABASE",
                 "version": "OTHER",
                 "log_file": "OTHER",
+                "ticket_coordinates_file": "OTHER",
                 "kol": "PC",
                 "pc_1": "PC",
                 "pc_2": "PC",
                 "pinpad_path": "TERMINAL",
-                "ticket_coordinates_file": "OTHER",
             }
             config_data = {}
             for key, section in required_keys.items():
@@ -65,6 +66,14 @@ class Config:
                         f"Отсутствует параметр '{key}' в секции '{section}'"
                     )
                 config_data[key] = config.get(section, key)
+
+            # Проверяем наличие файла `ticket_coordinates_file`
+            coordinates_file = config_data.get("ticket_coordinates_file")
+            if not coordinates_file or not os.path.isfile(coordinates_file):
+                raise FileNotFoundError(
+                    f"Файл конфигурации для координат '{coordinates_file}' не найден."
+                )
+
             return config_data
         except (NoSectionError, NoOptionError) as e:
             logger.error(f"Ошибка в конфигурационном файле: {e}")
