@@ -1483,12 +1483,12 @@ class SaleForm(QDialog):
                 payment = 2
                 bank = None
             state_check = kkt.check_open(
-                System.sale_dict,
+                system.sale_dict,
                 payment_type,
-                System.user,
+                system.user,
                 1,
                 print_check,
-                System.sale_dict["detail"][7],
+                system.sale_dict["detail"][7],
                 bank,
             )
             # Если прошла оплата
