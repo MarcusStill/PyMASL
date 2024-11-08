@@ -3,9 +3,9 @@ import subprocess
 from configparser import ConfigParser
 from typing import Any
 
-from files import windows
-from files.libfptr10 import IFptr
-from files.logger import logger, logger_wraps
+from modules import windows
+from modules.libfptr10 import IFptr
+from modules.logger import logger, logger_wraps
 
 try:
     fptr = IFptr("")

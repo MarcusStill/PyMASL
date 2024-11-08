@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch, mock_open
 import pytest
 
 from db.models import Price
-from system import System
+from modules.system import System
 
 
 # Фикстуры
@@ -18,7 +18,7 @@ def mock_config_load_coordinates():
 @pytest.fixture
 def mock_session():
     """Фикстура для мокирования сессии базы данных."""
-    with patch("system.Session") as mock:
+    with patch("modules.system.Session") as mock:  # Исправленный путь
         yield mock
 
 
@@ -58,7 +58,7 @@ def default_expected_prices():
 @pytest.fixture
 def system(mock_session):
     """Фикстура для создания объекта System с мокированием сессии."""
-    with patch("system.Config") as mock_config:
+    with patch("modules.system.Config") as mock_config:  # Исправленный путь
         mock_config_instance = mock_config.return_value
         mock_config_instance.get.side_effect = {
             "host": "localhost",
@@ -71,8 +71,8 @@ def system(mock_session):
             "pc_1": "PC1",
             "pc_2": "PC2",
         }.get
-        with patch("system.load_dotenv"):
-            with patch("system.os.getenv", return_value="test_password"):
+        with patch("modules.system.load_dotenv"):  # Исправленный путь
+            with patch("modules.system.os.getenv", return_value="test_password"):
                 return System()
 
 
@@ -172,7 +172,7 @@ def check_prices(system, expected_prices):
 
 
 # Тесты остаются те же, что и у вас, но теперь с улучшением диагностики в `check_prices`
-@patch("system.Session")
+@patch("modules.system.Session")
 def test_get_price_with_enough_records(
     mock_session, system, mock_prices, default_expected_prices
 ):
@@ -197,7 +197,7 @@ def test_get_price_with_enough_records(
     check_prices(system, expected_prices)
 
 
-@patch("system.Session")
+@patch("modules.system.Session")
 def test_get_price_with_insufficient_records(
     mock_session, system, default_expected_prices
 ):
@@ -219,7 +219,7 @@ def test_get_price_with_insufficient_records(
     check_prices(system, updated_prices)
 
 
-@patch("system.Session")
+@patch("modules.system.Session")
 def test_get_price_with_empty_result(mock_session, system, default_expected_prices):
     """Тест на пустой результат (прайс-лист пуст)."""
     mock_session.return_value.__enter__.return_value.query.return_value.order_by.return_value.all.return_value = (

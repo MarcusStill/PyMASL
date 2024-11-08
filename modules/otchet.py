@@ -6,9 +6,9 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle
 
-from config import Config
-from files.logger import *
-from system import System
+from modules.config import Config
+from modules.logger import *
+from modules.system import System
 
 system = System()
 config = Config()

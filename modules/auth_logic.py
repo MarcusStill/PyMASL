@@ -1,7 +1,7 @@
 import datetime as dt
 import logging
 
-from system import System
+from modules.system import System
 
 logger = logging.getLogger(__name__)
 

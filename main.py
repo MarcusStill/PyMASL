@@ -13,21 +13,21 @@ from PySide6.QtWidgets import QTableWidgetItem, QWidget
 from sqlalchemy import and_, select, func, update, desc, or_
 from sqlalchemy.orm import Session
 
-from auth_logic import perform_pre_sale_checks
+from modules.auth_logic import perform_pre_sale_checks
 from db.models import Client
 from db.models import Sale
 from db.models import Ticket
-from design.authorization import Ui_Dialog
-from design.client import Ui_Dialog_Client
-from design.main_form import Ui_MainWindow
-from design.pay import Ui_Dialog_Pay
-from design.sale import Ui_Dialog_Sale
-from design.slip import Ui_Dialog_Slip
-from files import kkt
-from files import otchet
-from files import windows
-from files.logger import logger, logger_wraps
-from sale_logic import (
+from design.logic.authorization import Ui_Dialog
+from design.logic.client import Ui_Dialog_Client
+from design.logic.main_form import Ui_MainWindow
+from design.logic.pay import Ui_Dialog_Pay
+from design.logic.sale import Ui_Dialog_Sale
+from design.logic.slip import Ui_Dialog_Slip
+from modules import kkt
+from modules import otchet
+from modules import windows
+from modules.logger import logger, logger_wraps
+from modules.sale_logic import (
     calculate_age,
     calculate_ticket_type,
     calculated_ticket_price,
@@ -40,7 +40,7 @@ from sale_logic import (
     update_adult_count,
     update_child_count,
 )
-from system import System
+from modules.system import System
 from pathlib import Path
 system = System()
 config_data = system.config

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sale_logic import (
+from modules.sale_logic import (
     calculate_age,
     calculate_ticket_type,
     calculated_ticket_price,
@@ -21,7 +21,7 @@ from sale_logic import (
     update_adult_count,
     update_child_count,
 )
-from system import System
+from modules.system import System
 
 system = System()
 
@@ -39,7 +39,7 @@ system = System()
 )
 def test_calculate_age(monkeypatch, birth_date, today_date, expected_age):
     # Подменяем функцию get_today_date, чтобы возвращалась нужная дата
-    monkeypatch.setattr("sale_logic.get_today_date", lambda: today_date)
+    monkeypatch.setattr("modules.sale_logic.get_today_date", lambda: today_date)
 
     # Проверка, что calculate_age возвращает ожидаемый возраст
     assert calculate_age(birth_date) == expected_age

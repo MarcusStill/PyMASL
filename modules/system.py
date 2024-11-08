@@ -10,9 +10,9 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from config import Config
 from db.models import Holiday, Workday, Price, User
-from files.logger import logger, logger_wraps
+from modules.config import Config
+from modules.logger import logger, logger_wraps
 
 
 class System:
@@ -214,9 +214,11 @@ class System:
                 }
             else:
                 # Если записей меньше 9, используем дефолтные значения для отсутствующих элементов
-                logger.warning(f"Недостаточно записей в прайс-листе: {len(result)} вместо 9.")
-                missing_keys = list(default_prices.keys())[len(result):]
-                for idx, key in enumerate(list(default_prices.keys())[:len(result)]):
+                logger.warning(
+                    f"Недостаточно записей в прайс-листе: {len(result)} вместо 9."
+                )
+                missing_keys = list(default_prices.keys())[len(result) :]
+                for idx, key in enumerate(list(default_prices.keys())[: len(result)]):
                     db_prices[key] = result[idx]
 
                 # Заполняем оставшиеся элементы дефолтными значениями
@@ -235,10 +237,14 @@ class System:
                 # Если value — это просто число, берем его как цену
                 price_value = value
 
-            price_value = price_value if price_value is not None else 0  # Если вдруг None, ставим 0
+            price_value = (
+                price_value if price_value is not None else 0
+            )  # Если вдруг None, ставим 0
             logger.debug(f"Устанавливаем прайс для {key}: {price_value}")
             # Устанавливаем цену в словарь
-            self.price[key] = int(price_value) if price_value != 0 else default_prices[key]
+            self.price[key] = (
+                int(price_value) if price_value != 0 else default_prices[key]
+            )
 
     def check_day(self) -> int:
         """
@@ -352,7 +358,9 @@ class System:
 
         # Проверка, что файл существует
         if not os.path.isfile(coordinates_file):
-            raise FileNotFoundError(f"Файл с координатами '{coordinates_file}' не найден.")
+            raise FileNotFoundError(
+                f"Файл с координатами '{coordinates_file}' не найден."
+            )
         # Загрузка данных из файла с координатами
         try:
             with open(coordinates_file, "r", encoding="utf-8") as f:

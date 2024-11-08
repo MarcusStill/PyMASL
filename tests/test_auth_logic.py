@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from auth_logic import perform_pre_sale_checks
-from system import System
+from modules.auth_logic import perform_pre_sale_checks
+from modules.system import System
 
 system = System()
 
