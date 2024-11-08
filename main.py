@@ -41,7 +41,7 @@ from sale_logic import (
     update_child_count,
 )
 from system import System
-
+from pathlib import Path
 system = System()
 config_data = system.config
 logger.add(system.log_file, rotation="1 MB")
@@ -1987,20 +1987,14 @@ class SaleForm(QDialog):
     def print_saved_tickets(self):
         """
         Функция для печати сохраненных билетов.
-
-        Параметры:
-            self: object
-                Ссылка на экземпляр текущего объекта класса.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений.
         """
         logger.info("Запуск функции print_saved_tickets.")
         self.sale_generate_saved_tickets()
         try:
             logger.info("Завершение процесса SumatraPDF, если он открыт.")
             os.system("TASKKILL /F /IM SumatraPDF.exe")
-            subprocess.Popen([r"print.cmd"])
+            print_cmd_path = Path(__file__).parent / 'scripts' / 'print.cmd'
+            subprocess.Popen([str(print_cmd_path)])
         except FileNotFoundError:
             logger.error("Файл print.cmd не найден.")
         except Exception as e:
@@ -2009,19 +2003,14 @@ class SaleForm(QDialog):
     def open_saved_tickets(self):
         """
         Функция для открытия созданного PDF файла с билетами.
-
-        Параметры:
-            self: object
-                Ссылка на экземпляр текущего объекта класса.
-
-        Возвращаемое значение:
-            None: Функция не возвращает значений.
         """
         logger.info("Запуск функции open_saved_tickets.")
-        self.sale_generate_saved_tickets(self)
+        # Исправленный вызов метода
+        self.sale_generate_saved_tickets()
         try:
             os.system("TASKKILL /F /IM SumatraPDF.exe")
-            subprocess.Popen([r"open.cmd"])
+            open_cmd_path = Path(__file__).parent / 'scripts' / 'open.cmd'
+            subprocess.Popen([str(open_cmd_path)])
         except FileNotFoundError:
             logger.error("Файл open.cmd не найден.")
         except Exception as e:
