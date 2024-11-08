@@ -179,7 +179,7 @@ class System:
         """
         logger.info("Запуск функции get_price")
 
-        # Словарь со значениями по умолчанию
+        # Словарь с дефолтными значениями
         default_prices = {
             "ticket_child_1": 250,
             "ticket_child_2": 500,
@@ -192,33 +192,53 @@ class System:
             "ticket_adult_3": 250,
         }
 
+        # Инициализируем db_prices пустым словарем по умолчанию
+        db_prices = {}
+
         with Session(self.engine) as session:
             result = session.query(Price).order_by(Price.id).all()
 
         if result:
-            # Словарь для хранения цен из БД
-            db_prices = {
-                "ticket_child_1": result[0],
-                "ticket_child_2": result[1],
-                "ticket_child_3": result[2],
-                "ticket_child_week_1": result[3],
-                "ticket_child_week_2": result[4],
-                "ticket_child_week_3": result[5],
-                "ticket_adult_1": result[6],
-                "ticket_adult_2": result[7],
-                "ticket_adult_3": result[8],
-            }
+            if len(result) >= 9:
+                # Заполняем db_prices в случае наличия достаточного количества записей
+                db_prices = {
+                    "ticket_child_1": result[0],
+                    "ticket_child_2": result[1],
+                    "ticket_child_3": result[2],
+                    "ticket_child_week_1": result[3],
+                    "ticket_child_week_2": result[4],
+                    "ticket_child_week_3": result[5],
+                    "ticket_adult_1": result[6],
+                    "ticket_adult_2": result[7],
+                    "ticket_adult_3": result[8],
+                }
+            else:
+                # Если записей меньше 9, используем дефолтные значения для отсутствующих элементов
+                logger.warning(f"Недостаточно записей в прайс-листе: {len(result)} вместо 9.")
+                missing_keys = list(default_prices.keys())[len(result):]
+                for idx, key in enumerate(list(default_prices.keys())[:len(result)]):
+                    db_prices[key] = result[idx]
 
-            # Устанавливаем цены, используя значения из БД или по умолчанию
-            for key, value in db_prices.items():
-                self.price[key] = (
-                    int(str(value)) if int(str(value)) != 0 else default_prices[key]
-                )
+                # Заполняем оставшиеся элементы дефолтными значениями
+                for key in missing_keys:
+                    db_prices[key] = default_prices[key]
         else:
-            # Если результат запроса пуст, устанавливаем значения по умолчанию
-            self.price.update(default_prices)
+            # Если записей нет, используем дефолтные значения для всех элементов
+            db_prices = default_prices
 
-        logger.debug(f"System.price: {self.price}")
+        # Устанавливаем цены, используя данные из db_prices или дефолтные значения
+        for key, value in db_prices.items():
+            if isinstance(value, Price):
+                # Если value является объектом Price, используем его атрибут price
+                price_value = value.price
+            else:
+                # Если value — это просто число, берем его как цену
+                price_value = value
+
+            price_value = price_value if price_value is not None else 0  # Если вдруг None, ставим 0
+            logger.debug(f"Устанавливаем прайс для {key}: {price_value}")
+            # Устанавливаем цену в словарь
+            self.price[key] = int(price_value) if price_value != 0 else default_prices[key]
 
     def check_day(self) -> int:
         """
@@ -322,12 +342,17 @@ class System:
         """
         logger.info("Запуск функции load_coordinates")
         coordinates_file = config.get("ticket_coordinates_file")
+        # Проверка, что путь к файлу есть
         if not coordinates_file:
             raise KeyError("Не указан путь к файлу координат в конфигурации.")
+
+        # Проверка, что путь к файлу является строкой
+        if not isinstance(coordinates_file, str):
+            raise TypeError("Путь к файлу координат должен быть строкой.")
+
+        # Проверка, что файл существует
         if not os.path.isfile(coordinates_file):
-            raise FileNotFoundError(
-                f"Файл с координатами '{coordinates_file}' не найден."
-            )
+            raise FileNotFoundError(f"Файл с координатами '{coordinates_file}' не найден.")
         # Загрузка данных из файла с координатами
         try:
             with open(coordinates_file, "r", encoding="utf-8") as f:
