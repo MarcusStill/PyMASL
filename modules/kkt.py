@@ -1,11 +1,13 @@
 import os
 import subprocess
-from configparser import ConfigParser
 from typing import Any
 
 from modules import windows
+from modules.config import Config
 from modules.libfptr10 import IFptr
 from modules.logger import logger, logger_wraps
+
+config = Config()
 
 try:
     fptr = IFptr("")
@@ -21,38 +23,12 @@ COINCIDENCE: str = "совпали"
 EMAIL: str = "test.check@pymasl.ru"
 
 
-# Загружаем конфигурацию
-def read_terminal_config():
-    """Функция для загрузки параметров из файла конфигурации.
-
-    Параметры:
-        None
-
-    Возвращаемое значение:
-        dict: Словарь с параметрами конфигурации, содержащий следующие ключи:
-            - pinpad_path (str): Путь к терминалу.
-    """
-    config = ConfigParser()
-    config.read("config.ini")
-    try:
-        pinpad_path = config.get("TERMINAL", "pinpad_path")
-        return {"pinpad_path": pinpad_path}
-    except:
-        return None
-
-
-# Чтение параметров из файла конфигурации
-config_data = read_terminal_config()
-
-
-def run_terminal_command(command_params: str, config_data: dict):
+def run_terminal_command(command_params: str):
     """Запуск оплаты по банковскому терминалу и возврат кода результата.
 
     Параметры:
         command_params (str):
             Параметры для команды, которую необходимо выполнить на терминале.
-        config_data (dict):
-            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
 
     Возвращаемое значение:
         subprocess.CompletedProcess или None:
@@ -60,7 +36,7 @@ def run_terminal_command(command_params: str, config_data: dict):
             - Возвращает None, если конфигурация не загружена или произошла ошибка выполнения команды.
     """
     logger.info("Запуск функции run_terminal_command")
-    pinpad_path: Any = config_data["pinpad_path"]
+    pinpad_path: str = config.get("pinpad_path")
     pinpad_file: str = os.path.join(pinpad_path, "loadparm.exe")
     pinpad_run: str = f"{pinpad_file} {command_params}"
     logger.info(f"Запуск команды: {pinpad_run}")
@@ -74,14 +50,12 @@ def run_terminal_command(command_params: str, config_data: dict):
         return None
 
 
-def check_terminal_file(word: str, config_data: dict):
+def check_terminal_file(word: str):
     """Проверка файла с результатом работы терминала.
 
     Параметры:
         word (str):
             Ожидаемое слово или текст, который необходимо найти в файле.
-        config_data (dict):
-            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
 
     Возвращаемое значение:
         bool:
@@ -89,7 +63,7 @@ def check_terminal_file(word: str, config_data: dict):
             - Возвращает False, если слово не найдено или файл не существует.
     """
     logger.info("Запуск функции check_terminal_file")
-    pinpad_path: Any = config_data["pinpad_path"]
+    pinpad_path: Any = config.get("pinpad_path")
     pinpad_file: str = os.path.join(pinpad_path, "p")
     try:
         with open(pinpad_file, encoding="IBM866") as file:
@@ -107,14 +81,12 @@ def check_terminal_file(word: str, config_data: dict):
 
 
 @logger_wraps()
-def terminal_oplata(amount, config_data):
+def terminal_oplata(amount):
     """Операуия оплаты по банковскому терминалу.
 
     Параметры:
         amount (float):
             Сумма, которую необходимо оплатить.
-        config_data (dict):
-            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
 
     Возвращаемое значение:
         int:
@@ -123,7 +95,7 @@ def terminal_oplata(amount, config_data):
     """
     logger.info("Запуск функции terminal_oplata")
     # Добавляем '00' для копеек
-    plat_code = run_terminal_command(f"1 {amount}00", config_data)
+    plat_code = run_terminal_command(f"1 {amount}00")
     if plat_code is None:
         logger.error("Ошибка при выполнении команды терминала")
         logger.info(
@@ -131,21 +103,19 @@ def terminal_oplata(amount, config_data):
         )
         return 0  # Обрабатываем ошибку
     if plat_code.returncode == TERMINAL_SUCCESS_CODE:
-        return 1 if check_terminal_file(APPROVE, config_data) else 0
+        return 1 if check_terminal_file(APPROVE) else 0
     elif plat_code.returncode == TERMINAL_USER_CANCEL_CODE:
         logger.warning("Оплата отменена пользователем")
         return 0
 
 
 @logger_wraps()
-def terminal_return(amount, config_data):
+def terminal_return(amount):
     """Операуия возврата по банковскому терминалу
 
     Параметры:
         amount (float):
             Сумма, которую необходимо вернуть.
-        config_data (dict):
-            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
 
     Возвращаемое значение:
         int:
@@ -155,22 +125,20 @@ def terminal_return(amount, config_data):
     logger.info("Запуск функции terminal_return")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"3 {amount}00", config_data)
+    result = run_terminal_command(f"3 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
     # if result == TERMINAL_SUCCESS_CODE: # TODO: проверить статус-код
     #     return 1 if check_terminal_file() else 0
-    return 1 if check_terminal_file(APPROVE, config_data) else 0
+    return 1 if check_terminal_file(APPROVE) else 0
 
 
 @logger_wraps()
-def terminal_canceling(amount, config_data):
+def terminal_canceling(amount):
     """Операуия отмены по банковскому терминалу.
 
     Параметры:
         amount (float):
             Сумма, которую необходимо отменить.
-        config_data (dict):
-            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
 
     Возвращаемое значение:
         int:
@@ -180,11 +148,11 @@ def terminal_canceling(amount, config_data):
     logger.info("Запуск функции terminal_canceling")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"8 {amount}00", config_data)
+    result = run_terminal_command(f"8 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
     # if result == TERMINAL_SUCCESS_CODE: # TODO: проверить статус-код
     #     return 1 if check_terminal_file() else 0
-    return 1 if check_terminal_file(APPROVE, config_data) else 0
+    return 1 if check_terminal_file(APPROVE) else 0
 
 
 @logger_wraps()
@@ -197,9 +165,9 @@ def terminal_check_itog():
             - Возвращает 0, если файл не найден.
     """
     logger.info("Запуск функции terminal_check_itog")
-    result = run_terminal_command("7", config_data)
+    result = run_terminal_command("7")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
-    return 1 if check_terminal_file(COINCIDENCE, config_data) else 0
+    return 1 if check_terminal_file(COINCIDENCE) else 0
 
 
 def terminal_menu():
@@ -210,7 +178,7 @@ def terminal_menu():
             Функция не возвращает значений, просто вызывает команду терминала.
     """
     logger.info("Запуск функции terminal_menu")
-    run_terminal_command("11", config_data)
+    run_terminal_command("11")
 
 
 def terminal_check_itog_window():
@@ -221,9 +189,9 @@ def terminal_check_itog_window():
             Функция не возвращает значений, просто выводит информацию в окно.
     """
     logger.info("Запуск функции terminal_check_itog_window")
-    run_terminal_command("7", config_data)
+    run_terminal_command("7")
     try:
-        info: str = read_pinpad_file(config_data)
+        info: str = read_pinpad_file()
         logger.info("Сверка итогов завершена")
         windows.info_window("Смотрите подробную информацию.", "", info)
     except FileNotFoundError as not_found:
@@ -242,7 +210,7 @@ def terminal_svod_check():
             Функция не возвращает значений, просто вызывает команду терминала.
     """
     logger.info("Запуск функции terminal_svod_check")
-    run_terminal_command("9", config_data)
+    run_terminal_command("9")
     try:
         print_pinpad_check(1)
     except FileNotFoundError as not_found:
@@ -258,7 +226,7 @@ def terminal_control_lenta():
             Функция не возвращает значений, просто вызывает команду терминала.
     """
     logger.info("Запуск функции terminal_control_lenta")
-    run_terminal_command("9 1", config_data)
+    run_terminal_command("9 1")
     try:
         print_pinpad_check(1)
     except FileNotFoundError as not_found:
@@ -290,7 +258,7 @@ def terminal_file_in_window():
     """
     logger.info("Запуск функции terminal_file_in_window")
     try:
-        info: str = read_pinpad_file(config_data)
+        info: str = read_pinpad_file()
     except FileNotFoundError as not_found:
         logger.warning(not_found.filename)
     windows.info_window("Смотрите подробную информацию.", "", info)
@@ -309,7 +277,7 @@ def terminal_copy_last_check():
             Функция не возвращает значений, но может вызывать исключения в случае ошибок.
     """
     logger.info("Запуск функции terminal_copy_last_check")
-    run_terminal_command("12", config_data)
+    run_terminal_command("12")
     try:
         print_pinpad_check(1)
     except FileNotFoundError as not_found:
@@ -317,12 +285,10 @@ def terminal_copy_last_check():
 
 
 @logger_wraps()
-def read_pinpad_file(config_data, remove_newline=True):
+def read_pinpad_file(remove_newline=True):
     """Чтение банковского чека с опциональным удалением переноса строки.
 
     Параметры:
-        config_data (dict):
-            Словарь, содержащий параметры конфигурации, включая путь к терминалу.
         remove_newline (bool):
             Этот параметр определяет, нужно ли удалять символы новой строки при чтении файла.
 
@@ -332,7 +298,7 @@ def read_pinpad_file(config_data, remove_newline=True):
             - Возвращает None, если файл не найден или конфигурация не загружена.
     """
     logger.info("Запуск функции read_pinpad_file")
-    pinpad_path = config_data["pinpad_path"]
+    pinpad_path = config.get("pinpad_path")
     pinpad_file = os.path.join(pinpad_path, "p")
     result_lines: list[str] = []
     try:
@@ -366,7 +332,7 @@ def print_slip_check(kol: int = 2):
     fptr.open()
     # Открытие нефискального документа
     fptr.beginNonfiscalDocument()
-    line: str = read_pinpad_file(config_data, remove_newline=True)
+    line: str = read_pinpad_file(remove_newline=True)
     fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
     fptr.printText()
     # Перенос строки
@@ -387,7 +353,7 @@ def print_slip_check(kol: int = 2):
         fptr.beginNonfiscalDocument()
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "")
         fptr.printText()
-        line = read_pinpad_file(config_data, remove_newline=True)
+        line = read_pinpad_file(remove_newline=True)
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
         fptr.printText()
         # Промотка чековой ленты на одну строку (пустую)
@@ -422,7 +388,7 @@ def print_pinpad_check(count: int = 2):
         # Открытие нефискального документа
         fptr.beginNonfiscalDocument()
         # Читаем чек из файла
-        line = read_pinpad_file(config_data, remove_newline=False)
+        line = read_pinpad_file(remove_newline=False)
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
         fptr.printText()
         # Перенос строки
@@ -747,7 +713,7 @@ def operation_on_the_terminal(payment_type, type_operation, price):
         if type_operation == 1:
             logger.info("Запускаем оплату по банковскому терминалу")
             # результат операции по терминалу
-            bank = terminal_oplata(str(price), config_data)
+            bank = terminal_oplata(str(price))
             logger.debug(f"Результат операции по терминалу: {bank}")
             if bank != 1:
                 info = "Оплата по банковскому терминалу завершена с ошибкой"
@@ -757,7 +723,7 @@ def operation_on_the_terminal(payment_type, type_operation, price):
         elif type_operation == 2:
             logger.info("Запускаем операцию возврата по банковскому терминалу")
             # результат операции по терминалу
-            bank = terminal_return(str(price), config_data)
+            bank = terminal_return(str(price))
             logger.debug(f"Результат операции по терминалу: {bank}")
             if bank != 1:
                 info = "Возврат по банковскому терминалу завершен с ошибкой"
@@ -767,7 +733,7 @@ def operation_on_the_terminal(payment_type, type_operation, price):
         elif type_operation == 3:
             logger.info("Запускаем операцию отмены по банковскому терминалу")
             # результат операции по терминалу
-            bank = terminal_canceling(str(price), config_data)
+            bank = terminal_canceling(str(price))
             logger.debug(f"Результат операции по терминалу: {bank}")
             if bank != 1:
                 info = "Отмена по банковскому терминалу завершена с ошибкой"
