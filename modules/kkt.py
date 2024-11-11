@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from modules import windows
 from modules.config import Config
 from modules.libfptr10 import IFptr
@@ -19,6 +21,16 @@ except (Exception,) as e:
 
 
 EMAIL: str = "test.check@pymasl.ru"
+
+
+@contextmanager
+def fptr_connection():
+    """Контекстный менеджер для управления подключением к ККМ."""
+    fptr.open()
+    try:
+        yield
+    finally:
+        fptr.close()
 
 
 @logger_wraps()
@@ -52,44 +64,38 @@ def print_slip_check(kol: int = 2):
             Функция не возвращает значений, но может вызывать исключения в случае ошибок при печати.
     """
     logger.info("Запуск функции print_slip_check")
-    fptr.open()
-    # Открытие нефискального документа
-    fptr.beginNonfiscalDocument()
-    line: str = read_pinpad_file(remove_newline=True)
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-    fptr.printText()
-    # Перенос строки
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-    # Промотка чековой ленты на одну строку (пустую)
-    fptr.printText()
-    # Закрытие нефискального документа
-    fptr.endNonfiscalDocument()
-    # Печать документа
-    fptr.report()
-    # Частичная отрезка ЧЛ
-    fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
-    # Отрезаем чек
-    fptr.cut()
-    # Создание копии нефискального документа
-    if kol == 2:
-        # Печатаем копию слип-чека
+    with fptr_connection():
+        # Открытие нефискального документа
         fptr.beginNonfiscalDocument()
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "")
-        fptr.printText()
-        line = read_pinpad_file(remove_newline=True)
+        line: str = read_pinpad_file(remove_newline=True)
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
         fptr.printText()
+        # Перенос строки
+        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
         # Промотка чековой ленты на одну строку (пустую)
         fptr.printText()
         # Закрытие нефискального документа
         fptr.endNonfiscalDocument()
         # Печать документа
         fptr.report()
-        # Полная отрезка ЧЛ
-        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+        # Частичная отрезка ЧЛ
+        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
         # Отрезаем чек
         fptr.cut()
-    fptr.close()
+        # Создание копии нефискального документа
+        if kol == 2:
+            # Печатаем копию слип-чека
+            fptr.beginNonfiscalDocument()
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "")
+            fptr.printText()
+            line = read_pinpad_file(remove_newline=True)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+            fptr.printText()
+            fptr.printText()
+            fptr.endNonfiscalDocument()
+            fptr.report()
+            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+            fptr.cut()
 
 
 @logger_wraps()
@@ -106,28 +112,24 @@ def print_pinpad_check(count: int = 2):
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
         logger.debug("Функция печати нефискального документа")
-        # Открываем соединение с ККМ
-        fptr.open()
-        # Открытие нефискального документа
-        fptr.beginNonfiscalDocument()
-        # Читаем чек из файла
-        line = read_pinpad_file(remove_newline=False)
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-        fptr.printText()
-        # Перенос строки
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-        # Промотка чековой ленты на одну строку (пустую)
-        fptr.printText()
-        # Закрытие нефискального документа
-        fptr.endNonfiscalDocument()
-        # Печать документа
-        fptr.report()
-        # Полная отрезка ЧЛ
-        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-        # Отрезаем чек
-        fptr.cut()
-        # Закрываем соединение с ККМ
-        fptr.close()
+        with fptr_connection():
+            fptr.beginNonfiscalDocument()
+            # Читаем чек из файла
+            line = read_pinpad_file(remove_newline=False)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+            fptr.printText()
+            # Перенос строки
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+            # Промотка чековой ленты на одну строку (пустую)
+            fptr.printText()
+            # Закрытие нефискального документа
+            fptr.endNonfiscalDocument()
+            # Печать документа
+            fptr.report()
+            # Полная отрезка ЧЛ
+            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+            # Отрезаем чек
+            fptr.cut()
         count -= 1
 
 
@@ -144,13 +146,12 @@ def get_info():
             Функция не возвращает значений, но может открывать окно с информацией о ККТ.
     """
     logger.info("Запуск функции get_info")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
-    fptr.queryData()
-    model = fptr.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
-    model_name = fptr.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME)
-    firmware_version = fptr.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION)
-    fptr.close()
+    with fptr_connection():
+        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
+        fptr.queryData()
+        model = fptr.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
+        model_name = fptr.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME)
+        firmware_version = fptr.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION)
     info = (
         f"Номер модели ККТ: {model}.\nНаименование ККТ: {model_name}.\n"
         f"Версия ПО ККТ: {firmware_version}"
@@ -171,18 +172,17 @@ def get_status_obmena():
             Функция не возвращает значений, но открывает окно с информацией о статусе обмена.
     """
     logger.info("Запуск функции get_status_obmena")
-    fptr.open()
-    fptr.setParam(
-        IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS
-    )
-    fptr.fnQueryData()
-    exchange_status = fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS)
-    unsent_count = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT)
-    first_unsent_number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
-    ofd_message_read = fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ)
-    date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-    okp_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_LAST_SUCCESSFUL_OKP)
-    fptr.close()
+    with fptr_connection():
+        fptr.setParam(
+            IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS
+        )
+        fptr.fnQueryData()
+        exchange_status = fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS)
+        unsent_count = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT)
+        first_unsent_number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+        ofd_message_read = fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ)
+        date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+        okp_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_LAST_SUCCESSFUL_OKP)
     info: str = (
         f"Статус информационного обмена с ОФД: {exchange_status}.\n"
         f"Количество неотправленных документов: {unsent_count}.\n"
@@ -207,14 +207,13 @@ def get_time():
             Функция не возвращает значений, но открывает окно с текущими датой и временем.
     """
     logger.info("Запуск функции get_time")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
-    fptr.queryData()
-    # Тип переменной datetime - datetime.datetime
-    date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+    with fptr_connection():
+        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
+        fptr.queryData()
+        # Тип переменной datetime - datetime.datetime
+        date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
     logger.debug(f"Текущие дата и время в ККТ: {date_time}")
     windows.info_window(str(date_time), "", "")
-    fptr.close()
 
 
 @logger_wraps()
@@ -230,13 +229,13 @@ def smena_info():
             Возвращает состояние смены (0 - закрыта, 1 - открыта, 2 - истекла).
     """
     logger.info("Запуск функции smena_info")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
-    fptr.queryData()
-    state = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE)
-    number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER)
-    date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-    shift_states: dict[int, str] = {
+    with fptr_connection():
+        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
+        fptr.queryData()
+        state = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE)
+        number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER)
+        date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+    shift_states = {
         0: "закрыта",
         1: "открыта",
         2: "истекла (продолжительность смены больше 24 часов)",
@@ -251,7 +250,6 @@ def smena_info():
     windows.info_window(
         f"Состояние смены: {result}", "Смотрите подробную информацию.", info
     )
-    fptr.close()
     return state
 
 
@@ -268,10 +266,9 @@ def last_document():
             Функция не возвращает значений, но выполняет печать последнего документа.
     """
     logger.info("Запуск функции last_document")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT)
-    fptr.report()
-    fptr.close()
+    with fptr_connection():
+        fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT)
+        fptr.report()
 
 
 @logger_wraps()
@@ -287,10 +284,9 @@ def report_payment():
             Функция не возвращает значений, но выполняет печать отчета о состоянии расчетов.
     """
     logger.info("Запуск функции report_payment")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS)
-    fptr.report()
-    fptr.close()
+    with fptr_connection():
+        fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS)
+        fptr.report()
 
 
 @logger_wraps()
@@ -306,10 +302,9 @@ def report_x():
             Функция не возвращает значений, но выполняет печать X-отчета.
     """
     logger.info("Запуск функции report_x")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
-    fptr.report()
-    fptr.close()
+    with fptr_connection():
+        fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
+        fptr.report()
 
 
 @logger_wraps()
@@ -325,11 +320,10 @@ def kassir_reg(user):
             Функция не возвращает значений.
     """
     logger.info("Запуск функции kassir_reg")
-    fptr.open()
-    fptr.setParam(1021, f"{user.last_name} {user.first_name}")
-    fptr.setParam(1203, user.inn)
-    fptr.operatorLogin()
-    fptr.close()
+    with fptr_connection():
+        fptr.setParam(1021, f"{user.last_name} {user.first_name}")
+        fptr.setParam(1203, user.inn)
+        fptr.operatorLogin()
 
 
 @logger_wraps()
@@ -346,10 +340,9 @@ def deposit_of_money(amount):
     """
     logger.info("Запуск функции cash_deposit")
     logger.info(f"Внесено в кассу: {amount}")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
-    fptr.cashIncome()
-    fptr.close()
+    with fptr_connection():
+        fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
+        fptr.cashIncome()
 
 
 @logger_wraps()
@@ -366,10 +359,9 @@ def payment(amount):
     """
     logger.info("Запуск функции payment")
     logger.info(f"Выплачено из кассы: {amount}")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
-    fptr.cashOutcome()
-    fptr.close()
+    with fptr_connection():
+        fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
+        fptr.cashOutcome()
 
 
 @logger_wraps()
@@ -385,29 +377,27 @@ def balance_check():
             Возвращает баланс наличных денег в кассе.
     """
     logger.info("Запуск функции balance_check")
-    fptr.open()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_CASH_SUM)
-    fptr.queryData()
-    cashSum = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_SUM)
-    logger.info(f"Баланс наличных денег в кассе: {cashSum}")
-    # Открытие нефискального документа
-    fptr.beginNonfiscalDocument()
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, f"Баланс наличных денег: {cashSum}")
-    fptr.printText()
-    # Перенос строки
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-    # Промотка чековой ленты на одну строку (пустую)
-    fptr.printText()
-    # Закрытие нефискального документа
-    fptr.endNonfiscalDocument()
-    # Печать документа
-    fptr.report()
-    # Полная отрезка ЧЛ
-    fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-    # Отрезаем чек
-    fptr.cut()
-    # Закрываем соединение с ККМ
-    fptr.close()
+    with fptr_connection():  # Использование контекстного менеджера для работы с ККТ
+        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_CASH_SUM)
+        fptr.queryData()
+        cashSum = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_SUM)
+        logger.info(f"Баланс наличных денег в кассе: {cashSum}")
+        # Открытие нефискального документа
+        fptr.beginNonfiscalDocument()
+        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, f"Баланс наличных денег: {cashSum}")
+        fptr.printText()
+        # Перенос строки
+        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+        # Промотка чековой ленты на одну строку (пустую)
+        fptr.printText()
+        # Закрытие нефискального документа
+        fptr.endNonfiscalDocument()
+        # Печать документа
+        fptr.report()
+        # Полная отрезка ЧЛ
+        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+        # Отрезаем чек
+        fptr.cut()
     return cashSum
 
 
@@ -659,33 +649,32 @@ def smena_close(user):
     if state != 0:
         res = windows.info_dialog_window(
             "Внимание! Кассовая смена не закрыта",
-            "Хотите сделать сверку итогов и" "снять отчет с гашением?",
+            "Хотите сделать сверку итогов и снять отчет с гашением?",
         )
         if res == 1:
             result = terminal_check_itog()
             try:
                 if result == 1:
-                    fptr.open()
-                    fptr.setParam(1021, f"{user.last_name} {user.first_name}")
-                    fptr.setParam(1203, user.inn)
-                    fptr.operatorLogin()
-                    fptr.setParam(
-                        IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT
-                    )
-                    fptr.report()
-                    fptr.checkDocumentClosed()
-                    fptr.close()
+                    with fptr_connection():
+                        fptr.setParam(1021, f"{user.last_name} {user.first_name}")
+                        fptr.setParam(1203, user.inn)
+                        fptr.operatorLogin()
+                        fptr.setParam(
+                            IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_CLOSE_SHIFT
+                        )
+                        fptr.report()
+                        fptr.checkDocumentClosed()
             except FileNotFoundError as not_found:
                 lines = "File not found!"
                 logger.warning(not_found.filename)
                 windows.info_window(
-                    "Сверка итогов по банковскому" "терминалу завершена неудачно.",
+                    "Сверка итогов по банковскому терминалу завершена неудачно.",
                     "",
                     str(lines),
                 )
         else:
             windows.info_window(
-                "Сверка итогов по банковскому" "терминалу завершена неудачно.", "", ""
+                "Сверка итогов по банковскому терминалу завершена неудачно.", "", ""
             )
             logger.warning(state)
 
