@@ -2848,7 +2848,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
                 # Обрабатываем тип оплаты
                 payment_dict = {1: "карта", 2: "наличные", 3: "карта offline"}
-                payment_type = payment_dict.get(int(sale[7]), "-")
+                if sale[7] is not None:
+                    try:
+                        payment_type = payment_dict.get(int(sale[7]), "-")
+                    except (ValueError, TypeError):
+                        payment_type = "-"  # Если не удалось преобразовать или тип некорректен, вернем дефолтное значение "-"
+                else:
+                    payment_type = "-"  # Если sale[7] равно None, сразу устанавливаем дефолтное значение
                 self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(payment_type))
 
     def main_open_client(self) -> None:
