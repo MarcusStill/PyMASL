@@ -59,27 +59,11 @@
   },
   {
    "optionDest": "datas",
-   "value": "PATH/PyMASL/config.ini;."
+   "value": "PATH/PyMASL/modules;modules/"
   },
   {
    "optionDest": "datas",
-   "value": "PATH/PyMASL/debug.log;."
-  },
-  {
-   "optionDest": "datas",
-   "value": "PATH/PyMASL/print.cmd;."
-  },
-  {
-   "optionDest": "datas",
-   "value": "PATH/PyMASL/pylogo.png;."
-  },
-  {
-   "optionDest": "datas",
-   "value": "PATH/PyMASL/files/ticket_param.json;."
-  },
-  {
-   "optionDest": "datas",
-   "value": "PATH/PyMASL/open.cmd;."
+   "value": "PATH/PyMASL/scripts;scripts/"
   }
  ],
  "nonPyinstallerOptions": {
