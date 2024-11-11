@@ -43,6 +43,14 @@ from modules.sale_logic import (
     update_child_count,
 )
 from modules.system import System
+from modules.terminal import (
+    terminal_check_itog,
+    terminal_svod_check,
+    terminal_control_lenta,
+    terminal_copy_last_check,
+    terminal_menu,
+    terminal_print_file,
+)
 
 system = System()
 config_data = system.config
@@ -1474,9 +1482,7 @@ class SaleForm(QDialog):
                     if payment == 3:  # Если оплата offline банковской картой
                         check = "offline"
                     else:
-                        check = kkt.read_pinpad_file(
-                            system.config, remove_newline=False
-                        )
+                        check = kkt.read_pinpad_file(remove_newline=False)
                     logger.debug(f"Чек прихода: {check}")
                     with Session(system.engine) as session:
                         session.execute(
@@ -1607,9 +1613,7 @@ class SaleForm(QDialog):
                             )
                         if bank == 1:
                             logger.debug("Сохраняем чек возврата.")
-                            check = kkt.read_pinpad_file(
-                                system.config, remove_newline=False
-                            )
+                            check = kkt.read_pinpad_file(remove_newline=False)
                             logger.debug(f"Чек возврата: {check}")
                             with Session(system.engine) as session:
                                 session.execute(
@@ -1687,7 +1691,7 @@ class SaleForm(QDialog):
                 bank, payment = kkt.operation_on_the_terminal(payment_type, 2, price)
                 if bank == 1:
                     logger.info("Операция повторного возврата прошла успешно")
-                    check = kkt.read_pinpad_file(system.config, remove_newline=False)
+                    check = kkt.read_pinpad_file(remove_newline=False)
                     logger.debug(f"Чек возврата: {check}")
                     with Session(system.engine) as session:
                         session.execute(
@@ -1758,9 +1762,7 @@ class SaleForm(QDialog):
                         )
                         if bank == 1:
                             logger.debug("Сохраняем чек возврата.")
-                            check = kkt.read_pinpad_file(
-                                system.config, remove_newline=False
-                            )
+                            check = kkt.read_pinpad_file(remove_newline=False)
                             logger.debug(f"Чек возврата: {check}")
                             with Session(system.engine) as session:
                                 session.execute(
@@ -2190,10 +2192,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
         self.ui.pushButton_15.clicked.connect(kkt.continue_print)
         self.ui.pushButton_10.clicked.connect(kkt.smena_info)
-        self.ui.pushButton_16.clicked.connect(kkt.terminal_check_itog_window)
-        self.ui.pushButton_21.clicked.connect(kkt.terminal_svod_check)
-        self.ui.pushButton_22.clicked.connect(kkt.terminal_control_lenta)
-        self.ui.pushButton_12.clicked.connect(kkt.terminal_copy_last_check)
+        self.ui.pushButton_16.clicked.connect(terminal_check_itog)
+        self.ui.pushButton_21.clicked.connect(terminal_svod_check)
+        self.ui.pushButton_22.clicked.connect(terminal_control_lenta)
+        self.ui.pushButton_12.clicked.connect(terminal_copy_last_check)
         self.ui.pushButton_23.clicked.connect(self.main_open_sale)
         self.ui.pushButton_13.clicked.connect(self.main_button_all_sales)
         self.ui.pushButton_18.clicked.connect(self.main_otchet_kassira)
@@ -2207,8 +2209,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             lambda: kkt.payment(system.amount_to_pay_or_deposit)
         )
         self.ui.pushButton_26.clicked.connect(kkt.balance_check)
-        self.ui.pushButton_27.clicked.connect(kkt.terminal_menu)
-        self.ui.pushButton_28.clicked.connect(kkt.terminal_print_file)
+        self.ui.pushButton_27.clicked.connect(terminal_menu)
+        self.ui.pushButton_28.clicked.connect(terminal_print_file)
         # self.ui.pushButton_29.clicked.connect(kkt.terminal_file_in_window)
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
@@ -2575,7 +2577,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # Кнопки просмотра слип-чека и отмены платежа по банковской карте
                 if self.ui.tableWidget_2.item(row_number, 7).text() != "карта":
                     sale.ui.pushButton_13.setEnabled(False)
-                    sale.ui.pushButton_14.setEnabled(False)
+                    # sale.ui.pushButton_14.setEnabled(False)
             # Если продажа не оплачена
             elif sale_status == 0:
                 # обновляем данные о продаже
@@ -3044,9 +3046,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         pc_2_return = pc_2["return_card"] + pc_2["return_cash"]
         # Данные для каждой строки таблицы
         data = [
-            (pc_1["Name PC"], pc_1["card"], pc_1["cash"], None, pc_1["return_card"], pc_1["return_cash"], pc_1_return),
-            (pc_2["Name PC"], pc_2["card"], pc_2["cash"], None, pc_2["return_card"], pc_2["return_cash"], pc_2_return),
-            ("Итого", card, cash, summa, None, None, pc_1_return + pc_2_return)
+            (
+                pc_1["Name PC"],
+                pc_1["card"],
+                pc_1["cash"],
+                None,
+                pc_1["return_card"],
+                pc_1["return_cash"],
+                pc_1_return,
+            ),
+            (
+                pc_2["Name PC"],
+                pc_2["card"],
+                pc_2["cash"],
+                None,
+                pc_2["return_card"],
+                pc_2["return_cash"],
+                pc_2_return,
+            ),
+            ("Итого", card, cash, summa, None, None, pc_1_return + pc_2_return),
         ]
         # Устанавливаем количество строк в таблице и очищаем её
         self.ui.tableWidget_4.setRowCount(len(data))
@@ -3054,7 +3072,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         for row, values in enumerate(data):
             for col, value in enumerate(values):
                 if value is not None:  # Пропускаем пустые значения
-                    self.ui.tableWidget_4.setItem(row, col, QTableWidgetItem(f"{value}"))
+                    self.ui.tableWidget_4.setItem(
+                        row, col, QTableWidgetItem(f"{value}")
+                    )
 
         # Считаем оплаченные билеты
         type_tickets: list[int | str] = [0, 1, "м", "и", "-"]
@@ -3123,7 +3143,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             ("детский", c),
             ("мног-й взр.", m_a),
             ("мног-й дет.", m_c),
-            ("инвалид", i_)
+            ("инвалид", i_),
         ]
         # Устанавливаем количество строк в таблице и очищаем её
         self.ui.tableWidget_3.setRowCount(len(data))
