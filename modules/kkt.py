@@ -499,136 +499,127 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     logger.info(f"Тип оплаты: {payment_type}")
     # Открытие печатного чека
     logger.info("Открытие печатного чека")
-    fptr.open()
-    fptr.setParam(1021, f"{user.last_name} {user.first_name}")
-    fptr.setParam(1203, user.inn)
-    fptr.operatorLogin()
-    if type_operation == 1:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
-    elif type_operation in (2, 3):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)
-    if print_check == 0:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY, True)
-        fptr.setParam(1008, EMAIL)
-    fptr.openReceipt()
-    # Регистрация позиции с указанием суммы налога
-    # взрослый билет
-    logger.info("Регистрация позиции: билет взрослый")
-    if type_operation == 1:
-        # проверяем есть ли билеты со скидкой
-        kol_adult_edit = sale_dict["kol_adult"] - sale_dict["detail"][0]
-        kol_child_edit = sale_dict["kol_child"] - sale_dict["detail"][2]
-        time = sale_dict["detail"][6]
-        if kol_adult_edit > 0:
-            fptr.setParam(
-                IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет взрослый {time} ч."
-            )
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["price_adult"])
-            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_adult_edit)
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-            fptr.registration()
-        # взрослый билет со скидкой
-        logger.info("Регистрация позиции: билет взрослый со скидкой")
-        if sale_dict["detail"][0] > 0 and sale_dict["detail"][1] > 0:
-            fptr.setParam(
-                IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет взрослый акция {time} ч."
-            )
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["detail"][1])
-            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict["detail"][0])
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-            fptr.registration()
-        # детский билет
-        logger.info("Регистрация позиции: билет детский")
-        if kol_child_edit > 0:
-            fptr.setParam(
-                IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет детский {time} ч."
-            )
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["price_child"])
-            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_child_edit)
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-            fptr.registration()
-        # детский билет со скидкой
-        logger.info("Регистрация позиции: билет детский со скидкой")
-        if sale_dict["detail"][2] > 0 and sale_dict["detail"][3] > 0:
-            fptr.setParam(
-                IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет детский акция {time} ч."
-            )
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["detail"][3])
-            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict["detail"][2])
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-            fptr.registration()
-    else:
-        sale = sale_dict.items()
-        for item in sale:
-            fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"{item[0]}")
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, item[1][0])
-            fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, item[1][1])
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-            fptr.registration()
-    # Оплата чека
-    logger.info("Оплата чека")
-    if payment_type == 102:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
+    with fptr_connection():
+        fptr.setParam(1021, f"{user.last_name} {user.first_name}")
+        fptr.setParam(1203, user.inn)
+        fptr.operatorLogin()
         if type_operation == 1:
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict["detail"][7])
+            fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
         elif type_operation in (2, 3):
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, price)
-        fptr.payment()
-        # Закрытие полностью оплаченного чека
-        logger.info("Закрытие полностью оплаченного чека")
-        fptr.closeReceipt()
-    elif payment_type == 101:
-        if bank == 1:
-            fptr.setParam(
-                IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
-            )
-            if type_operation == 1:
-                fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict["detail"][7])
-            elif type_operation in (2, 3):
-                fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, price)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)
+        if print_check == 0:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY, True)
+            fptr.setParam(1008, EMAIL)
+        fptr.openReceipt()
+        # Регистрация позиции с указанием суммы налога
+        # взрослый билет
+        logger.info("Регистрация позиции: билет взрослый")
+        if type_operation == 1:
+            # проверяем есть ли билеты со скидкой
+            kol_adult_edit = sale_dict["kol_adult"] - sale_dict["detail"][0]
+            kol_child_edit = sale_dict["kol_child"] - sale_dict["detail"][2]
+            time = sale_dict["detail"][6]
+            if kol_adult_edit > 0:
+                fptr.setParam(
+                    IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет взрослый {time} ч."
+                )
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["price_adult"])
+                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_adult_edit)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+                fptr.registration()
+            # взрослый билет со скидкой
+            logger.info("Регистрация позиции: билет взрослый со скидкой")
+            if sale_dict["detail"][0] > 0 and sale_dict["detail"][1] > 0:
+                fptr.setParam(
+                    IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет взрослый акция {time} ч."
+                )
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["detail"][1])
+                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict["detail"][0])
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+                fptr.registration()
+            # детский билет
+            logger.info("Регистрация позиции: билет детский")
+            if kol_child_edit > 0:
+                fptr.setParam(
+                    IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет детский {time} ч."
+                )
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["price_child"])
+                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_child_edit)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+                fptr.registration()
+            # детский билет со скидкой
+            logger.info("Регистрация позиции: билет детский со скидкой")
+            if sale_dict["detail"][2] > 0 and sale_dict["detail"][3] > 0:
+                fptr.setParam(
+                    IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет детский акция {time} ч."
+                )
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["detail"][3])
+                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict["detail"][2])
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+                fptr.registration()
+        else:
+            for item in sale_dict.items():
+                fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"{item[0]}")
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, item[1][0])
+                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, item[1][1])
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
+                fptr.registration()
+        # Оплата чека
+        logger.info("Оплата чека")
+        if payment_type == 102:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict["detail"][7] if type_operation == 1 else price)
             fptr.payment()
             # Закрытие полностью оплаченного чека
             logger.info("Закрытие полностью оплаченного чека")
             fptr.closeReceipt()
-    elif payment_type == 100:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY)
-        fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict["detail"][7])
-        fptr.payment()
-        # Закрытие полностью оплаченного чека
-        logger.info("Закрытие полностью оплаченного чека")
-        fptr.closeReceipt()
-    while fptr.checkDocumentClosed() < 0:
-        # Не удалось проверить состояние документа.
-        # Вывести пользователю текст ошибки, попросить устранить неполадку и повторить запрос
-        logger.warning(
-            f"Не удалось проверить состояние документа. Ошибка: {fptr.errorDescription()}"
-        )
-        windows.info_window(
-            "Не удалось проверить состояние документа.\n"
-            "Устраните неполадку и повторите запрос.",
-            str(fptr.errorDescription()),
-            "",
-        )
-        continue
-    if print_check == 0:
-        fptr.close()
-    if not fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
-        # Документ не закрылся. Требуется его отменить (если это чек) и сформировать заново
-        logger.warning(
-            f"Документ не закрылся.\n"
-            f"Требуется его отменить и сформировать заново. Ошибка: {fptr.errorDescription()}"
-        )
-        windows.info_window(
-            "Документ не закрылся. \n"
-            "Требуется его отменить (если это чек) и сформировать заново.",
-            str(fptr.errorDescription()),
-            "",
-        )
-        fptr.cancelReceipt()
-        fptr.close()
-        return 0
-    fptr.continuePrint()
-    fptr.close()
+        elif payment_type == 101:
+            if bank == 1:
+                fptr.setParam(
+                    IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
+                )
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict["detail"][7] if type_operation == 1 else price)
+                fptr.payment()
+                # Закрытие полностью оплаченного чека
+                logger.info("Закрытие полностью оплаченного чека")
+                fptr.closeReceipt()
+        elif payment_type == 100:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict["detail"][7])
+            fptr.payment()
+            # Закрытие полностью оплаченного чека
+            logger.info("Закрытие полностью оплаченного чека")
+            fptr.closeReceipt()
+        while fptr.checkDocumentClosed() < 0:
+            # Не удалось проверить состояние документа.
+            # Вывести пользователю текст ошибки, попросить устранить неполадку и повторить запрос
+            logger.warning(
+                f"Не удалось проверить состояние документа. Ошибка: {fptr.errorDescription()}"
+            )
+            windows.info_window(
+                "Не удалось проверить состояние документа.\n"
+                "Устраните неполадку и повторите запрос.",
+                str(fptr.errorDescription()),
+                "",
+            )
+            continue
+        if not fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
+            # Документ не закрылся. Требуется его отменить (если это чек) и сформировать заново
+            logger.warning(
+                f"Документ не закрылся.\n"
+                f"Требуется его отменить и сформировать заново. Ошибка: {fptr.errorDescription()}"
+            )
+            windows.info_window(
+                "Документ не закрылся. \n"
+                "Требуется его отменить (если это чек) и сформировать заново.",
+                str(fptr.errorDescription()),
+                "",
+            )
+            fptr.cancelReceipt()
+            return 0
+        # Если чек не нужно печатать, но его нужно продолжить (без печати)
+        if print_check == 0:
+            fptr.continuePrint()
     return 1
 
 
