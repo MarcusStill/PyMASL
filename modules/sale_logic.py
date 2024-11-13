@@ -361,3 +361,32 @@ def update_child_count() -> None:
     logger.info("Запуск функцию update_child_count")
     system.count_number_of_visitors["kol_child"] += 1
     system.sale_dict["kol_child"] = system.count_number_of_visitors["kol_child"]
+
+
+def convert_sale_dict_values(sale_dict):
+    """
+    Преобразует значения в словаре sale_dict в правильные типы данных (int или float).
+    Применяется в конце расчетов перед записью в базу данных.
+
+    :param sale_dict: Словарь с данными продажи.
+    :return: Обновленный словарь с корректными типами данных.
+    """
+    for key, value in sale_dict.items():
+        if isinstance(value, list):
+            # Если значение - это список, проходим по его элементам
+            for i in range(len(value)):
+                # Проверяем, является ли значение Decimal или float
+                if isinstance(value[i], Decimal):
+                    # Если значение Decimal целое (например, Decimal(10.0)), преобразуем в int
+                    value[i] = int(value[i]) if value[i] == value[i].to_integral_value() else float(value[i])
+                elif isinstance(value[i], float):
+                    # Если значение float целое (например, 10.0), преобразуем в int
+                    value[i] = int(value[i]) if value[i].is_integer() else value[i]
+        elif isinstance(value, Decimal):
+            # Преобразуем Decimal в int или float
+            sale_dict[key] = int(value) if value == value.to_integral_value() else float(value)
+        elif isinstance(value, float):
+            # Если значение float целое (например, 10.0), преобразуем в int
+            sale_dict[key] = int(value) if value.is_integer() else value
+
+    return sale_dict

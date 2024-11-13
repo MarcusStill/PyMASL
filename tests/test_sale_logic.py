@@ -20,6 +20,7 @@ from modules.sale_logic import (
     update_sale_dict_adult_invalid,
     update_adult_count,
     update_child_count,
+    convert_sale_dict_values
 )
 from modules.system import System
 
@@ -1101,3 +1102,70 @@ def test_update_child_count_zero(setup_system_update_child_count):
     assert system.count_number_of_visitors["kol_child"] == 1
     # Проверяем, что значение в sale_dict обновилось
     assert system.sale_dict["kol_child"] == system.count_number_of_visitors["kol_child"]
+#######################################
+# Тестируем convert_sale_dict_values
+def test_decimal_to_int():
+    sale_dict = {
+        "price_adult": Decimal("250.0"),
+        "price_child": Decimal("750.0"),
+        "detail": [Decimal("125.0"), Decimal("375.0")]
+    }
+    updated_dict = convert_sale_dict_values(sale_dict)
+    assert updated_dict["price_adult"] == 250
+    assert updated_dict["price_child"] == 750
+    assert updated_dict["detail"] == [125, 375]
+
+def test_decimal_to_float():
+    sale_dict = {
+        "price_adult": Decimal("250.5"),
+        "price_child": Decimal("750.75"),
+        "detail": [Decimal("125.1"), Decimal("375.25")]
+    }
+    updated_dict = convert_sale_dict_values(sale_dict)
+    assert updated_dict["price_adult"] == 250.5
+    assert updated_dict["price_child"] == 750.75
+    assert updated_dict["detail"] == [125.1, 375.25]
+
+def test_float_to_int():
+    sale_dict = {
+        "price_adult": 250.0,
+        "price_child": 750.0,
+        "detail": [125.0, 375.0]
+    }
+    updated_dict = convert_sale_dict_values(sale_dict)
+    assert updated_dict["price_adult"] == 250
+    assert updated_dict["price_child"] == 750
+    assert updated_dict["detail"] == [125, 375]
+
+def test_float_to_float():
+    sale_dict = {
+        "price_adult": 250.5,
+        "price_child": 750.75,
+        "detail": [125.1, 375.25]
+    }
+    updated_dict = convert_sale_dict_values(sale_dict)
+    assert updated_dict["price_adult"] == 250.5
+    assert updated_dict["price_child"] == 750.75
+    assert updated_dict["detail"] == [125.1, 375.25]
+
+def test_mixed_values():
+    sale_dict = {
+        "price_adult": Decimal("250.0"),
+        "price_child": 750.5,
+        "detail": [Decimal("125.0"), 375.5, "some_string"]
+    }
+    updated_dict = convert_sale_dict_values(sale_dict)
+    assert updated_dict["price_adult"] == 250
+    assert updated_dict["price_child"] == 750.5
+    assert updated_dict["detail"] == [125, 375.5, "some_string"]
+
+def test_no_conversion_needed():
+    sale_dict = {
+        "price_adult": 250,
+        "price_child": 750,
+        "detail": [125, 375]
+    }
+    updated_dict = convert_sale_dict_values(sale_dict)
+    assert updated_dict["price_adult"] == 250
+    assert updated_dict["price_child"] == 750
+    assert updated_dict["detail"] == [125, 375]

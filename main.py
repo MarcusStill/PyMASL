@@ -41,6 +41,7 @@ from modules.sale_logic import (
     get_talent_based_on_time,
     update_adult_count,
     update_child_count,
+    convert_sale_dict_values
 )
 from modules.system import System
 from modules.terminal import (
@@ -1019,6 +1020,9 @@ class SaleForm(QDialog):
         )
         # Сохраняем данные продажи
         logger.debug(f"Sale_dict: {system.sale_dict}")
+        # Преобразуем значения в system.sale_dict к нужным типам данных
+        system.sale_dict = convert_sale_dict_values(system.sale_dict)
+        logger.debug(f"Обновленный system.sale_dict: {system.sale_dict}")
         # Генерируем список с билетами
         for row in range(rows):
             # Если установлена метка "не идет"
