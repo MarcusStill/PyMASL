@@ -41,7 +41,7 @@ from modules.sale_logic import (
     get_talent_based_on_time,
     update_adult_count,
     update_child_count,
-    convert_sale_dict_values
+    convert_sale_dict_values,
 )
 from modules.system import System
 from modules.terminal import (

@@ -378,13 +378,19 @@ def convert_sale_dict_values(sale_dict):
                 # Проверяем, является ли значение Decimal или float
                 if isinstance(value[i], Decimal):
                     # Если значение Decimal целое (например, Decimal(10.0)), преобразуем в int
-                    value[i] = int(value[i]) if value[i] == value[i].to_integral_value() else float(value[i])
+                    value[i] = (
+                        int(value[i])
+                        if value[i] == value[i].to_integral_value()
+                        else float(value[i])
+                    )
                 elif isinstance(value[i], float):
                     # Если значение float целое (например, 10.0), преобразуем в int
                     value[i] = int(value[i]) if value[i].is_integer() else value[i]
         elif isinstance(value, Decimal):
             # Преобразуем Decimal в int или float
-            sale_dict[key] = int(value) if value == value.to_integral_value() else float(value)
+            sale_dict[key] = (
+                int(value) if value == value.to_integral_value() else float(value)
+            )
         elif isinstance(value, float):
             # Если значение float целое (например, 10.0), преобразуем в int
             sale_dict[key] = int(value) if value.is_integer() else value
