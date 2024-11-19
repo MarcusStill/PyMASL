@@ -24,7 +24,7 @@ from design.logic.main_form import Ui_MainWindow
 from design.logic.pay import Ui_Dialog_Pay
 from design.logic.sale import Ui_Dialog_Sale
 from design.logic.slip import Ui_Dialog_Slip
-from modules import kkt
+from modules import payment_equipment as pq
 from modules import otchet
 from modules import windows
 from modules.auth_logic import perform_pre_sale_checks
@@ -44,14 +44,7 @@ from modules.sale_logic import (
     convert_sale_dict_values,
 )
 from modules.system import System
-from modules.terminal import (
-    terminal_check_itog,
-    terminal_svod_check,
-    terminal_control_lenta,
-    terminal_copy_last_check,
-    terminal_menu,
-    terminal_print_file,
-)
+
 
 system = System()
 config_data = system.config
@@ -1472,7 +1465,7 @@ class SaleForm(QDialog):
         else:
             # Если оплата банковской картой
             if payment_type in (101, 100):
-                bank, payment = kkt.operation_on_the_terminal(
+                bank, payment = pq.operation_on_the_terminal(
                     payment_type, 1, system.sale_dict["detail"][7]
                 )
                 if bank == 0:
@@ -1486,7 +1479,7 @@ class SaleForm(QDialog):
                     if payment == 3:  # Если оплата offline банковской картой
                         check = "offline"
                     else:
-                        check = kkt.read_pinpad_file(remove_newline=False)
+                        check = pq.read_pinpad_file(remove_newline=False)
                     logger.debug(f"Чек прихода: {check}")
                     with Session(system.engine) as session:
                         session.execute(
@@ -1497,11 +1490,11 @@ class SaleForm(QDialog):
                         session.commit()
                     # Печать банковский чек: 1 - да, 0 - нет
                     if print_check == 1:
-                        kkt.print_slip_check()
+                        pq.print_slip_check()
             else:
                 payment = 2
                 bank = None
-            state_check = kkt.check_open(
+            state_check = pq.check_open(
                 system.sale_dict,
                 payment_type,
                 system.user,
@@ -1580,7 +1573,7 @@ class SaleForm(QDialog):
             payment_type: int = 101
         else:
             payment_type: int = 102
-            system.amount_of_money_at_the_cash_desk = kkt.balance_check()
+            system.amount_of_money_at_the_cash_desk = pq.balance_check()
             if sale.price > system.amount_of_money_at_the_cash_desk:
                 balance_error: int = 1
                 windows.info_window(
@@ -1597,7 +1590,7 @@ class SaleForm(QDialog):
             if sale.status in (1, 5):
                 logger.debug("Продажа оплачена. Запускаем возврат")
                 if payment_type == 102:
-                    state_check = kkt.check_open(
+                    state_check = pq.check_open(
                         tickets, payment_type, system.user, 2, 1, price, None
                     )
                 elif payment_type == 101:
@@ -1608,16 +1601,16 @@ class SaleForm(QDialog):
                         logger.debug("Запускаем возврат по банковскому терминалу")
                         # В зависимости от типа возврата отправляем на банковский терминал нужную сумму
                         if sale.status == 1:
-                            bank, payment = kkt.operation_on_the_terminal(
+                            bank, payment = pq.operation_on_the_terminal(
                                 payment_type, 2, price
                             )
                         elif sale.status == 5:
-                            bank, payment = kkt.operation_on_the_terminal(
+                            bank, payment = pq.operation_on_the_terminal(
                                 payment_type, 2, amount
                             )
                         if bank == 1:
                             logger.debug("Сохраняем чек возврата.")
-                            check = kkt.read_pinpad_file(remove_newline=False)
+                            check = pq.read_pinpad_file(remove_newline=False)
                             logger.debug(f"Чек возврата: {check}")
                             with Session(system.engine) as session:
                                 session.execute(
@@ -1628,7 +1621,7 @@ class SaleForm(QDialog):
                                     )
                                 )
                                 session.commit()
-                            kkt.print_pinpad_check()
+                            pq.print_pinpad_check()
                         else:
                             logger.warning(
                                 "Возврат по банковскому терминалу прошел не успешно"
@@ -1648,11 +1641,11 @@ class SaleForm(QDialog):
                     if bank == 1:
                         # Если возврат по банковскому терминалу прошел успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
-                            state_check = kkt.check_open(
+                            state_check = pq.check_open(
                                 tickets, payment_type, system.user, 2, 1, price, bank
                             )
                         elif sale.status == 5:
-                            state_check = kkt.check_open(
+                            state_check = pq.check_open(
                                 new_tickets,
                                 payment_type,
                                 system.user,
@@ -1692,10 +1685,10 @@ class SaleForm(QDialog):
                     )
             elif sale.status == 3:
                 logger.debug("Требуется повторный возврат по банковскому терминалу")
-                bank, payment = kkt.operation_on_the_terminal(payment_type, 2, price)
+                bank, payment = pq.operation_on_the_terminal(payment_type, 2, price)
                 if bank == 1:
                     logger.info("Операция повторного возврата прошла успешно")
-                    check = kkt.read_pinpad_file(remove_newline=False)
+                    check = pq.read_pinpad_file(remove_newline=False)
                     logger.debug(f"Чек возврата: {check}")
                     with Session(system.engine) as session:
                         session.execute(
@@ -1708,7 +1701,7 @@ class SaleForm(QDialog):
                             )
                         )
                         session.commit()
-                    kkt.print_pinpad_check()
+                    pq.print_pinpad_check()
                     windows.info_window(
                         "Внимание", "Операция повторного возврата прошла успешно.", ""
                     )
@@ -1761,12 +1754,12 @@ class SaleForm(QDialog):
                     )
                     if sale.bank_return is None:
                         logger.debug("Запускаем отмену по банковскому терминалу")
-                        bank, payment = kkt.operation_on_the_terminal(
+                        bank, payment = pq.operation_on_the_terminal(
                             payment_type, 3, price
                         )
                         if bank == 1:
                             logger.debug("Сохраняем чек возврата.")
-                            check = kkt.read_pinpad_file(remove_newline=False)
+                            check = pq.read_pinpad_file(remove_newline=False)
                             logger.debug(f"Чек возврата: {check}")
                             with Session(system.engine) as session:
                                 session.execute(
@@ -1777,7 +1770,7 @@ class SaleForm(QDialog):
                                     )
                                 )
                                 session.commit()
-                            kkt.print_pinpad_check()
+                            pq.print_pinpad_check()
                         else:
                             logger.warning(
                                 "Отмена по банковскому терминалу прошла не успешно"
@@ -1797,7 +1790,7 @@ class SaleForm(QDialog):
                     if bank == 1:
                         # Если отмена по банковскому терминалу прошла успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
-                            state_check = kkt.check_open(
+                            state_check = pq.check_open(
                                 tickets, payment_type, system.user, 2, 1, price, bank
                             )
                 # Если отмена прошела
@@ -2188,18 +2181,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.pushButton_3.clicked.connect(self.main_edit_client)
         self.ui.tableWidget.doubleClicked.connect(self.main_edit_client)
         # Отображение всех клиентов
-        self.ui.pushButton_8.clicked.connect(kkt.get_info)
-        self.ui.pushButton_11.clicked.connect(kkt.last_document)
-        self.ui.pushButton_9.clicked.connect(kkt.get_time)
-        self.ui.pushButton_5.clicked.connect(kkt.report_x)
-        self.ui.pushButton_6.clicked.connect(lambda: kkt.smena_close(system.user))
-        self.ui.pushButton_7.clicked.connect(kkt.get_status_obmena)
-        self.ui.pushButton_15.clicked.connect(kkt.continue_print)
-        self.ui.pushButton_10.clicked.connect(kkt.smena_info)
-        self.ui.pushButton_16.clicked.connect(terminal_check_itog)
-        self.ui.pushButton_21.clicked.connect(terminal_svod_check)
-        self.ui.pushButton_22.clicked.connect(terminal_control_lenta)
-        self.ui.pushButton_12.clicked.connect(terminal_copy_last_check)
+        self.ui.pushButton_8.clicked.connect(pq.get_info)
+        self.ui.pushButton_11.clicked.connect(pq.last_document)
+        self.ui.pushButton_9.clicked.connect(pq.get_time)
+        self.ui.pushButton_5.clicked.connect(pq.report_x)
+        self.ui.pushButton_6.clicked.connect(lambda: pq.smena_close(system.user))
+        self.ui.pushButton_7.clicked.connect(pq.get_status_obmena)
+        self.ui.pushButton_15.clicked.connect(pq.continue_print)
+        self.ui.pushButton_10.clicked.connect(pq.smena_info)
+        self.ui.pushButton_16.clicked.connect(pq.terminal_check_itog)
+        self.ui.pushButton_21.clicked.connect(pq.terminal_svod_check)
+        self.ui.pushButton_22.clicked.connect(pq.terminal_control_lenta)
+        self.ui.pushButton_12.clicked.connect(pq.terminal_copy_last_check)
         self.ui.pushButton_23.clicked.connect(self.main_open_sale)
         self.ui.pushButton_13.clicked.connect(self.main_button_all_sales)
         self.ui.pushButton_18.clicked.connect(self.main_otchet_kassira)
@@ -2207,15 +2200,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.tableWidget_2.doubleClicked.connect(self.main_search_selected_sale)
         self.ui.pushButton_17.clicked.connect(self.main_get_statistic)
         self.ui.pushButton_24.clicked.connect(
-            lambda: kkt.deposit_of_money(system.amount_to_pay_or_deposit)
+            lambda: pq.deposit_of_money(system.amount_to_pay_or_deposit)
         )
         self.ui.pushButton_25.clicked.connect(
-            lambda: kkt.payment(system.amount_to_pay_or_deposit)
+            lambda: pq.payment(system.amount_to_pay_or_deposit)
         )
-        self.ui.pushButton_26.clicked.connect(kkt.balance_check)
-        self.ui.pushButton_27.clicked.connect(terminal_menu)
-        self.ui.pushButton_28.clicked.connect(terminal_print_file)
-        # self.ui.pushButton_29.clicked.connect(kkt.terminal_file_in_window)
+        self.ui.pushButton_26.clicked.connect(pq.balance_check)
+        self.ui.pushButton_27.clicked.connect(pq.terminal_menu)
+        self.ui.pushButton_28.clicked.connect(pq.terminal_print_file)
+        # self.ui.pushButton_29.clicked.connect(pq.terminal_file_in_window)
         self.ui.dateEdit.setDate(date.today())
         self.ui.dateEdit_2.setDate(date.today())
         self.ui.dateEdit_3.setDate(date.today())
