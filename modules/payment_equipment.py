@@ -22,34 +22,38 @@ TERMINAL_USER_CANCEL_CODE: int = 2000
 APPROVE: str = "ОДОБРЕНО"
 COINCIDENCE: str = "совпали"
 EMAIL: str = "test.check@pymasl.ru"
+PAYMENT_CASH = 102
+PAYMENT_ELECTRONIC = 101
+PAYMENT_OFFLINE = 100
 
 
 @contextmanager
-def fptr_connection():
+def fptr_connection(fptr):
     """Контекстный менеджер для управления подключением к ККМ."""
     fptr.open()
     try:
-        yield
+        yield fptr  # передаем fptr внутрь контекста
     finally:
         fptr.close()
 
 
 def run_terminal_command(command_params: str):
-    """Запуск оплаты по банковскому терминалу и возврат кода результата.
+    """Запуск команды на терминале и возврат результата.
 
     Параметры:
-        command_params (str):
-            Параметры для команды, которую необходимо выполнить на терминале.
+        command_params (str): Параметры команды, которую нужно выполнить.
 
     Возвращаемое значение:
         subprocess.CompletedProcess или None:
             - Возвращает объект subprocess.CompletedProcess, если команда выполнена успешно.
-            - Возвращает None, если конфигурация не загружена или произошла ошибка выполнения команды.
+            - Возвращает None, если произошла ошибка.
     """
     logger.info("Запуск функции run_terminal_command")
-    pinpad_path: str = config.get("pinpad_path")
-    pinpad_file: str = os.path.join(pinpad_path, "loadparm.exe")
-    pinpad_run: str = f"{pinpad_file} {command_params}"
+    pinpad_path: str = config.get("pinpad_path")  # Путь к директории
+    pinpad_file: str = "loadparm.exe"  # Имя файла
+    # Полный путь до исполняемого файла
+    pinpad_run_path = os.path.join(pinpad_path, pinpad_file)
+    pinpad_run: str = f"{pinpad_run_path} {command_params}"
     logger.info(f"Запуск команды: {pinpad_run}")
     try:
         # check=False позволяет самостоятельно обрабатывать коды возврата
@@ -336,7 +340,7 @@ def print_slip_check(kol: int = 2):
             Функция не возвращает значений, но может вызывать исключения в случае ошибок при печати.
     """
     logger.info("Запуск функции print_slip_check")
-    with fptr_connection():
+    with fptr_connection(fptr):
         # Открытие нефискального документа
         fptr.beginNonfiscalDocument()
         line: str = read_pinpad_file(remove_newline=True)
@@ -384,7 +388,7 @@ def print_pinpad_check(count: int = 2):
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
         logger.debug("Функция печати нефискального документа")
-        with fptr_connection():
+        with fptr_connection(fptr):
             fptr.beginNonfiscalDocument()
             # Читаем чек из файла
             line = read_pinpad_file(remove_newline=False)
@@ -418,7 +422,7 @@ def get_info():
             Функция не возвращает значений, но может открывать окно с информацией о ККТ.
     """
     logger.info("Запуск функции get_info")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
         fptr.queryData()
         model = fptr.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
@@ -444,7 +448,7 @@ def get_status_obmena():
             Функция не возвращает значений, но открывает окно с информацией о статусе обмена.
     """
     logger.info("Запуск функции get_status_obmena")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(
             IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS
         )
@@ -479,7 +483,7 @@ def get_time():
             Функция не возвращает значений, но открывает окно с текущими датой и временем.
     """
     logger.info("Запуск функции get_time")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
         fptr.queryData()
         # Тип переменной datetime - datetime.datetime
@@ -501,7 +505,7 @@ def smena_info():
             Возвращает состояние смены (0 - закрыта, 1 - открыта, 2 - истекла).
     """
     logger.info("Запуск функции smena_info")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
         fptr.queryData()
         state = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE)
@@ -538,7 +542,7 @@ def last_document():
             Функция не возвращает значений, но выполняет печать последнего документа.
     """
     logger.info("Запуск функции last_document")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT)
         fptr.report()
 
@@ -556,7 +560,7 @@ def report_payment():
             Функция не возвращает значений, но выполняет печать отчета о состоянии расчетов.
     """
     logger.info("Запуск функции report_payment")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(
             IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS
         )
@@ -576,7 +580,7 @@ def report_x():
             Функция не возвращает значений, но выполняет печать X-отчета.
     """
     logger.info("Запуск функции report_x")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
         fptr.report()
 
@@ -594,7 +598,7 @@ def kassir_reg(user):
             Функция не возвращает значений.
     """
     logger.info("Запуск функции kassir_reg")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(1021, f"{user.last_name} {user.first_name}")
         fptr.setParam(1203, user.inn)
         fptr.operatorLogin()
@@ -614,7 +618,7 @@ def deposit_of_money(amount):
     """
     logger.info("Запуск функции cash_deposit")
     logger.info(f"Внесено в кассу: {amount}")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
         fptr.cashIncome()
 
@@ -633,7 +637,7 @@ def payment(amount):
     """
     logger.info("Запуск функции payment")
     logger.info(f"Выплачено из кассы: {amount}")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
         fptr.cashOutcome()
 
@@ -651,7 +655,7 @@ def balance_check():
             Возвращает баланс наличных денег в кассе.
     """
     logger.info("Запуск функции balance_check")
-    with fptr_connection():  # Использование контекстного менеджера для работы с ККТ
+    with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_CASH_SUM)
         fptr.queryData()
         cashSum = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_SUM)
@@ -694,7 +698,7 @@ def operation_on_the_terminal(payment_type, type_operation, price):
     """
     logger.info("Запуск функции operation_on_the_terminal")
     bank = None
-    if payment_type == 101:
+    if payment_type == PAYMENT_ELECTRONIC:
         payment = 1
         logger.debug("оплата банковской картой")
         if type_operation == 1:
@@ -728,13 +732,22 @@ def operation_on_the_terminal(payment_type, type_operation, price):
                 windows.info_window(info, "", "")
                 return 0, payment
     # если offline оплата банковской картой
-    elif payment_type == 100:
+    elif payment_type == PAYMENT_OFFLINE:
         logger.debug("Продажа новая. Начинаем оплату")
         payment = 3
         # результат операции по терминалу
         logger.info("Запускаем offline оплату по банковскому терминалу")
         bank = 1
     return bank, payment
+
+
+def register_item(name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT20):
+    """Регистрация товара в чеке"""
+    fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
+    fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
+    fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, quantity)
+    fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, tax_type)
+    fptr.registration()
 
 
 @logger_wraps()
@@ -763,6 +776,8 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             - 0, если произошла ошибка.
     """
     logger.info("Запуск функции check_open")
+    retry_count = 0
+    max_retries = 5  # Максимальное количество попыток
     logger.debug(
         f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type}, type_operation = {type_operation}, bank = {bank}"
     )
@@ -773,7 +788,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     logger.info(f"Тип оплаты: {payment_type}")
     # Открытие печатного чека
     logger.info("Открытие печатного чека")
-    with fptr_connection():
+    with fptr_connection(fptr):
         fptr.setParam(1021, f"{user.last_name} {user.first_name}")
         fptr.setParam(1203, user.inn)
         fptr.operatorLogin()
@@ -796,44 +811,19 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             kol_child_edit = sale_dict["kol_child"] - sale_dict["detail"][2]
             time = sale_dict["detail"][6]
             if kol_adult_edit > 0:
-                fptr.setParam(
-                    IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет взрослый {time} ч."
-                )
-                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["price_adult"])
-                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_adult_edit)
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-                fptr.registration()
+                register_item(f"Билет взрослый {time} ч.", sale_dict["price_adult"], kol_adult_edit)
             # взрослый билет со скидкой
             logger.info("Регистрация позиции: билет взрослый со скидкой")
             if sale_dict["detail"][0] > 0 and sale_dict["detail"][1] > 0:
-                fptr.setParam(
-                    IFptr.LIBFPTR_PARAM_COMMODITY_NAME,
-                    f"Билет взрослый акция {time} ч.",
-                )
-                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["detail"][1])
-                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict["detail"][0])
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-                fptr.registration()
+                register_item(f"Билет взрослый акция {time} ч.", sale_dict["detail"][1], sale_dict["detail"][0])
             # детский билет
             logger.info("Регистрация позиции: билет детский")
             if kol_child_edit > 0:
-                fptr.setParam(
-                    IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет детский {time} ч."
-                )
-                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["price_child"])
-                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, kol_child_edit)
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-                fptr.registration()
+                register_item(f"Билет детский {time} ч.", sale_dict["price_child"], kol_child_edit)
             # детский билет со скидкой
             logger.info("Регистрация позиции: билет детский со скидкой")
             if sale_dict["detail"][2] > 0 and sale_dict["detail"][3] > 0:
-                fptr.setParam(
-                    IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"Билет детский акция {time} ч."
-                )
-                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, sale_dict["detail"][3])
-                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, sale_dict["detail"][2])
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-                fptr.registration()
+                register_item(f"Билет детский акция {time} ч.", sale_dict["detail"][3], sale_dict["detail"][2])
         else:
             for item in sale_dict.items():
                 fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"{item[0]}")
@@ -843,7 +833,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 fptr.registration()
         # Оплата чека
         logger.info("Оплата чека")
-        if payment_type == 102:
+        if payment_type == PAYMENT_CASH:
             fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
             fptr.setParam(
                 IFptr.LIBFPTR_PARAM_PAYMENT_SUM,
@@ -853,7 +843,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             # Закрытие полностью оплаченного чека
             logger.info("Закрытие полностью оплаченного чека")
             fptr.closeReceipt()
-        elif payment_type == 101:
+        elif payment_type == PAYMENT_ELECTRONIC:
             if bank == 1:
                 fptr.setParam(
                     IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
@@ -866,7 +856,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 # Закрытие полностью оплаченного чека
                 logger.info("Закрытие полностью оплаченного чека")
                 fptr.closeReceipt()
-        elif payment_type == 100:
+        elif payment_type == PAYMENT_OFFLINE:
             fptr.setParam(
                 IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
             )
@@ -875,7 +865,8 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             # Закрытие полностью оплаченного чека
             logger.info("Закрытие полностью оплаченного чека")
             fptr.closeReceipt()
-        while fptr.checkDocumentClosed() < 0:
+        while fptr.checkDocumentClosed() < 0 and retry_count < max_retries:
+            retry_count += 1
             # Не удалось проверить состояние документа.
             # Вывести пользователю текст ошибки, попросить устранить неполадку и повторить запрос
             logger.warning(
@@ -887,17 +878,16 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 str(fptr.errorDescription()),
                 "",
             )
-            continue
-        if not fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
-            # Документ не закрылся. Требуется его отменить (если это чек) и сформировать заново
+            # Добавим небольшой тайм-аут перед следующей попыткой, чтобы не перегружать систему
+            time.sleep(1)  # Задержка 1 секунда между попытками
+        if retry_count >= max_retries or not fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
             logger.warning(
-                f"Документ не закрылся.\n"
-                f"Требуется его отменить и сформировать заново. Ошибка: {fptr.errorDescription()}"
+                f"Документ не закрылся после {max_retries} попыток.\n"
+                f"Ошибка: {fptr.errorDescription()}"
             )
             windows.info_window(
-                "Документ не закрылся. \n"
-                "Требуется его отменить (если это чек) и сформировать заново.",
-                str(fptr.errorDescription()),
+                "Документ не закрылся. Попробуйте позже или повторите запрос.",
+                f"Ошибка: {fptr.errorDescription()}",
                 "",
             )
             fptr.cancelReceipt()
@@ -931,7 +921,7 @@ def smena_close(user):
             result = terminal_check_itog()
             try:
                 if result == 1:
-                    with fptr_connection():
+                    with fptr_connection(fptr):
                         fptr.setParam(1021, f"{user.last_name} {user.first_name}")
                         fptr.setParam(1203, user.inn)
                         fptr.operatorLogin()
