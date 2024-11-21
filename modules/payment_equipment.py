@@ -1,7 +1,6 @@
 import os
 import subprocess
 from contextlib import contextmanager
-from typing import Any
 
 from modules import windows
 from modules.config import Config
@@ -19,6 +18,7 @@ except Exception as e:
 # Константы для работы с результатами терминала
 TERMINAL_SUCCESS_CODE: int = 0
 TERMINAL_USER_CANCEL_CODE: int = 2000
+TERMINAL_DATA_EXCHANGE: int = 4134
 APPROVE: str = "ОДОБРЕНО"
 COINCIDENCE: str = "совпали"
 EMAIL: str = "test.check@pymasl.ru"
@@ -27,14 +27,15 @@ PAYMENT_ELECTRONIC = 101
 PAYMENT_OFFLINE = 100
 
 
+
 @contextmanager
-def fptr_connection(fptr):
+def fptr_connection(device):
     """Контекстный менеджер для управления подключением к ККМ."""
-    fptr.open()
+    device.open()
     try:
-        yield fptr  # передаем fptr внутрь контекста
+        yield device  # передаем fptr внутрь контекста
     finally:
-        fptr.close()
+        device.close()
 
 
 def run_terminal_command(command_params: str):
@@ -78,11 +79,11 @@ def check_terminal_file(word: str):
             - Возвращает False, если слово не найдено или файл не существует.
     """
     logger.info("Запуск функции check_terminal_file")
-    pinpad_path: Any = config.get("pinpad_path")
-    pinpad_file: str = os.path.join(pinpad_path, "p")
+    pinpad_path = config.get("pinpad_path")  # Передаем ключ "pinpad_path"
+    pinpad_file = os.path.join(pinpad_path, "p")
     try:
         with open(pinpad_file, encoding="IBM866") as file:
-            text: str = file.read()
+            text = file.read()
         logger.debug(f"Содержимое файла терминала: {text}")
         if word in text:
             logger.info("Проверка файла успешно завершена")
@@ -92,6 +93,9 @@ def check_terminal_file(word: str):
             return False
     except FileNotFoundError as not_found:
         logger.error(f"Файл {pinpad_file} не найден: {not_found}")
+        return False
+    except UnicodeDecodeError as decode_error:
+        logger.error(f"Ошибка декодирования файла {pinpad_file}: {decode_error}")
         return False
 
 
@@ -109,18 +113,30 @@ def terminal_oplata(amount):
             - Возвращает 0, если произошла ошибка или операция была отменена.
     """
     logger.info("Запуск функции terminal_oplata")
-    # Добавляем '00' для копеек
-    plat_code = run_terminal_command(f"1 {amount}00")
-    if plat_code is None:
+    # Преобразуем сумму в целое число для корректного форматирования
+    result = run_terminal_command(f"1 {int(amount * 100)}")
+    if result is None:
         logger.error("Ошибка при выполнении команды терминала")
-        logger.info(
-            f"Статус проведения операции по банковскому терминалу: {plat_code.returncode}"
-        )
-        return 0  # Обрабатываем ошибку
-    if plat_code.returncode == TERMINAL_SUCCESS_CODE:
-        return 1 if check_terminal_file(APPROVE) else 0
-    elif plat_code.returncode == TERMINAL_USER_CANCEL_CODE:
+        return 0
+    logger.info(
+        f"Статус проведения операции по банковскому терминалу: {result.returncode}"
+    )
+    if result.returncode == TERMINAL_USER_CANCEL_CODE:
         logger.warning("Оплата отменена пользователем")
+        return 0
+    elif result.returncode == TERMINAL_DATA_EXCHANGE:
+        windows.info_window(
+            "Ошибка при проведении оплаты", "Требуется сделать сверку итогов и после этого повторить операцию оплаты", "Команда завершена с кодом: 4134"
+        )
+        return 0
+    elif result.returncode == TERMINAL_SUCCESS_CODE:
+        try:
+            return 1 if check_terminal_file(APPROVE) else 0
+        except FileNotFoundError as not_found:
+            logger.error(f"Файл не найден: {not_found}")
+            return 0
+    else:
+        logger.error(f"Неизвестный код возврата: {result.returncode}")
         return 0
 
 
@@ -140,11 +156,25 @@ def terminal_return(amount):
     logger.info("Запуск функции terminal_return")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"3 {amount}00")
+    result = run_terminal_command(f"3 {int(amount * 100)}")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
-    # if result == TERMINAL_SUCCESS_CODE: # TODO: проверить статус-код
-    #     return 1 if check_terminal_file() else 0
-    return 1 if check_terminal_file(APPROVE) else 0
+    if result is None:
+        logger.error("Ошибка при выполнении команды терминала")
+        return 0
+    if result.returncode == TERMINAL_SUCCESS_CODE:
+        try:
+            return 1 if check_terminal_file(APPROVE) else 0
+        except FileNotFoundError as not_found:
+            logger.error(f"Файл не найден: {not_found}")
+            return 0
+    elif result.returncode == TERMINAL_DATA_EXCHANGE:
+        windows.info_window(
+            "Ошибка при проведении оплаты", "Требуется сделать сверку итогов и после этого повторить операцию оплаты", "Команда завершена с кодом: 4134"
+        )
+        return 0
+    else:
+        logger.error(f"Неизвестный код возврата: {result.returncode}")
+        return 0
 
 
 @logger_wraps()
@@ -163,11 +193,25 @@ def terminal_canceling(amount):
     logger.info("Запуск функции terminal_canceling")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"8 {amount}00")
+    result = run_terminal_command(f"8 {int(amount * 100)}")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
-    # if result == TERMINAL_SUCCESS_CODE: # TODO: проверить статус-код
-    #     return 1 if check_terminal_file() else 0
-    return 1 if check_terminal_file(APPROVE) else 0
+    if result is None:
+        logger.error("Ошибка при выполнении команды терминала")
+        return 0
+    if result.returncode == TERMINAL_SUCCESS_CODE:
+        try:
+            return 1 if check_terminal_file(APPROVE) else 0
+        except FileNotFoundError as not_found:
+            logger.error(f"Файл не найден: {not_found}")
+            return 0
+    elif result.returncode == TERMINAL_DATA_EXCHANGE:
+        windows.info_window(
+            "Ошибка при проведении оплаты", "Требуется сделать сверку итогов и после этого повторить операцию оплаты", "Команда завершена с кодом: 4134"
+        )
+        return 0
+    else:
+        logger.error(f"Неизвестный код возврата: {result.returncode}")
+        return 0
 
 
 @logger_wraps()
@@ -182,7 +226,18 @@ def terminal_check_itog():
     logger.info("Запуск функции terminal_check_itog")
     result = run_terminal_command("7")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
-    return 1 if check_terminal_file(COINCIDENCE) else 0
+    if result is None:
+        logger.error("Ошибка при выполнении команды терминала")
+        return 0
+    if result.returncode == TERMINAL_SUCCESS_CODE:
+        try:
+            return 1 if check_terminal_file(COINCIDENCE) else 0
+        except FileNotFoundError as not_found:
+            logger.error(f"Файл не найден: {not_found}")
+            return 0
+    else:
+        logger.error(f"Неизвестный код возврата: {result.returncode}")
+        return 0
 
 
 def terminal_menu():
@@ -204,15 +259,29 @@ def terminal_check_itog_window():
             Функция не возвращает значений, просто выводит информацию в окно.
     """
     logger.info("Запуск функции terminal_check_itog_window")
-    run_terminal_command("7")
-    try:
-        info: str = read_pinpad_file()
-        logger.info("Сверка итогов завершена")
-        windows.info_window("Смотрите подробную информацию.", "", info)
-    except FileNotFoundError as not_found:
-        logger.warning(f"Файл не найден: {not_found.filename}")
+    result = run_terminal_command("7")
+    if result is None:
+        logger.error("Ошибка при выполнении команды терминала")
         windows.info_window(
-            "Ошибка сверки итогов по банковскому терминалу!", "", not_found.filename
+            "Ошибка выполнения команды терминала", "", "Команда не выполнена"
+        )
+        return
+    if result.returncode == TERMINAL_SUCCESS_CODE:
+        try:
+            info = read_pinpad_file()
+            logger.info("Сверка итогов завершена")
+            windows.info_window("Смотрите подробную информацию.", "", info)
+        except FileNotFoundError as not_found:
+            logger.warning(f"Файл не найден: {not_found}")
+            windows.info_window(
+                "Ошибка сверки итогов по банковскому терминалу!", "", str(not_found)
+            )
+    else:
+        logger.error(f"Неизвестный код возврата: {result.returncode}")
+        windows.info_window(
+            "Ошибка выполнения команды терминала",
+            "",
+            f"Неизвестный код возврата: {result.returncode}",
         )
 
 
@@ -241,11 +310,17 @@ def terminal_control_lenta():
             Функция не возвращает значений, просто вызывает команду терминала.
     """
     logger.info("Запуск функции terminal_control_lenta")
-    run_terminal_command("9 1")
-    try:
-        print_pinpad_check(1)
-    except FileNotFoundError as not_found:
-        logger.warning(not_found.filename)
+    result = run_terminal_command("9 1")
+    if result is None:
+        logger.error("Ошибка при выполнении команды терминала")
+        return
+    if result.returncode == TERMINAL_SUCCESS_CODE:
+        try:
+            print_pinpad_check(1)
+        except FileNotFoundError as not_found:
+            logger.warning(f"Файл не найден: {not_found.filename}")
+    else:
+        logger.error(f"Неизвестный код возврата: {result.returncode}")
 
 
 @logger_wraps()
@@ -273,10 +348,10 @@ def terminal_file_in_window():
     """
     logger.info("Запуск функции terminal_file_in_window")
     try:
-        info: str = read_pinpad_file()
+        print_pinpad_check(1)
     except FileNotFoundError as not_found:
-        logger.warning(not_found.filename)
-    windows.info_window("Смотрите подробную информацию.", "", info)
+        logger.warning(f"Файл не найден: {not_found.filename}")
+    windows.info_window("Смотрите подробную информацию.", "FileNotFoundError", "")
 
 
 @logger_wraps()
@@ -292,11 +367,17 @@ def terminal_copy_last_check():
             Функция не возвращает значений, но может вызывать исключения в случае ошибок.
     """
     logger.info("Запуск функции terminal_copy_last_check")
-    run_terminal_command("12")
-    try:
-        print_pinpad_check(1)
-    except FileNotFoundError as not_found:
-        logger.warning(not_found.filename)
+    result = run_terminal_command("12")
+    if result is None:
+        logger.error("Ошибка при выполнении команды терминала")
+        return
+    if result.returncode == TERMINAL_SUCCESS_CODE:
+        try:
+            print_pinpad_check(1)
+        except FileNotFoundError as not_found:
+            logger.warning(f"Файл не найден: {not_found.filename}")
+    else:
+        logger.error(f"Неизвестный код возврата: {result.returncode}")
 
 
 @logger_wraps()
@@ -314,6 +395,9 @@ def read_pinpad_file(remove_newline=True):
     """
     logger.info("Запуск функции read_pinpad_file")
     pinpad_path = config.get("pinpad_path")
+    if not pinpad_path:
+        logger.error("Конфигурация не загружена")
+        return None
     pinpad_file = os.path.join(pinpad_path, "p")
     result_lines: list[str] = []
     try:
@@ -325,6 +409,10 @@ def read_pinpad_file(remove_newline=True):
                 print_text(line)
     except FileNotFoundError as not_found:
         logger.warning("Файл не найден: %s", not_found.filename)
+        return None
+    except UnicodeDecodeError as decode_error:
+        logger.error("Ошибка декодирования файла: %s", decode_error)
+        return None
     return "".join(result_lines)
 
 
@@ -341,37 +429,42 @@ def print_slip_check(kol: int = 2):
     """
     logger.info("Запуск функции print_slip_check")
     with fptr_connection(fptr):
-        # Открытие нефискального документа
-        fptr.beginNonfiscalDocument()
-        line: str = read_pinpad_file(remove_newline=True)
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-        fptr.printText()
-        # Перенос строки
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-        # Промотка чековой ленты на одну строку (пустую)
-        fptr.printText()
-        # Закрытие нефискального документа
-        fptr.endNonfiscalDocument()
-        # Печать документа
-        fptr.report()
-        # Частичная отрезка ЧЛ
-        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
-        # Отрезаем чек
-        fptr.cut()
-        # Создание копии нефискального документа
-        if kol == 2:
-            # Печатаем копию слип-чека
+        try:
+            # Открытие нефискального документа
             fptr.beginNonfiscalDocument()
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "")
-            fptr.printText()
-            line = read_pinpad_file(remove_newline=True)
+            line: str = read_pinpad_file(remove_newline=True)
             fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
             fptr.printText()
+            # Перенос строки
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+            # Промотка чековой ленты на одну строку (пустую)
             fptr.printText()
+            # Закрытие нефискального документа
             fptr.endNonfiscalDocument()
+            # Печать документа
             fptr.report()
-            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+            # Частичная отрезка ЧЛ
+            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
+            # Отрезаем чек
             fptr.cut()
+            # Создание копии нефискального документа
+            if kol == 2:
+                # Печатаем копию слип-чека
+                fptr.beginNonfiscalDocument()
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "")
+                fptr.printText()
+                line = read_pinpad_file(remove_newline=True)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+                fptr.printText()
+                fptr.printText()
+                fptr.endNonfiscalDocument()
+                fptr.report()
+                fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+                fptr.cut()
+        except FileNotFoundError as not_found:
+            logger.error(f"Файл не найден: {not_found.filename}")
+        except Exception as e:
+            logger.error(f"Ошибка при печати слип-чека: {e}")
 
 
 @logger_wraps()
@@ -387,25 +480,39 @@ def print_pinpad_check(count: int = 2):
             Функция не возвращает значений."""
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
-        logger.debug("Функция печати нефискального документа")
-        with fptr_connection(fptr):
-            fptr.beginNonfiscalDocument()
-            # Читаем чек из файла
-            line = read_pinpad_file(remove_newline=False)
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-            fptr.printText()
-            # Перенос строки
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-            # Промотка чековой ленты на одну строку (пустую)
-            fptr.printText()
-            # Закрытие нефискального документа
-            fptr.endNonfiscalDocument()
-            # Печать документа
-            fptr.report()
-            # Полная отрезка ЧЛ
-            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-            # Отрезаем чек
-            fptr.cut()
+        try:
+            logger.debug("Функция печати нефискального документа")
+            with fptr_connection(fptr):
+                fptr.beginNonfiscalDocument()
+
+                # Читаем чек из файла
+                line = read_pinpad_file(remove_newline=False)
+                if not line:
+                    raise ValueError("Файл с чеком пуст или не может быть прочитан.")
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+                fptr.printText()
+                # Перенос строки
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+                # Промотка чековой ленты на одну строку (пустую)
+                fptr.printText()
+                # Закрытие нефискального документа
+                fptr.endNonfiscalDocument()
+                # Печать документа
+                fptr.report()
+                # Полная отрезка ЧЛ
+                fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+                # Отрезаем чек
+                fptr.cut()
+        except Exception as e:
+            logger.error(f"Ошибка при печати слип-чека: {e}")
+            # Информируем пользователя о проблемах с печатью
+            windows.info_window(
+                "Ошибка при печати слип-чека.",
+                "Пожалуйста, проверьте принтер и повторите попытку.",
+                str(e),
+            )
+            break  # Останавливаем выполнение функции после ошибки
+
         count -= 1
 
 
@@ -422,17 +529,35 @@ def get_info():
             Функция не возвращает значений, но может открывать окно с информацией о ККТ.
     """
     logger.info("Запуск функции get_info")
-    with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
-        fptr.queryData()
-        model = fptr.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
-        model_name = fptr.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME)
-        firmware_version = fptr.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION)
-    info = (
-        f"Номер модели ККТ: {model}.\nНаименование ККТ: {model_name}.\n"
-        f"Версия ПО ККТ: {firmware_version}"
-    )
-    windows.info_window("Смотрите подробную информацию.", "", info)
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
+            fptr.queryData()
+            model = fptr.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
+            model_name = fptr.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME)
+            firmware_version = fptr.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION)
+        info = (
+            f"Номер модели ККТ: {model}.\nНаименование ККТ: {model_name}.\n"
+            f"Версия ПО ККТ: {firmware_version}"
+        )
+        windows.info_window("Смотрите подробную информацию.", "", info)
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к ККТ: {ce}")
+        windows.info_window(
+            "Ошибка", "Не удалось подключиться к ККТ.", "Проверьте подключение."
+        )
+    except AttributeError as ae:
+        logger.error(f"Ошибка при получении данных о ККТ: {ae}")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось получить данные о ККТ.",
+            "Проверьте настройки устройства.",
+        )
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
+        )
 
 
 @logger_wraps()
@@ -448,26 +573,43 @@ def get_status_obmena():
             Функция не возвращает значений, но открывает окно с информацией о статусе обмена.
     """
     logger.info("Запуск функции get_status_obmena")
-    with fptr_connection(fptr):
-        fptr.setParam(
-            IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(
+                IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS
+            )
+            fptr.fnQueryData()
+            exchange_status = fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS)
+            unsent_count = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT)
+            first_unsent_number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+            ofd_message_read = fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ)
+            date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+            okp_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_LAST_SUCCESSFUL_OKP)
+
+        info = (
+            f"Статус информационного обмена с ОФД: {exchange_status}.\n"
+            f"Количество неотправленных документов: {unsent_count}.\n"
+            f"Номер первого неотправленного документа: {first_unsent_number}.\n"
+            f"Дата и время первого неотправленного документа: {date_time}.\n"
+            f"Флаг наличия сообщения для ОФД: {ofd_message_read}.\n"
+            f"Дата и время последнего успешного ОКП: {okp_time}."
         )
-        fptr.fnQueryData()
-        exchange_status = fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS)
-        unsent_count = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT)
-        first_unsent_number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
-        ofd_message_read = fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ)
-        date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-        okp_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_LAST_SUCCESSFUL_OKP)
-    info: str = (
-        f"Статус информационного обмена с ОФД: {exchange_status}.\n"
-        f"Количество неотправленных документов: {unsent_count}.\n"
-        f"Номер первого неотправленного документа: {first_unsent_number}.\n"
-        f"Дата и время первого неотправленного документа: {date_time}.\n"
-        f"Флаг наличия сообщения для ОФД: {ofd_message_read}.\n"
-        f"Дата и время последнего успешного ОКП: {okp_time}."
-    )
-    windows.info_dialog_window("Смотрите подробную информацию.", info)
+        windows.info_dialog_window("Смотрите подробную информацию.", info)
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к ККТ: {ce}")
+        windows.info_dialog_window(
+            "Ошибка", "Не удалось подключиться к ККТ. Проверьте соединение."
+        )
+    except AttributeError as ae:
+        logger.error(f"Ошибка при получении данных о статусе обмена: {ae}")
+        windows.info_dialog_window(
+            "Ошибка", "Не удалось получить данные о статусе обмена."
+        )
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка: {e}")
+        windows.info_dialog_window(
+            "Ошибка", "Произошла неизвестная ошибка при запросе статуса обмена."
+        )
 
 
 @logger_wraps()
@@ -483,13 +625,28 @@ def get_time():
             Функция не возвращает значений, но открывает окно с текущими датой и временем.
     """
     logger.info("Запуск функции get_time")
-    with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
-        fptr.queryData()
-        # Тип переменной datetime - datetime.datetime
-        date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-    logger.debug(f"Текущие дата и время в ККТ: {date_time}")
-    windows.info_window(str(date_time), "", "")
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
+            fptr.queryData()
+            # Тип переменной datetime - datetime.datetime
+            date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+        logger.debug(f"Текущие дата и время в ККТ: {date_time}")
+        windows.info_window(str(date_time), "", "")
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к ККТ: {ce}")
+        windows.info_window(
+            "Ошибка", "Не удалось подключиться к ККТ. Проверьте соединение.", ""
+        )
+    except AttributeError as ae:
+        logger.error(f"Ошибка при получении данных времени: {ae}")
+        windows.info_window("Ошибка", "Не удалось получить данные времени с ККТ.", "")
+
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка при запросе времени.", ""
+        )
 
 
 @logger_wraps()
@@ -505,28 +662,50 @@ def smena_info():
             Возвращает состояние смены (0 - закрыта, 1 - открыта, 2 - истекла).
     """
     logger.info("Запуск функции smena_info")
-    with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
-        fptr.queryData()
-        state = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE)
-        number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER)
-        date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-    shift_states = {
-        0: "закрыта",
-        1: "открыта",
-        2: "истекла (продолжительность смены больше 24 часов)",
-    }
-    result = shift_states.get(state, "неизвестное состояние")
-    logger.debug(f"Состояние смены: {state} ({result})")
-    info: str = (
-        f"Состояние смены: {result}.\n"
-        f"Номер смены: {number}.\n"
-        f"Дата и время истечения текущей смены: {date_time}"
-    )
-    windows.info_window(
-        f"Состояние смены: {result}", "Смотрите подробную информацию.", info
-    )
-    return state
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
+            fptr.queryData()
+            state = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE)
+            number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER)
+            date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+        shift_states = {
+            0: "закрыта",
+            1: "открыта",
+            2: "истекла (продолжительность смены больше 24 часов)",
+        }
+        result = shift_states.get(state, "неизвестное состояние")
+        logger.debug(f"Состояние смены: {state} ({result})")
+        info = (
+            f"Состояние смены: {result}.\n"
+            f"Номер смены: {number}.\n"
+            f"Дата и время истечения текущей смены: {date_time}"
+        )
+        windows.info_window(
+            f"Состояние смены: {result}", "Смотрите подробную информацию.", info
+        )
+        return state
+
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к ККТ: {ce}")
+        windows.info_window(
+            "Ошибка", "Не удалось подключиться к ККТ. Проверьте соединение.", ""
+        )
+        return -1
+
+    except AttributeError as ae:
+        logger.error(f"Ошибка при получении данных состояния смены: {ae}")
+        windows.info_window(
+            "Ошибка", "Не удалось получить состояние смены. Проверьте настройки ККТ.", ""
+        )
+        return -2
+
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка при запросе состояния смены."
+        )
+        return -3
 
 
 @logger_wraps()
@@ -542,9 +721,28 @@ def last_document():
             Функция не возвращает значений, но выполняет печать последнего документа.
     """
     logger.info("Запуск функции last_document")
-    with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT)
-        fptr.report()
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(
+                IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT
+            )
+            fptr.report()
+        logger.info("Печать последнего документа успешно выполнена")
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к ККТ: {ce}")
+        windows.info_window(
+            "Ошибка", "Не удалось подключиться к ККТ. Проверьте соединение.", ""
+        )
+    except AttributeError as ae:
+        logger.error(f"Ошибка при получении данных документа: {ae}")
+        windows.info_window(
+            "Ошибка", "Не удалось получить последний документ. Проверьте настройки ККТ.", ""
+        )
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка при запросе последнего документа.", ""
+        )
 
 
 @logger_wraps()
@@ -560,11 +758,31 @@ def report_payment():
             Функция не возвращает значений, но выполняет печать отчета о состоянии расчетов.
     """
     logger.info("Запуск функции report_payment")
-    with fptr_connection(fptr):
-        fptr.setParam(
-            IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(
+                IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS
+            )
+            fptr.report()
+        logger.info("Отчет о состоянии расчетов успешно распечатан.")
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
         )
-        fptr.report()
+    except AttributeError as ae:
+        logger.error(f"Ошибка при выполнении отчета: {ae}")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось выполнить отчет. Проверьте настройки принтера или ОФД.",  ""
+        )
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка: {e}")
+        windows.info_window(
+            "Ошибка",
+            "Произошла неизвестная ошибка при попытке печати отчета о расчетах.", ""
+        )
 
 
 @logger_wraps()
@@ -580,9 +798,27 @@ def report_x():
             Функция не возвращает значений, но выполняет печать X-отчета.
     """
     logger.info("Запуск функции report_x")
-    with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
-        fptr.report()
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
+            fptr.report()
+        logger.info("X-отчет успешно распечатан.")
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+        )
+    except AttributeError as ae:
+        logger.error(f"Ошибка при выполнении X-отчета: {ae}")
+        windows.info_window(
+            "Ошибка", "Не удалось выполнить X-отчет. Проверьте настройки принтера.", ""
+        )
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка при печати X-отчета.", ""
+        )
 
 
 @logger_wraps()
@@ -598,10 +834,32 @@ def kassir_reg(user):
             Функция не возвращает значений.
     """
     logger.info("Запуск функции kassir_reg")
-    with fptr_connection(fptr):
-        fptr.setParam(1021, f"{user.last_name} {user.first_name}")
-        fptr.setParam(1203, user.inn)
-        fptr.operatorLogin()
+    try:
+        with fptr_connection(fptr):
+            # Параметры для регистрации кассира
+            fptr.setParam(1021, f"{user.last_name} {user.first_name}")
+            fptr.setParam(1203, user.inn)
+            fptr.operatorLogin()
+        logger.info(
+            f"Кассир {user.last_name} {user.first_name} зарегистрирован успешно."
+        )
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+        )
+    except ValueError as ve:
+        logger.error(f"Ошибка в данных пользователя: {ve}")
+        windows.info_window(
+            "Ошибка",
+            "Некорректные данные пользователя. Проверьте фамилию, имя или ИНН.", ""
+        )
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка при регистрации кассира: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла ошибка при регистрации кассира. Попробуйте снова.", ""
+        )
 
 
 @logger_wraps()
@@ -618,9 +876,34 @@ def deposit_of_money(amount):
     """
     logger.info("Запуск функции cash_deposit")
     logger.info(f"Внесено в кассу: {amount}")
-    with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
-        fptr.cashIncome()
+    if amount <= 0:
+        logger.error(
+            f"Некорректная сумма для внесения: {amount}. Сумма должна быть положительной."
+        )
+        windows.info_window("Ошибка", "Сумма внесения должна быть положительной.")
+        return
+    logger.info(f"Внесено в кассу: {amount}")
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
+            fptr.cashIncome()
+        logger.info(f"Сумма {amount} успешно внесена в кассу.")
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+        )
+    except ValueError as ve:
+        logger.error(f"Некорректное значение параметра: {ve}")
+        windows.info_window(
+            "Ошибка", "Некорректные данные для внесения. Проверьте введенную сумму.", ""
+        )
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка при внесении денег в кассу: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла ошибка при внесении денег в кассу. Попробуйте снова.", ""
+        )
 
 
 @logger_wraps()
@@ -637,9 +920,35 @@ def payment(amount):
     """
     logger.info("Запуск функции payment")
     logger.info(f"Выплачено из кассы: {amount}")
-    with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
-        fptr.cashOutcome()
+    if amount <= 0:
+        logger.error(
+            f"Некорректная сумма для выплаты: {amount}. Сумма должна быть положительной."
+        )
+        windows.info_window("Ошибка", "Сумма выплаты должна быть положительной.", "")
+        return
+    logger.info(f"Выплачено из кассы: {amount}")
+    try:
+        with fptr_connection(fptr):
+            fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
+            fptr.cashOutcome()
+
+        logger.info(f"Сумма {amount} успешно выплачена из кассы.")
+    except ConnectionError as ce:
+        logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+        )
+    except ValueError as ve:
+        logger.error(f"Некорректное значение параметра: {ve}")
+        windows.info_window(
+            "Ошибка", "Некорректные данные для выплаты. Проверьте введенную сумму.", ""
+        )
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка при выплате денег из кассы: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла ошибка при выплате денег из кассы. Попробуйте снова.", ""
+        )
 
 
 @logger_wraps()
@@ -655,28 +964,42 @@ def balance_check():
             Возвращает баланс наличных денег в кассе.
     """
     logger.info("Запуск функции balance_check")
-    with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_CASH_SUM)
-        fptr.queryData()
-        cashSum = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_SUM)
-        logger.info(f"Баланс наличных денег в кассе: {cashSum}")
-        # Открытие нефискального документа
-        fptr.beginNonfiscalDocument()
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, f"Баланс наличных денег: {cashSum}")
-        fptr.printText()
-        # Перенос строки
-        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-        # Промотка чековой ленты на одну строку (пустую)
-        fptr.printText()
-        # Закрытие нефискального документа
-        fptr.endNonfiscalDocument()
-        # Печать документа
-        fptr.report()
-        # Полная отрезка ЧЛ
-        fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-        # Отрезаем чек
-        fptr.cut()
-    return cashSum
+    try:
+        with fptr_connection(fptr):
+            # Запрос баланса наличных денег
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_CASH_SUM)
+            fptr.queryData()
+            # Получаем баланс
+            cashSum = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_SUM)
+            logger.info(f"Баланс наличных денег в кассе: {cashSum}")
+            # Печать баланса
+            fptr.beginNonfiscalDocument()
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, f"Баланс наличных денег: {cashSum}")
+            fptr.printText()
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+            fptr.printText()  # Промотка на одну строку
+            fptr.endNonfiscalDocument()
+            fptr.report()
+            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
+            fptr.cut()
+        return cashSum
+    except ConnectionError as ce:
+        # Ошибка подключения к фискальному принтеру
+        logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+        )
+    except ValueError as ve:
+        # Ошибка при получении или обработке данных баланса
+        logger.error(f"Ошибка при получении данных баланса: {ve}")
+        windows.info_window("Ошибка", "Не удалось получить баланс наличных средств.", "")
+    except Exception as e:
+        # Общая ошибка
+        logger.error(f"Неизвестная ошибка при проверке баланса: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла ошибка при проверке баланса. Попробуйте снова.", ""
+        )
 
 
 @logger_wraps()
@@ -698,47 +1021,61 @@ def operation_on_the_terminal(payment_type, type_operation, price):
     """
     logger.info("Запуск функции operation_on_the_terminal")
     bank = None
-    if payment_type == PAYMENT_ELECTRONIC:
-        payment = 1
-        logger.debug("оплата банковской картой")
-        if type_operation == 1:
-            logger.info("Запускаем оплату по банковскому терминалу")
+    try:
+        if payment_type == PAYMENT_ELECTRONIC:
+            payment = 1
+            logger.debug("оплата банковской картой")
+            if type_operation == 1:
+                logger.info("Запускаем оплату по банковскому терминалу")
+                # результат операции по терминалу
+                bank = terminal_oplata(str(price))
+                logger.debug(f"Результат операции по терминалу: {bank}")
+                if bank != 1:
+                    info = "Оплата по банковскому терминалу завершена с ошибкой"
+                    logger.warning(info)
+                    windows.info_window(info, "", "")
+                    return 0, payment
+            elif type_operation == 2:
+                logger.info("Запускаем операцию возврата по банковскому терминалу")
+                # результат операции по терминалу
+                bank = terminal_return(str(price))
+                logger.debug(f"Результат операции по терминалу: {bank}")
+                if bank != 1:
+                    info = "Возврат по банковскому терминалу завершен с ошибкой"
+                    logger.warning(info)
+                    windows.info_window(info, "", "")
+                    return 0, payment
+            elif type_operation == 3:
+                logger.info("Запускаем операцию отмены по банковскому терминалу")
+                # результат операции по терминалу
+                bank = terminal_canceling(str(price))
+                logger.debug(f"Результат операции по терминалу: {bank}")
+                if bank != 1:
+                    info = "Отмена по банковскому терминалу завершена с ошибкой"
+                    logger.warning(info)
+                    windows.info_window(info, "", "")
+                    return 0, payment
+        # если offline оплата банковской картой
+        elif payment_type == PAYMENT_OFFLINE:
+            logger.debug("Продажа новая. Начинаем оплату")
+            payment = 3
             # результат операции по терминалу
-            bank = terminal_oplata(str(price))
-            logger.debug(f"Результат операции по терминалу: {bank}")
-            if bank != 1:
-                info = "Оплата по банковскому терминалу завершена с ошибкой"
-                logger.warning(info)
-                windows.info_window(info, "", "")
-                return 0, payment
-        elif type_operation == 2:
-            logger.info("Запускаем операцию возврата по банковскому терминалу")
-            # результат операции по терминалу
-            bank = terminal_return(str(price))
-            logger.debug(f"Результат операции по терминалу: {bank}")
-            if bank != 1:
-                info = "Возврат по банковскому терминалу завершен с ошибкой"
-                logger.warning(info)
-                windows.info_window(info, "", "")
-                return 0, payment
-        elif type_operation == 3:
-            logger.info("Запускаем операцию отмены по банковскому терминалу")
-            # результат операции по терминалу
-            bank = terminal_canceling(str(price))
-            logger.debug(f"Результат операции по терминалу: {bank}")
-            if bank != 1:
-                info = "Отмена по банковскому терминалу завершена с ошибкой"
-                logger.warning(info)
-                windows.info_window(info, "", "")
-                return 0, payment
-    # если offline оплата банковской картой
-    elif payment_type == PAYMENT_OFFLINE:
-        logger.debug("Продажа новая. Начинаем оплату")
-        payment = 3
-        # результат операции по терминалу
-        logger.info("Запускаем offline оплату по банковскому терминалу")
-        bank = 1
-    return bank, payment
+            logger.info("Запускаем offline оплату по банковскому терминалу")
+            bank = 1
+        else:
+            raise ValueError(f"Неизвестный тип оплаты: {payment_type}")
+        # Возвращаем результат
+        return bank, payment
+    except ValueError as ve:
+        logger.error(f"Ошибка: {ve}")
+        windows.info_window("Ошибка", f"Неверный тип операции или параметр: {ve}", "")
+        return 0, 0
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка при проведении операции: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла ошибка при проведении операции. Попробуйте снова.", ""
+        )
+        return 0, 0
 
 
 def register_item(name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT20):
@@ -865,6 +1202,9 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             # Закрытие полностью оплаченного чека
             logger.info("Закрытие полностью оплаченного чека")
             fptr.closeReceipt()
+        else:
+            logger.error(f"Invalid payment type: {payment_type}")
+            return 0
         while fptr.checkDocumentClosed() < 0 and retry_count < max_retries:
             retry_count += 1
             # Не удалось проверить состояние документа.
@@ -911,39 +1251,69 @@ def smena_close(user):
             Функция не возвращает значений.
     """
     logger.info("Запуск функции smena_close")
-    state = smena_info()
-    if state != 0:
-        res = windows.info_dialog_window(
-            "Внимание! Кассовая смена не закрыта",
-            "Хотите сделать сверку итогов и снять отчет с гашением?",
-        )
-        if res == 1:
-            result = terminal_check_itog()
-            try:
-                if result == 1:
-                    with fptr_connection(fptr):
-                        fptr.setParam(1021, f"{user.last_name} {user.first_name}")
-                        fptr.setParam(1203, user.inn)
-                        fptr.operatorLogin()
-                        fptr.setParam(
-                            IFptr.LIBFPTR_PARAM_REPORT_TYPE,
-                            IFptr.LIBFPTR_RT_CLOSE_SHIFT,
-                        )
-                        fptr.report()
-                        fptr.checkDocumentClosed()
-            except FileNotFoundError as not_found:
-                lines = "File not found!"
-                logger.warning(not_found.filename)
-                windows.info_window(
-                    "Сверка итогов по банковскому терминалу завершена неудачно.",
-                    "",
-                    str(lines),
-                )
-        else:
-            windows.info_window(
-                "Сверка итогов по банковскому терминалу завершена неудачно.", "", ""
+    try:
+        # Проверка состояния смены
+        state = smena_info()
+        if state != 0:
+            res = windows.info_dialog_window(
+                "Внимание! Кассовая смена не закрыта",
+                "Хотите сделать сверку итогов и снять отчет с гашением?",
             )
-            logger.warning(state)
+            if res == 1:
+                result = terminal_check_itog()  # Проведение сверки
+                try:
+                    if result == 1:
+                        with fptr_connection(fptr):
+                            fptr.setParam(1021, f"{user.last_name} {user.first_name}")
+                            fptr.setParam(1203, user.inn)
+                            fptr.operatorLogin()
+                            fptr.setParam(
+                                IFptr.LIBFPTR_PARAM_REPORT_TYPE,
+                                IFptr.LIBFPTR_RT_CLOSE_SHIFT,
+                            )
+                            fptr.report()  # Отчет о закрытии смены
+                            fptr.checkDocumentClosed()  # Проверка закрытия документа
+                    else:
+                        # Обработка ошибок при сверке итогов
+                        logger.warning("Ошибка при сверке итогов.")
+                        windows.info_window(
+                            "Сверка итогов по банковскому терминалу завершена неудачно.",
+                            "",
+                            "",
+                        )
+                except FileNotFoundError as not_found:
+                    # Обработка ошибки отсутствия файла
+                    lines = "File not found!"
+                    logger.warning(f"Файл не найден: {not_found.filename}")
+                    windows.info_window(
+                        "Сверка итогов по банковскому терминалу завершена неудачно.",
+                        "",
+                        f"Ошибка: {lines}",
+                    )
+                except Exception as e:
+                    # Обработка других ошибок при работе с фискальным принтером
+                    logger.error(f"Ошибка при выполнении отчета о закрытии смены: {e}")
+                    windows.info_window(
+                        "Произошла ошибка при закрытии смены.",
+                        "Пожалуйста, попробуйте позже.",
+                        str(e),
+                    )
+            else:
+                windows.info_window(
+                    "Сверка итогов по банковскому терминалу завершена неудачно.", "", ""
+                )
+                logger.warning(f"Состояние смены: {state}")
+        else:
+            # Логирование успешного состояния
+            logger.info("Смена уже закрыта.")
+    except Exception as e:
+        # Обработка ошибок на уровне основной функции
+        logger.error(f"Ошибка при закрытии смены: {e}")
+        windows.info_window(
+            "Произошла ошибка при попытке закрытия смены.",
+            "Пожалуйста, попробуйте позже.",
+            str(e),
+        )
 
 
 def continue_print():
@@ -958,7 +1328,19 @@ def continue_print():
             Функция не возвращает значений, но продолжает печать текущего документа.
     """
     logger.info("Запуск функции continue_print")
-    fptr.continuePrint()
+    try:
+        # Попытка продолжить печать
+        fptr.continuePrint()
+        logger.info("Продолжение печати выполнено успешно.")
+    except Exception as e:
+        # Логирование ошибки
+        logger.error(f"Ошибка при продолжении печати: {e}")
+        # Уведомление пользователя
+        windows.info_window(
+            "Ошибка при продолжении печати.",
+            "Пожалуйста, проверьте подключение к фискальному принтеру и повторите попытку.",
+            str(e),
+        )
 
 
 @logger_wraps()
@@ -973,8 +1355,19 @@ def print_text(text: str):
             Функция не возвращает значений, но может вызывать исключения в случае ошибок при печати.
     """
     logger.info("Запуск функции print_text")
-    # Устанавливаем параметры для печати строки
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, text)
-    fptr.printText()
-    # Устанавливаем перенос строки
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+    try:
+        # Устанавливаем параметры для печати строки
+        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, text)
+        # Печатаем текст
+        fptr.printText()
+        # Устанавливаем перенос строки
+        fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+    except Exception as e:
+        # Логирование ошибки
+        logger.error(f"Ошибка при печати текста: {e}")
+        # Уведомление пользователя
+        windows.info_window(
+            "Ошибка при печати слип-чека.",
+            "Пожалуйста, проверьте принтер и повторите попытку.",
+            str(e),
+        )
