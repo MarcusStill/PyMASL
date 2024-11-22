@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 from contextlib import contextmanager
 
 from modules import windows
@@ -25,7 +26,6 @@ EMAIL: str = "test.check@pymasl.ru"
 PAYMENT_CASH = 102
 PAYMENT_ELECTRONIC = 101
 PAYMENT_OFFLINE = 100
-
 
 
 @contextmanager
@@ -114,7 +114,7 @@ def terminal_oplata(amount):
     """
     logger.info("Запуск функции terminal_oplata")
     # Преобразуем сумму в целое число для корректного форматирования
-    result = run_terminal_command(f"1 {int(amount * 100)}")
+    result = run_terminal_command(f"1 {amount}00")
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
         return 0
@@ -126,7 +126,9 @@ def terminal_oplata(amount):
         return 0
     elif result.returncode == TERMINAL_DATA_EXCHANGE:
         windows.info_window(
-            "Ошибка при проведении оплаты", "Требуется сделать сверку итогов и после этого повторить операцию оплаты", "Команда завершена с кодом: 4134"
+            "Ошибка при проведении оплаты",
+            "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
+            "Команда завершена с кодом: 4134",
         )
         return 0
     elif result.returncode == TERMINAL_SUCCESS_CODE:
@@ -156,7 +158,7 @@ def terminal_return(amount):
     logger.info("Запуск функции terminal_return")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"3 {int(amount * 100)}")
+    result = run_terminal_command(f"1 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
@@ -169,7 +171,9 @@ def terminal_return(amount):
             return 0
     elif result.returncode == TERMINAL_DATA_EXCHANGE:
         windows.info_window(
-            "Ошибка при проведении оплаты", "Требуется сделать сверку итогов и после этого повторить операцию оплаты", "Команда завершена с кодом: 4134"
+            "Ошибка при проведении оплаты",
+            "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
+            "Команда завершена с кодом: 4134",
         )
         return 0
     else:
@@ -193,7 +197,7 @@ def terminal_canceling(amount):
     logger.info("Запуск функции terminal_canceling")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"8 {int(amount * 100)}")
+    result = run_terminal_command(f"1 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
@@ -206,7 +210,9 @@ def terminal_canceling(amount):
             return 0
     elif result.returncode == TERMINAL_DATA_EXCHANGE:
         windows.info_window(
-            "Ошибка при проведении оплаты", "Требуется сделать сверку итогов и после этого повторить операцию оплаты", "Команда завершена с кодом: 4134"
+            "Ошибка при проведении оплаты",
+            "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
+            "Команда завершена с кодом: 4134",
         )
         return 0
     else:
@@ -696,7 +702,9 @@ def smena_info():
     except AttributeError as ae:
         logger.error(f"Ошибка при получении данных состояния смены: {ae}")
         windows.info_window(
-            "Ошибка", "Не удалось получить состояние смены. Проверьте настройки ККТ.", ""
+            "Ошибка",
+            "Не удалось получить состояние смены. Проверьте настройки ККТ.",
+            "",
         )
         return -2
 
@@ -736,12 +744,16 @@ def last_document():
     except AttributeError as ae:
         logger.error(f"Ошибка при получении данных документа: {ae}")
         windows.info_window(
-            "Ошибка", "Не удалось получить последний документ. Проверьте настройки ККТ.", ""
+            "Ошибка",
+            "Не удалось получить последний документ. Проверьте настройки ККТ.",
+            "",
         )
     except Exception as e:
         logger.error(f"Неизвестная ошибка: {e}")
         windows.info_window(
-            "Ошибка", "Произошла неизвестная ошибка при запросе последнего документа.", ""
+            "Ошибка",
+            "Произошла неизвестная ошибка при запросе последнего документа.",
+            "",
         )
 
 
@@ -769,19 +781,22 @@ def report_payment():
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
             "Ошибка",
-            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.",
+            "",
         )
     except AttributeError as ae:
         logger.error(f"Ошибка при выполнении отчета: {ae}")
         windows.info_window(
             "Ошибка",
-            "Не удалось выполнить отчет. Проверьте настройки принтера или ОФД.",  ""
+            "Не удалось выполнить отчет. Проверьте настройки принтера или ОФД.",
+            "",
         )
     except Exception as e:
         logger.error(f"Неизвестная ошибка: {e}")
         windows.info_window(
             "Ошибка",
-            "Произошла неизвестная ошибка при попытке печати отчета о расчетах.", ""
+            "Произошла неизвестная ошибка при попытке печати отчета о расчетах.",
+            "",
         )
 
 
@@ -807,7 +822,8 @@ def report_x():
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
             "Ошибка",
-            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.",
+            "",
         )
     except AttributeError as ae:
         logger.error(f"Ошибка при выполнении X-отчета: {ae}")
@@ -847,13 +863,15 @@ def kassir_reg(user):
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
             "Ошибка",
-            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.",
+            "",
         )
     except ValueError as ve:
         logger.error(f"Ошибка в данных пользователя: {ve}")
         windows.info_window(
             "Ошибка",
-            "Некорректные данные пользователя. Проверьте фамилию, имя или ИНН.", ""
+            "Некорректные данные пользователя. Проверьте фамилию, имя или ИНН.",
+            "",
         )
     except Exception as e:
         logger.error(f"Неизвестная ошибка при регистрации кассира: {e}")
@@ -892,7 +910,8 @@ def deposit_of_money(amount):
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
             "Ошибка",
-            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.",
+            "",
         )
     except ValueError as ve:
         logger.error(f"Некорректное значение параметра: {ve}")
@@ -902,7 +921,9 @@ def deposit_of_money(amount):
     except Exception as e:
         logger.error(f"Неизвестная ошибка при внесении денег в кассу: {e}")
         windows.info_window(
-            "Ошибка", "Произошла ошибка при внесении денег в кассу. Попробуйте снова.", ""
+            "Ошибка",
+            "Произошла ошибка при внесении денег в кассу. Попробуйте снова.",
+            "",
         )
 
 
@@ -937,7 +958,8 @@ def payment(amount):
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
             "Ошибка",
-            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.",
+            "",
         )
     except ValueError as ve:
         logger.error(f"Некорректное значение параметра: {ve}")
@@ -947,7 +969,9 @@ def payment(amount):
     except Exception as e:
         logger.error(f"Неизвестная ошибка при выплате денег из кассы: {e}")
         windows.info_window(
-            "Ошибка", "Произошла ошибка при выплате денег из кассы. Попробуйте снова.", ""
+            "Ошибка",
+            "Произошла ошибка при выплате денег из кассы. Попробуйте снова.",
+            "",
         )
 
 
@@ -988,12 +1012,15 @@ def balance_check():
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
             "Ошибка",
-            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.", ""
+            "Не удалось подключиться к фискальному принтеру. Проверьте соединение.",
+            "",
         )
     except ValueError as ve:
         # Ошибка при получении или обработке данных баланса
         logger.error(f"Ошибка при получении данных баланса: {ve}")
-        windows.info_window("Ошибка", "Не удалось получить баланс наличных средств.", "")
+        windows.info_window(
+            "Ошибка", "Не удалось получить баланс наличных средств.", ""
+        )
     except Exception as e:
         # Общая ошибка
         logger.error(f"Неизвестная ошибка при проверке баланса: {e}")
@@ -1078,163 +1105,165 @@ def operation_on_the_terminal(payment_type, type_operation, price):
         return 0, 0
 
 
-def register_item(name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT20):
+def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT20):
     """Регистрация товара в чеке"""
-    fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
-    fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
-    fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, quantity)
-    fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, tax_type)
-    fptr.registration()
+    logger.info("Запуск функции register_item")
+    device.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
+    device.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
+    device.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, quantity)
+    device.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, tax_type)
+    device.registration()
 
 
-@logger_wraps()
+def setup_fptr(device, user, type_operation, print_check):
+    """Настройка параметров ККМ."""
+    logger.info("Запуск функции setup_fptr")
+    device.setParam(1021, f"{user.last_name} {user.first_name}")
+    device.setParam(1203, user.inn)
+    device.operatorLogin()
+    receipt_types = {
+        1: IFptr.LIBFPTR_RT_SELL,
+        2: IFptr.LIBFPTR_RT_SELL_RETURN,
+        3: IFptr.LIBFPTR_RT_SELL_RETURN,
+    }
+    device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, receipt_types.get(type_operation))
+    if print_check == 0:
+        device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY, True)
+        device.setParam(1008, EMAIL)
+
+
+def register_tickets(device, sale_dict, type_operation):
+    """Регистрация позиций в чеке."""
+    logger.info("Запуск функции register_tickets")
+    if type_operation == 1:
+        time = sale_dict["detail"][6]
+        # Взрослые билеты
+        kol_adult_edit = sale_dict["kol_adult"] - sale_dict["detail"][0]
+        if kol_adult_edit > 0:
+            register_item(
+                device,
+                f"Билет взрослый {time} ч.",
+                sale_dict["price_adult"],
+                kol_adult_edit,
+            )
+        # Взрослые билеты со скидкой
+        if sale_dict["detail"][0] > 0 and sale_dict["detail"][1] > 0:
+            register_item(
+                device,
+                f"Билет взрослый акция {time} ч.",
+                sale_dict["detail"][1],
+                sale_dict["detail"][0],
+            )
+        # Детские билеты
+        kol_child_edit = sale_dict["kol_child"] - sale_dict["detail"][2]
+        if kol_child_edit > 0:
+            register_item(
+                device,
+                f"Билет детский {time} ч.",
+                sale_dict["price_child"],
+                kol_child_edit,
+            )
+        # Детские билеты со скидкой
+        if sale_dict["detail"][2] > 0 and sale_dict["detail"][3] > 0:
+            register_item(
+                device,
+                f"Билет детский акция {time} ч.",
+                sale_dict["detail"][3],
+                sale_dict["detail"][2],
+            )
+    else:
+        for item_name, item_data in sale_dict.items():
+            register_item(device, item_name, item_data[0], item_data[1])
+
+
+def process_payment(device, payment_type, bank, sale_dict, price):
+    """Обработка оплаты чека."""
+    logger.info("Запуск функции process_payment")
+    payment_amount = sale_dict["detail"][7] if payment_type == 1 else price
+    if payment_type == PAYMENT_CASH:
+        logger.info("Оплата наличными")
+        device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
+    elif payment_type == PAYMENT_ELECTRONIC and bank == 1:
+        logger.info("Оплата картой")
+        device.setParam(
+            IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
+        )
+    elif payment_type == PAYMENT_OFFLINE:
+        logger.info("Оплата оффлайн")
+        device.setParam(
+            IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
+        )
+    else:
+        logger.error(f"Неверный тип оплаты: {payment_type}")
+        return False
+    device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, payment_amount)
+    device.payment()
+    device.closeReceipt()
+    return True
+
+
+def handle_document_errors(device, retry_count, max_retries):
+    """Обработка ошибок закрытия документа."""
+    logger.info("Запуск функции handle_document_errors")
+    while retry_count < max_retries:
+        if device.checkDocumentClosed() >= 0 and device.getParamBool(
+            IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED
+        ):
+            return True
+        retry_count += 1
+        logger.warning(
+            f"Не удалось проверить состояние документа. Попытка {retry_count}"
+        )
+        time.sleep(1)
+    logger.error(f"Документ не закрылся после {max_retries} попыток. Отмена чека.")
+    windows.info_window(
+        f"Документ не закрылся после {max_retries} попыток.", "Отмена чека.", ""
+    )
+    device.cancelReceipt()
+    return False
+
+
 def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank):
-    """Проведение операции оплаты.
+    """
+    Проведение операции оплаты.
 
     Параметры:
-        sale_dict (dict):
-            Словарь, содержащий информацию о продаже, включая количество и цены билетов.
-        payment_type (int):
-            Тип оплаты (например, 101 - оплата картой, 100 - offline оплата).
-        user (object):
-            Объект пользователя, содержащий информацию о кассире (фамилия, имя, ИНН).
-        type_operation (int):
-            Тип операции (например, 1 - продажа, 2 - возврат, 3 - отмена).
-        print_check (int):
-            Флаг, указывающий, нужно ли печатать чек (0 - не печатать, 1 - печатать).
-        price (float):
-            Сумма, на которую выполняется операция.
-        bank (int):
-            Результат операции по терминалу (например, 1 - успех).
+        sale_dict (dict): Словарь с данными о продаже.
+        payment_type (int): Тип оплаты.
+        user (object): Информация о пользователе.
+        type_operation (int): Тип операции (1 - продажа, 2 - возврат).
+        print_check (int): Флаг печати чека.
+        price (float): Сумма операции.
+        bank (int): Результат операции по терминалу.
 
-    Возвращаемое значение:
-        int:
-            - 1, если операция выполнена успешно.
-            - 0, если произошла ошибка.
+    Возвращает:
+        int: 1 - успех, 0 - ошибка.
     """
     logger.info("Запуск функции check_open")
     retry_count = 0
-    max_retries = 5  # Максимальное количество попыток
+    max_retries = 5
     logger.debug(
         f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type}, type_operation = {type_operation}, bank = {bank}"
     )
     if print_check == 0:
         logger.info("Кассовый чек не печатаем")
-    elif print_check == 1:
-        logger.info("Кассовый чек печатаем")
     logger.info(f"Тип оплаты: {payment_type}")
-    # Открытие печатного чека
-    logger.info("Открытие печатного чека")
-    with fptr_connection(fptr):
-        fptr.setParam(1021, f"{user.last_name} {user.first_name}")
-        fptr.setParam(1203, user.inn)
-        fptr.operatorLogin()
-        if type_operation == 1:
-            fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)
-        elif type_operation in (2, 3):
-            fptr.setParam(
-                IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN
-            )
-        if print_check == 0:
-            fptr.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY, True)
-            fptr.setParam(1008, EMAIL)
-        fptr.openReceipt()
-        # Регистрация позиции с указанием суммы налога
-        # взрослый билет
-        logger.info("Регистрация позиции: билет взрослый")
-        if type_operation == 1:
-            # проверяем есть ли билеты со скидкой
-            kol_adult_edit = sale_dict["kol_adult"] - sale_dict["detail"][0]
-            kol_child_edit = sale_dict["kol_child"] - sale_dict["detail"][2]
-            time = sale_dict["detail"][6]
-            if kol_adult_edit > 0:
-                register_item(f"Билет взрослый {time} ч.", sale_dict["price_adult"], kol_adult_edit)
-            # взрослый билет со скидкой
-            logger.info("Регистрация позиции: билет взрослый со скидкой")
-            if sale_dict["detail"][0] > 0 and sale_dict["detail"][1] > 0:
-                register_item(f"Билет взрослый акция {time} ч.", sale_dict["detail"][1], sale_dict["detail"][0])
-            # детский билет
-            logger.info("Регистрация позиции: билет детский")
-            if kol_child_edit > 0:
-                register_item(f"Билет детский {time} ч.", sale_dict["price_child"], kol_child_edit)
-            # детский билет со скидкой
-            logger.info("Регистрация позиции: билет детский со скидкой")
-            if sale_dict["detail"][2] > 0 and sale_dict["detail"][3] > 0:
-                register_item(f"Билет детский акция {time} ч.", sale_dict["detail"][3], sale_dict["detail"][2])
-        else:
-            for item in sale_dict.items():
-                fptr.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, f"{item[0]}")
-                fptr.setParam(IFptr.LIBFPTR_PARAM_PRICE, item[1][0])
-                fptr.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, item[1][1])
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, IFptr.LIBFPTR_TAX_VAT20)
-                fptr.registration()
-        # Оплата чека
-        logger.info("Оплата чека")
-        if payment_type == PAYMENT_CASH:
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
-            fptr.setParam(
-                IFptr.LIBFPTR_PARAM_PAYMENT_SUM,
-                sale_dict["detail"][7] if type_operation == 1 else price,
-            )
-            fptr.payment()
-            # Закрытие полностью оплаченного чека
-            logger.info("Закрытие полностью оплаченного чека")
-            fptr.closeReceipt()
-        elif payment_type == PAYMENT_ELECTRONIC:
-            if bank == 1:
-                fptr.setParam(
-                    IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
-                )
-                fptr.setParam(
-                    IFptr.LIBFPTR_PARAM_PAYMENT_SUM,
-                    sale_dict["detail"][7] if type_operation == 1 else price,
-                )
-                fptr.payment()
-                # Закрытие полностью оплаченного чека
-                logger.info("Закрытие полностью оплаченного чека")
-                fptr.closeReceipt()
-        elif payment_type == PAYMENT_OFFLINE:
-            fptr.setParam(
-                IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
-            )
-            fptr.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, sale_dict["detail"][7])
-            fptr.payment()
-            # Закрытие полностью оплаченного чека
-            logger.info("Закрытие полностью оплаченного чека")
-            fptr.closeReceipt()
-        else:
-            logger.error(f"Invalid payment type: {payment_type}")
+    with fptr_connection(fptr) as device:
+        # Настройка параметров ККМ
+        setup_fptr(device, user, type_operation, print_check)
+        # Открытие чека
+        device.openReceipt()
+        # Регистрация билетов
+        register_tickets(device, sale_dict, type_operation)
+        # Оплата
+        if not process_payment(device, payment_type, bank, sale_dict, price):
             return 0
-        while fptr.checkDocumentClosed() < 0 and retry_count < max_retries:
-            retry_count += 1
-            # Не удалось проверить состояние документа.
-            # Вывести пользователю текст ошибки, попросить устранить неполадку и повторить запрос
-            logger.warning(
-                f"Не удалось проверить состояние документа. Ошибка: {fptr.errorDescription()}"
-            )
-            windows.info_window(
-                "Не удалось проверить состояние документа.\n"
-                "Устраните неполадку и повторите запрос.",
-                str(fptr.errorDescription()),
-                "",
-            )
-            # Добавим небольшой тайм-аут перед следующей попыткой, чтобы не перегружать систему
-            time.sleep(1)  # Задержка 1 секунда между попытками
-        if retry_count >= max_retries or not fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
-            logger.warning(
-                f"Документ не закрылся после {max_retries} попыток.\n"
-                f"Ошибка: {fptr.errorDescription()}"
-            )
-            windows.info_window(
-                "Документ не закрылся. Попробуйте позже или повторите запрос.",
-                f"Ошибка: {fptr.errorDescription()}",
-                "",
-            )
-            fptr.cancelReceipt()
+        # Проверка состояния документа
+        if not handle_document_errors(device, retry_count, max_retries):
             return 0
-        # Если чек не нужно печатать, но его нужно продолжить (без печати)
+        # Продолжение печати, если чек не печатается
         if print_check == 0:
-            fptr.continuePrint()
+            device.continuePrint()
     return 1
 
 
