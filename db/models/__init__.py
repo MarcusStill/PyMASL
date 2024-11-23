@@ -7,3 +7,4 @@ from .sale_service import SaleService
 from .ticket import Ticket
 from .user import User
 from .workday import Workday
+from .price_service import PriceService
