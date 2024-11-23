@@ -4,30 +4,37 @@ import subprocess
 import sys
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Type
-from typing import Optional
+from typing import Any, Optional, Type
 
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtCore import Qt, Signal, QDate, QPoint, QEvent
+from PySide6.QtCore import Qt, Signal, QDate, QEvent
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QCheckBox, QDialog, QHBoxLayout, QSpinBox, QToolTip
-from PySide6.QtWidgets import QTableWidgetItem, QWidget, QTableWidget
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QHBoxLayout,
+    QSpinBox,
+    QToolTip,
+    QTableWidgetItem,
+    QWidget,
+    QTableWidget,
+)
 from sqlalchemy import and_, select, func, update, desc, or_
 from sqlalchemy.orm import Session
 
 from db.models import Client
+from db.models import PriceService
 from db.models import Sale
 from db.models import Ticket
-from db.models import PriceService
 from design.logic.authorization import Ui_Dialog
 from design.logic.client import Ui_Dialog_Client
 from design.logic.main_form import Ui_MainWindow
 from design.logic.pay import Ui_Dialog_Pay
 from design.logic.sale import Ui_Dialog_Sale
-from design.logic.slip import Ui_Dialog_Slip
 from design.logic.sale_service import Ui_Dialog_Sale_Service
-from modules import payment_equipment as pq
+from design.logic.slip import Ui_Dialog_Slip
 from modules import otchet
+from modules import payment_equipment as pq
 from modules import windows
 from modules.auth_logic import perform_pre_sale_checks
 from modules.logger import logger, logger_wraps
@@ -46,7 +53,6 @@ from modules.sale_logic import (
     convert_sale_dict_values,
 )
 from modules.system import System
-
 
 system = System()
 config_data = system.config
@@ -3412,8 +3418,12 @@ class SaleServiceForm(QDialog):
         self.ui.tableWidget_3.cellDoubleClicked.connect(self.on_cell_double_clicked)
         self.ui.tableWidget.cellDoubleClicked.connect(self.handle_cell_double_click_2)
         # Подключаем обработчики событий для tableWidget_2
-        self.ui.tableWidget_2.itemChanged.connect(self.update_totals)  # Для изменений в ячейках
-        self.ui.tableWidget_2.keyPressEvent = self.handle_key_press  # Для обработки нажатия клавиш
+        self.ui.tableWidget_2.itemChanged.connect(
+            self.update_totals
+        )  # Для изменений в ячейках
+        self.ui.tableWidget_2.keyPressEvent = (
+            self.handle_key_press
+        )  # Для обработки нажатия клавиш
         # Устанавливаем начальные состояния
         self.ui.checkBox_2.setChecked(False)  # Чекбокс не активирован
         self.ui.dateEdit_1.setEnabled(False)  # dateEdit_1 не активен
@@ -3449,12 +3459,13 @@ class SaleServiceForm(QDialog):
             selected_row = self.ui.tableWidget_2.currentRow()
 
             if selected_row != -1:  # Проверяем, что строка выбрана
-                self.ui.tableWidget_2.removeRow(selected_row)  # Удаляем выбранную строку
+                self.ui.tableWidget_2.removeRow(
+                    selected_row
+                )  # Удаляем выбранную строку
                 self.update_totals()  # Обновляем итоги
         else:
             # Важно вызвать родительский метод, чтобы другие клавиши обрабатывались корректно
             super(QTableWidget, self.ui.tableWidget_2).keyPressEvent(event)
-
 
     def update_totals(self):
         """Обновление итогов и сумм при изменении данных в tableWidget_2"""
@@ -3473,12 +3484,16 @@ class SaleServiceForm(QDialog):
                     # Проверяем название услуги
                     if name_item.text() == "День рождения детский":
                         child_tickets += quantity
-                        adult_tickets_item = self.ui.tableWidget_2.item(row_position, 4)  # Взрослые билеты
+                        adult_tickets_item = self.ui.tableWidget_2.item(
+                            row_position, 4
+                        )  # Взрослые билеты
                         if adult_tickets_item:
                             adult_tickets = int(adult_tickets_item.text())
                             adult_tickets += adult_tickets
                 except ValueError:
-                    logger.error(f"Ошибка преобразования данных в строке {row_position}")
+                    logger.error(
+                        f"Ошибка преобразования данных в строке {row_position}"
+                    )
         # Обновляем итоговые метки
         self.ui.label_8.setText(str(total_sum))
         self.ui.label_7.setText(str(child_tickets))
@@ -3500,10 +3515,18 @@ class SaleServiceForm(QDialog):
         """Обработчик двойного клика по ячейке таблицы"""
         if column == 2:  # Проверяем, что столбец - это второй столбец (с индексом 2)
             # Получаем содержимое ячеек для столбцов 2, 3, 4, 5
-            description = self.ui.tableWidget_3.item(row, 2).text()  # Описание услуги (столбец 2)
-            col_3_data = self.ui.tableWidget_3.item(row, 3).text()  # Данные из 3-го столбца
-            col_4_data = self.ui.tableWidget_3.item(row, 4).text()  # Данные из 4-го столбца
-            col_5_data = self.ui.tableWidget_3.item(row, 5).text()  # Данные из 5-го столбца
+            description = self.ui.tableWidget_3.item(
+                row, 2
+            ).text()  # Описание услуги (столбец 2)
+            col_3_data = self.ui.tableWidget_3.item(
+                row, 3
+            ).text()  # Данные из 3-го столбца
+            col_4_data = self.ui.tableWidget_3.item(
+                row, 4
+            ).text()  # Данные из 4-го столбца
+            col_5_data = self.ui.tableWidget_3.item(
+                row, 5
+            ).text()  # Данные из 5-го столбца
 
             # Объединяем все данные в один текст (можно добавлять разделители по вашему выбору)
             full_text = f"Описание услуги: {description}\nПродолжительность: {col_3_data}\nМин. количество: {col_4_data}\nМакс. количество: {col_5_data}"
@@ -3519,13 +3542,22 @@ class SaleServiceForm(QDialog):
     def eventFilter(self, obj, event):
         """Перехватываем события, такие как наведение мыши на ячейку"""
         if obj == self.ui.tableWidget_3:
-            if event.type() == QEvent.HoverMove:  # Проверяем, что событие - это HoverMove
-                index = self.ui.tableWidget_3.indexAt(event.pos())  # Получаем индекс ячейки
-                if index.isValid() and index.column() == 2:  # Проверяем, что находимся в нужном столбце
+            if (
+                event.type() == QEvent.HoverMove
+            ):  # Проверяем, что событие - это HoverMove
+                index = self.ui.tableWidget_3.indexAt(
+                    event.pos()
+                )  # Получаем индекс ячейки
+                if (
+                    index.isValid() and index.column() == 2
+                ):  # Проверяем, что находимся в нужном столбце
                     item = self.ui.tableWidget_3.item(index.row(), index.column())
                     if item:
                         # Преобразуем позицию мыши на глобальные координаты для отображения тултипа
-                        QToolTip.showText(self.ui.tableWidget_3.viewport().mapToGlobal(event.pos()), item.text())
+                        QToolTip.showText(
+                            self.ui.tableWidget_3.viewport().mapToGlobal(event.pos()),
+                            item.text(),
+                        )
                 else:
                     QToolTip.hideText()  # Скрываем тултип, если не на нужной ячейке
         return super().eventFilter(obj, event)
@@ -3535,7 +3567,9 @@ class SaleServiceForm(QDialog):
         if self.ui.checkBox_2.isChecked():
             # Если checkBox_2 активирован, делаем dateEdit_1 активным и устанавливаем текущую дату
             self.ui.dateEdit_1.setEnabled(True)
-            self.ui.dateEdit_1.setDate(QDate.currentDate())  # Устанавливаем текущую дату
+            self.ui.dateEdit_1.setDate(
+                QDate.currentDate()
+            )  # Устанавливаем текущую дату
         else:
             # Если checkBox_2 деактивирован, делаем dateEdit_1 неактивным
             self.ui.dateEdit_1.setEnabled(False)
@@ -3544,45 +3578,64 @@ class SaleServiceForm(QDialog):
         self.load_price_service_data()
         self.show()  # Показываем форму
 
-
     def transfer_row_to_tableWidget_2(self, row):
         """Передает данные из строки tableWidget_3 в tableWidget_2"""
         # Получаем все ячейки из строки
         name = self.ui.tableWidget_3.item(row, 0).text()  # Название услуги
         price = self.ui.tableWidget_3.item(row, 1).text()  # Цена
-        requires_ticket = self.ui.tableWidget_3.item(row, 7).text()  # Проверка столбца "Требуется билет"
+        requires_ticket = self.ui.tableWidget_3.item(
+            row, 7
+        ).text()  # Проверка столбца "Требуется билет"
         # Добавляем данные в tableWidget_2
         row_position = self.ui.tableWidget_2.rowCount()
         self.ui.tableWidget_2.insertRow(row_position)
         # Заполняем столбцы в tableWidget_2
-        self.ui.tableWidget_2.setItem(row_position, 0, QTableWidgetItem(name))  # Название
-        self.ui.tableWidget_2.setItem(row_position, 1, QTableWidgetItem("1"))  # Количество (с QSpinBox)
+        self.ui.tableWidget_2.setItem(
+            row_position, 0, QTableWidgetItem(name)
+        )  # Название
+        self.ui.tableWidget_2.setItem(
+            row_position, 1, QTableWidgetItem("1")
+        )  # Количество (с QSpinBox)
         self.ui.tableWidget_2.setItem(row_position, 2, QTableWidgetItem(price))  # Цена
-        self.ui.tableWidget_2.setItem(row_position, 4, QTableWidgetItem("0"))  # Количество билетов по умолчанию
+        self.ui.tableWidget_2.setItem(
+            row_position, 4, QTableWidgetItem("0")
+        )  # Количество билетов по умолчанию
         # Добавляем QSpinBox в столбец "Количество"
         spin_box_quantity = QSpinBox(self.ui.tableWidget_2)
         spin_box_quantity.setMinimum(1)  # Устанавливаем минимальное значение
         spin_box_quantity.setMaximum(100)  # Максимальное значение (по необходимости)
         spin_box_quantity.setValue(1)  # Устанавливаем начальное значение
         spin_box_quantity.valueChanged.connect(
-            lambda value, spin_box=spin_box_quantity, row_pos=row_position: self.on_spinbox_value_changed(spin_box,
-                                                                                                          row_pos))  # Подключаем сигнал valueChanged
-        self.ui.tableWidget_2.setCellWidget(row_position, 1,
-                                            spin_box_quantity)  # Размещаем SpinBox в столбце "Количество"
+            lambda value, spin_box=spin_box_quantity, row_pos=row_position: self.on_spinbox_value_changed(
+                spin_box, row_pos
+            )
+        )  # Подключаем сигнал valueChanged
+        self.ui.tableWidget_2.setCellWidget(
+            row_position, 1, spin_box_quantity
+        )  # Размещаем SpinBox в столбце "Количество"
         self.ui.tableWidget_2.setColumnWidth(1, 60)
         # Добавляем QCheckBox в столбец "Флаг печати"
         check_box = QCheckBox(self.ui.tableWidget_2)
-        check_box.setChecked(requires_ticket.lower() == 'true')  # Устанавливаем состояние чекбокса
-        self.ui.tableWidget_2.setCellWidget(row_position, 3, check_box)  # Размещаем CheckBox в нужной ячейке
+        check_box.setChecked(
+            requires_ticket.lower() == "true"
+        )  # Устанавливаем состояние чекбокса
+        self.ui.tableWidget_2.setCellWidget(
+            row_position, 3, check_box
+        )  # Размещаем CheckBox в нужной ячейке
         spin_box_ticket = QSpinBox(self.ui.tableWidget_2)
         spin_box_ticket.setMinimum(0)  # Минимальное количество билетов
-        spin_box_ticket.setMaximum(100)  # Максимальное количество билетов (по необходимости)
+        spin_box_ticket.setMaximum(
+            100
+        )  # Максимальное количество билетов (по необходимости)
         spin_box_ticket.setValue(0)  # Устанавливаем начальное значение
         spin_box_ticket.valueChanged.connect(
             lambda value, spin_box=spin_box_ticket, row_pos=row_position: self.on_adult_tickets_spinbox_value_changed(
-                spin_box, row_pos))  # Подключаем сигнал valueChanged
-        self.ui.tableWidget_2.setCellWidget(row_position, 4,
-                                            spin_box_ticket)  # Размещаем SpinBox для билетов в столбец 4
+                spin_box, row_pos
+            )
+        )  # Подключаем сигнал valueChanged
+        self.ui.tableWidget_2.setCellWidget(
+            row_position, 4, spin_box_ticket
+        )  # Размещаем SpinBox для билетов в столбец 4
         self.ui.tableWidget_2.setColumnWidth(4, 65)
         # Обновляем итоги
         self.update_totals()
@@ -3595,14 +3648,13 @@ class SaleServiceForm(QDialog):
         full_name = f"{last_name} {first_name}"
         self.ui.lineEdit_2.setText(full_name)
 
-
     @logger_wraps()
     def filling_client_table_widget_4(
-            self,
-            last_name: str,
-            first_name: str,
-            phone: str,
-            id: int,
+        self,
+        last_name: str,
+        first_name: str,
+        phone: str,
+        id: int,
     ) -> None:
         """
         Функция заполняет полученными данными tableWidget_3 (список связанных с выбранным клиентом посетителей).
@@ -3751,26 +3803,39 @@ class SaleServiceForm(QDialog):
         # Открываем сессию с базой данных
         with Session(system.engine) as session:
             # Извлекаем все данные из таблицы PriceService
-            price_services = session.query(PriceService).filter_by(deleted_flg=False).all()
+            price_services = (
+                session.query(PriceService).filter_by(deleted_flg=False).all()
+            )
         # Заполняем tableWidget_3
         for price_service in price_services:
             # Определяем количество строк в таблице
             row_position = self.ui.tableWidget_3.rowCount()
             self.ui.tableWidget_3.insertRow(row_position)
-            self.ui.tableWidget_3.setItem(row_position, 0, QTableWidgetItem(str(price_service.name)))
-            self.ui.tableWidget_3.setItem(row_position, 1, QTableWidgetItem(str(price_service.price)))
-            self.ui.tableWidget_3.setItem(row_position, 2, QTableWidgetItem(str(price_service.description)))
-            self.ui.tableWidget_3.setItem(row_position, 3,
-                                          QTableWidgetItem(str(price_service.duration)))
+            self.ui.tableWidget_3.setItem(
+                row_position, 0, QTableWidgetItem(str(price_service.name))
+            )
+            self.ui.tableWidget_3.setItem(
+                row_position, 1, QTableWidgetItem(str(price_service.price))
+            )
+            self.ui.tableWidget_3.setItem(
+                row_position, 2, QTableWidgetItem(str(price_service.description))
+            )
+            self.ui.tableWidget_3.setItem(
+                row_position, 3, QTableWidgetItem(str(price_service.duration))
+            )
 
-            self.ui.tableWidget_3.setItem(row_position, 4,
-                                          QTableWidgetItem(str(price_service.min_visitors)))
-            self.ui.tableWidget_3.setItem(row_position, 5,
-                                          QTableWidgetItem(str(price_service.max_visitors)))
-            self.ui.tableWidget_3.setItem(row_position, 6,
-                                          QTableWidgetItem(str(price_service.requires_ticket)))
-            self.ui.tableWidget_3.setItem(row_position, 7,
-                                          QTableWidgetItem(str(price_service.id)))
+            self.ui.tableWidget_3.setItem(
+                row_position, 4, QTableWidgetItem(str(price_service.min_visitors))
+            )
+            self.ui.tableWidget_3.setItem(
+                row_position, 5, QTableWidgetItem(str(price_service.max_visitors))
+            )
+            self.ui.tableWidget_3.setItem(
+                row_position, 6, QTableWidgetItem(str(price_service.requires_ticket))
+            )
+            self.ui.tableWidget_3.setItem(
+                row_position, 7, QTableWidgetItem(str(price_service.id))
+            )
 
     def clearing_client_list(self) -> None:
         """
@@ -3787,6 +3852,7 @@ class SaleServiceForm(QDialog):
         self.ui.tableWidget.clearContents()
         self.ui.tableWidget.setRowCount(0)
         self.clear_line_edit()
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
