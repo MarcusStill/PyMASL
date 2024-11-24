@@ -1,10 +1,7 @@
 from datetime import datetime
-
-from sqlalchemy import Boolean, Integer, String, Text, Date, Interval
+from sqlalchemy import Boolean, SmallInteger, String, Text, Date, Interval, func
 from sqlalchemy.orm import Mapped, mapped_column
-
 from db.models.base import Base
-
 
 class PriceService(Base):
     __tablename__ = "price_service"
@@ -13,33 +10,37 @@ class PriceService(Base):
     }
 
     id: Mapped[int] = mapped_column(
-        Integer,
+        SmallInteger,  # Используем SmallInteger для экономии памяти
         primary_key=True,
         autoincrement=True,
         nullable=False,
         comment="ID услуги",
     )
-    price: Mapped[int] = mapped_column(Integer, nullable=False, comment="Цена услуги")
-    updated_at: Mapped[datetime] = mapped_column(
-        Date,
+    price: Mapped[int] = mapped_column(
+        SmallInteger,  # Используем SmallInteger, так как price это int2
         nullable=False,
-        default=datetime.utcnow,
+        comment="Цена услуги"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        Date,  # Используем Date для хранения только даты
+        nullable=False,
+        default=func.current_date(),  # Устанавливаем текущую дату как default
         comment="Дата последнего обновления",
     )
     name: Mapped[str] = mapped_column(
         String(200), nullable=False, comment="Название услуги"
     )
-    duration: Mapped[datetime] = mapped_column(
+    duration: Mapped[Interval | None] = mapped_column(
         Interval, nullable=True, comment="Продолжительность услуги"
     )
     description: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="Описание услуги"
     )
     min_visitors: Mapped[int] = mapped_column(
-        Integer, default=0, nullable=True, comment="Минимальное количество посетителей"
+        SmallInteger, default=0, nullable=True, comment="Минимальное количество посетителей"
     )
     max_visitors: Mapped[int] = mapped_column(
-        Integer, default=0, nullable=True, comment="Максимальное количество посетителей"
+        SmallInteger, default=0, nullable=True, comment="Максимальное количество посетителей"
     )
     requires_ticket: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, comment="Нужен ли билет для услуги"
