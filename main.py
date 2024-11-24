@@ -3450,10 +3450,12 @@ class SaleServiceForm(QDialog):
 
     def clear_line_edit(self):
         """Очищает содержимое lineEdit"""
+        logger.info("Запуск функции clear_line_edit")
         self.ui.lineEdit.clear()
 
     def handle_key_press(self, event):
         """Обработчик клавиш для удаления строки"""
+        logger.info("Запуск функции handle_key_press")
         if event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace:
             # Получаем текущую строку, которая выбрана
             selected_row = self.ui.tableWidget_2.currentRow()
@@ -3469,6 +3471,7 @@ class SaleServiceForm(QDialog):
 
     def update_totals(self):
         """Обновление итогов и сумм при изменении данных в tableWidget_2"""
+        logger.info("Запуск функции update_totals")
         total_sum = 0
         child_tickets = 0
         adult_tickets = 0
@@ -3488,8 +3491,7 @@ class SaleServiceForm(QDialog):
                             row_position, 4
                         )  # Взрослые билеты
                         if adult_tickets_item:
-                            adult_tickets = int(adult_tickets_item.text())
-                            adult_tickets += adult_tickets
+                            adult_tickets += int(adult_tickets_item.text())
                 except ValueError:
                     logger.error(
                         f"Ошибка преобразования данных в строке {row_position}"
@@ -3497,10 +3499,11 @@ class SaleServiceForm(QDialog):
         # Обновляем итоговые метки
         self.ui.label_8.setText(str(total_sum))
         self.ui.label_7.setText(str(child_tickets))
-        self.ui.label_5.setText(str(adult_tickets))
+        self.ui.label_5.setText(str(adult_tickets))  # Выводим итоговое количество взрослых билетов
 
     def on_adult_tickets_spinbox_value_changed(self, spin_box, row_position):
         """Обработчик для сигнала valueChanged QSpinBox в столбце 'взрослые билеты'"""
+        logger.info("Запуск функции on_adult_tickets_spinbox_value_changed")
         # Обновляем значение в ячейке QTableWidgetItem
         self.ui.tableWidget_2.item(row_position, 4).setText(str(spin_box.value()))
         self.update_totals()
@@ -3513,6 +3516,7 @@ class SaleServiceForm(QDialog):
 
     def on_cell_double_clicked(self, row, column):
         """Обработчик двойного клика по ячейке таблицы"""
+        logger.info("Запуск функции on_cell_double_clicked")
         if column == 2:  # Проверяем, что столбец - это второй столбец (с индексом 2)
             # Получаем содержимое ячеек для столбцов 2, 3, 4, 5
             description = self.ui.tableWidget_3.item(
@@ -3541,6 +3545,7 @@ class SaleServiceForm(QDialog):
 
     def eventFilter(self, obj, event):
         """Перехватываем события, такие как наведение мыши на ячейку"""
+        logger.info("Запуск функции eventFilter")
         if obj == self.ui.tableWidget_3:
             if (
                 event.type() == QEvent.HoverMove
@@ -3564,6 +3569,7 @@ class SaleServiceForm(QDialog):
 
     def toggle_date_edit(self):
         """Обработчик для изменения активности dateEdit_1"""
+        logger.info("Запуск функции toggle_date_edit")
         if self.ui.checkBox_2.isChecked():
             # Если checkBox_2 активирован, делаем dateEdit_1 активным и устанавливаем текущую дату
             self.ui.dateEdit_1.setEnabled(True)
@@ -3575,11 +3581,13 @@ class SaleServiceForm(QDialog):
             self.ui.dateEdit_1.setEnabled(False)
 
     def show_form(self):
+        logger.info("Запуск функции show_form")
         self.load_price_service_data()
         self.show()  # Показываем форму
 
     def transfer_row_to_tableWidget_2(self, row):
         """Передает данные из строки tableWidget_3 в tableWidget_2"""
+        logger.info("Запуск функции transfer_row_to_tableWidget_2")
         # Получаем все ячейки из строки
         name = self.ui.tableWidget_3.item(row, 0).text()  # Название услуги
         price = self.ui.tableWidget_3.item(row, 1).text()  # Цена
@@ -3642,6 +3650,7 @@ class SaleServiceForm(QDialog):
 
     def handle_cell_double_click_2(self, row, column):
         """Обработчик двойного клика по строке в tableWidget"""
+        logger.info("Запуск функции handle_cell_double_click_2")
         # Получаем данные из выбранной строки для фамилии и имени
         last_name = self.ui.tableWidget.item(row, 0).text()
         first_name = self.ui.tableWidget.item(row, 1).text()
@@ -3670,6 +3679,7 @@ class SaleServiceForm(QDialog):
         Возвращаемое значение:
             None
         """
+        logger.info("Запуск функции filling_client_table_widget_4")
         row = self.ui.tableWidget.rowCount()
         self.ui.tableWidget.insertRow(row)
         self.ui.tableWidget.setItem(row, 0, QTableWidgetItem(last_name))
@@ -3798,6 +3808,7 @@ class SaleServiceForm(QDialog):
         Возвращаемое значение:
             None: Данные выводятся в tableWidget_3.
         """
+        logger.info("Запуск функции load_price_service_data")
         # Очистим таблицу перед загрузкой данных
         self.ui.tableWidget_3.setRowCount(0)
         # Открываем сессию с базой данных
