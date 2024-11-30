@@ -16,10 +16,15 @@ except Exception as e:
     logger.warning(f"Не установлен драйвер ККТ: {str(e)}")
 
 
-# Константы для работы с результатами терминала
+# Константы для работы с кодами терминала
 TERMINAL_SUCCESS_CODE: int = 0
 TERMINAL_USER_CANCEL_CODE: int = 2000
 TERMINAL_DATA_EXCHANGE: int = 4134
+TERMINAL_NO_MONEY: int = 4451
+TERMINAL_KLK: int = 4120
+TERMINAL_CARD_BLOCKED: set[int] = {2004, 2005, 2006, 2007, 2405, 2406, 2407}
+TERMINAL_INVALID_CURRENCY_CODE: int = 4336
+TERMINAL_NO_ADDRESS_TO_CONTACT: int = 4139
 APPROVE: str = "ОДОБРЕНО"
 COINCIDENCE: str = "совпали"
 EMAIL: str = "test.check@pymasl.ru"
@@ -100,6 +105,115 @@ def check_terminal_file(word: str):
 
 
 @logger_wraps()
+def process_success_result():
+    """Обработка успешного результата работы терминала.
+
+        Функция проверяет наличие и корректность файла подтверждения транзакции,
+        созданного терминалом.
+
+        Возвращаемое значение:
+            int:
+                - Возвращает 1, если файл подтверждения существует и валиден.
+                - Возвращает 0, если файл отсутствует, поврежден, либо возникла ошибка.
+    """
+    logger.info("Запуск функции process_success_result")
+    try:
+        if check_terminal_file(APPROVE):
+            return 1
+        else:
+            logger.error("Файл подтверждения транзакции отсутствует или поврежден.")
+    except FileNotFoundError as not_found:
+        logger.error(f"Файл подтверждения транзакции не найден: {not_found}")
+    return 0
+
+
+@logger_wraps()
+def handle_error(code, title, message):
+    """Обработка ошибок, связанных с работой терминала.
+
+        Функция регистрирует предупреждающее сообщение в журнале и отображает
+        окно с информацией об ошибке.
+
+        Параметры:
+            code (int):
+                Код ошибки, возвращённый терминалом.
+            title (str):
+                Заголовок окна сообщения.
+            message (str):
+                Описание ошибки, отображаемое в окне сообщения.
+    """
+    logger.info("Запуск функции handle_error")
+    logger.warning(f"{title}: {message} (Код: {code})")
+    windows.info_window(title, message, f"Команда завершена с кодом: {code}")
+
+
+@logger_wraps()
+def process_terminal_error(returncode):
+    """Обработка ошибок терминала на основе возвращенного кода.
+
+        Функция анализирует код возврата от терминала, выполняет соответствующую
+        обработку ошибки и отображает информацию об ошибке пользователю.
+
+        Параметры:
+            returncode (int):
+                Код возврата, полученный от терминала.
+
+        Возвращаемое значение:
+            int:
+                - Возвращает 0 для всех обработанных ошибок.
+                - Всегда возвращает 0, так как функция предназначена для обработки ошибок.
+    """
+    logger.info("Запуск функции process_terminal_error")
+    error_handlers = {
+        TERMINAL_USER_CANCEL_CODE: ("Оплата отменена пользователем", None),
+        TERMINAL_DATA_EXCHANGE: (
+            "Ошибка при проведении оплаты",
+            "Требуется сделать сверку итогов и повторить операцию."
+        ),
+        TERMINAL_NO_MONEY: (
+            "Ошибка при проведении оплаты",
+            "Недостаточно средств на карте."
+        ),
+        TERMINAL_KLK: (
+            "Ошибка в работе терминала",
+            "Необходимо обратиться в службу поддержки банка."
+        ),
+        TERMINAL_INVALID_CURRENCY_CODE: (
+            "Ошибка при проведении оплаты",
+            "Указан неверный код валюты. Обратитесь в банк для выяснения причины."
+        ),
+        TERMINAL_NO_ADDRESS_TO_CONTACT: (
+            "Ошибка при проведении оплаты",
+            "Терминал потерял связь с банком. Обратитесь в банк для выяснения причины."
+        ),
+    }
+
+    if returncode in TERMINAL_CARD_BLOCKED:
+        handle_error(
+            returncode,
+            "Ошибка при проведении оплаты",
+            "Карта клиента заблокирована. Обратитесь в банк для выяснения причины."
+        )
+        return 0
+
+    # Общие ошибки
+    if returncode in error_handlers:
+        title, message = error_handlers[returncode]
+        if message:
+            handle_error(returncode, title, message)
+        return 0
+
+    # Неизвестный код
+    logger.error(f"Неизвестный код возврата: {returncode}")
+    handle_error(
+        returncode,
+        "Ошибка терминала",
+        "Возвращен неизвестный код ошибки. Обратитесь в службу поддержки."
+    )
+    return 0
+
+
+@logger_wraps()
 def terminal_oplata(amount):
     """Операуия оплаты по банковскому терминалу.
 
@@ -117,29 +231,21 @@ def terminal_oplata(amount):
     result = run_terminal_command(f"1 {amount}00")
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
-        return 0
-    logger.info(
-        f"Статус проведения операции по банковскому терминалу: {result.returncode}"
-    )
-    if result.returncode == TERMINAL_USER_CANCEL_CODE:
-        logger.warning("Оплата отменена пользователем")
-        return 0
-    elif result.returncode == TERMINAL_DATA_EXCHANGE:
-        windows.info_window(
-            "Ошибка при проведении оплаты",
-            "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
-            "Команда завершена с кодом: 4134",
+        handle_error(
+            "Нет ответа от терминала",
+            "Команда терминала не была выполнена. Проверьте устройство.",
+            "Код ошибки: отсутствует"
         )
         return 0
-    elif result.returncode == TERMINAL_SUCCESS_CODE:
-        try:
-            return 1 if check_terminal_file(APPROVE) else 0
-        except FileNotFoundError as not_found:
-            logger.error(f"Файл не найден: {not_found}")
-            return 0
-    else:
-        logger.error(f"Неизвестный код возврата: {result.returncode}")
-        return 0
+
+    logger.info(f"Статус проведения операции по банковскому терминалу: {result.returncode}")
+
+    # Успешный результат
+    if result.returncode == TERMINAL_SUCCESS_CODE:
+        return process_success_result()
+
+    # Обработка ошибок
+    return process_terminal_error(result.returncode)
 
 
 @logger_wraps()
