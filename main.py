@@ -1458,7 +1458,7 @@ class SaleForm(QDialog):
         """
         logger.info("Запуск функции sale_transaction")
         logger.debug(f"system.sale_status: {system.sale_status}")
-        logger.debug("system.sale_id: {system.sale_id}")
+        logger.debug(f"system.sale_id: {system.sale_id}")
         # Если продажа новая
         if system.sale_id is None:
             self.save_sale()
