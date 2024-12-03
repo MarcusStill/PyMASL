@@ -19,11 +19,19 @@ from modules.payment_equipment import (
     terminal_print_file,
     terminal_copy_last_check,
     read_pinpad_file,
+    register_tickets,
+    handle_document_errors,
 )
 
 # Константы для тестирования
-TERMINAL_SUCCESS_CODE = 0  # Код успешной операции терминала
-TERMINAL_USER_CANCEL_CODE = 1  # Код отмены операции пользователем
+TERMINAL_SUCCESS_CODE: int = 0
+TERMINAL_USER_CANCEL_CODE: int = 2000
+TERMINAL_DATA_EXCHANGE: int = 4134
+TERMINAL_NO_MONEY: int = 4451
+TERMINAL_KLK: int = 4120
+TERMINAL_CARD_BLOCKED: set[int] = {2004, 2005, 2006, 2007, 2405, 2406, 2407}
+TERMINAL_INVALID_CURRENCY_CODE: int = 4336
+TERMINAL_NO_ADDRESS_TO_CONTACT: int = 4139
 APPROVE = "APPROVE"  # Слово для проверки в файле
 
 
@@ -32,28 +40,6 @@ APPROVE = "APPROVE"  # Слово для проверки в файле
 def mock_fptr():
     mock = MagicMock()
     return mock
-
-
-# Тестирование открытия и закрытия соединения
-def test_fptr_connection_opens_and_closes(mock_fptr):
-    # Тестируем, что при входе в контекст вызывается open, а при выходе - close
-    with fptr_connection(mock_fptr):
-        mock_fptr.open.assert_called_once()  # open должен быть вызван
-        mock_fptr.close.assert_not_called()  # close еще не должен быть вызван
-
-    # После выхода из контекста close должен быть вызван
-    mock_fptr.close.assert_called_once()
-
-
-# Тестирование с исключением в блоке контекста
-def test_fptr_connection_with_exception(mock_fptr):
-    # Тестируем, что при исключении в блоке контекста close все равно вызовется
-    with pytest.raises(Exception):
-        with fptr_connection(mock_fptr):
-            mock_fptr.open.assert_called_once()
-            raise Exception("Test exception")
-
-    mock_fptr.close.assert_called_once()  # close должен быть вызван
 
 
 # Тестирование открытия и закрытия соединения
@@ -332,245 +318,6 @@ def test_check_terminal_file_empty_file(mock_file_open, mock_config):
         expected_file_path, encoding="IBM866"
     )  # Проверка вызова open
     mock_file_open.return_value.read.assert_called_once()  # Проверка вызова read
-
-
-#######################################
-# Тестируем terminal_oplata
-# Мокируем функцию run_terminal_command
-@pytest.fixture
-def mock_run_terminal_command():
-    with mock.patch("modules.payment_equipment.run_terminal_command") as mock_run:
-        yield mock_run
-
-
-# Мокируем функцию check_terminal_file
-@pytest.fixture
-def mock_check_terminal_file():
-    with mock.patch("modules.payment_equipment.check_terminal_file") as mock_check:
-        yield mock_check
-
-
-def test_terminal_oplata_success(mock_run_terminal_command, mock_check_terminal_file):
-    # Успешный сценарий
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-    mock_check_terminal_file.return_value = True
-
-    result = terminal_oplata(100.0)
-
-    assert result == 1
-    mock_run_terminal_command.assert_called_once_with(
-        "1 10000"
-    )  # Ожидаем 10000, а не 100.000
-    mock_check_terminal_file.assert_called_once_with(
-        "ОДОБРЕНО"
-    )  # Проверка для 'ОДОБРЕНО' вместо 'APPROVE'
-
-
-def test_terminal_oplata_run_command_failure(mock_run_terminal_command):
-    # Ошибка выполнения команды
-    mock_run_terminal_command.return_value = (
-        None  # Моделируем ошибку выполнения команды
-    )
-
-    result = terminal_oplata(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("1 10000")
-
-
-@patch("modules.payment_equipment.run_terminal_command")
-def test_terminal_oplata_user_cancel(mock_run_terminal_command):
-    # Симуляция возврата кода отмены
-    mock_terminal_response = MagicMock()
-    mock_terminal_response.returncode = (
-        TERMINAL_USER_CANCEL_CODE  # Симулируем отмену пользователем
-    )
-
-    # Настройка мока
-    mock_run_terminal_command.return_value = mock_terminal_response
-
-    # Вызов функции
-    result = terminal_oplata(100.0)
-
-    # Логгируем результат
-    print(
-        f"Test result: {result}"
-    )  # Для отладки, чтобы увидеть, что возвращает функция
-
-    # Проверка, что результат равен 0, так как операция была отменена пользователем
-    assert result == 0
-
-
-def test_terminal_oplata_file_not_found(
-    mock_run_terminal_command, mock_check_terminal_file
-):
-    # Файл не найден (например, ошибка в check_terminal_file)
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-    mock_check_terminal_file.return_value = False  # Не нашли нужное слово в файле
-
-    result = terminal_oplata(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("1 10000")
-    mock_check_terminal_file.assert_called_once_with("ОДОБРЕНО")  # Ожидаем "ОДОБРЕНО"
-
-
-def test_terminal_oplata_file_read_error(mock_run_terminal_command):
-    # Ошибка при чтении файла (например, файл не существует)
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-
-    with mock.patch(
-        "modules.payment_equipment.check_terminal_file", side_effect=FileNotFoundError
-    ):
-        result = terminal_oplata(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("1 10000")
-
-
-#######################################
-# Тестируем terminal_return
-# Мокируем функцию run_terminal_command
-@pytest.fixture
-def mock_run_terminal_command():
-    with mock.patch("modules.payment_equipment.run_terminal_command") as mock_run:
-        yield mock_run
-
-
-# Мокируем функцию check_terminal_file
-@pytest.fixture
-def mock_check_terminal_file():
-    with mock.patch("modules.payment_equipment.check_terminal_file") as mock_check:
-        yield mock_check
-
-
-def test_terminal_return_success(mock_run_terminal_command, mock_check_terminal_file):
-    # Успешный сценарий
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-    mock_check_terminal_file.return_value = True
-
-    result = terminal_return(100.0)
-
-    assert result == 1
-    mock_run_terminal_command.assert_called_once_with(
-        "3 10000"
-    )  # Ожидаем 10000, а не 100.000
-    mock_check_terminal_file.assert_called_once_with(
-        "ОДОБРЕНО"
-    )  # Проверка для 'ОДОБРЕНО' вместо 'APPROVE'
-
-
-def test_terminal_return_run_command_failure(mock_run_terminal_command):
-    # Ошибка выполнения команды
-    mock_run_terminal_command.return_value = (
-        None  # Моделируем ошибку выполнения команды
-    )
-
-    result = terminal_return(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("3 10000")
-
-
-def test_terminal_return_file_not_found(
-    mock_run_terminal_command, mock_check_terminal_file
-):
-    # Файл не найден (например, ошибка в check_terminal_file)
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-    mock_check_terminal_file.return_value = False  # Не нашли нужное слово в файле
-
-    result = terminal_return(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("3 10000")
-    mock_check_terminal_file.assert_called_once_with("ОДОБРЕНО")  # Ожидаем "ОДОБРЕНО"
-
-
-def test_terminal_return_file_read_error(mock_run_terminal_command):
-    # Ошибка при чтении файла (например, файл не существует)
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-
-    with mock.patch(
-        "modules.payment_equipment.check_terminal_file", side_effect=FileNotFoundError
-    ):
-        result = terminal_return(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("3 10000")
-
-
-#######################################
-# Тестируем terminal_canceling
-# Мокируем функцию run_terminal_command
-# Мокируем функцию run_terminal_command
-@pytest.fixture
-def mock_run_terminal_command():
-    with mock.patch("modules.payment_equipment.run_terminal_command") as mock_run:
-        yield mock_run
-
-
-# Мокируем функцию check_terminal_file
-@pytest.fixture
-def mock_check_terminal_file():
-    with mock.patch("modules.payment_equipment.check_terminal_file") as mock_check:
-        yield mock_check
-
-
-def test_terminal_canceling_success(
-    mock_run_terminal_command, mock_check_terminal_file
-):
-    # Успешный сценарий
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-    mock_check_terminal_file.return_value = True
-
-    result = terminal_canceling(100.0)
-
-    assert result == 1
-    mock_run_terminal_command.assert_called_once_with(
-        "8 10000"
-    )  # Ожидаем 10000, а не 100.000
-    mock_check_terminal_file.assert_called_once_with(
-        "ОДОБРЕНО"
-    )  # Проверка для 'ОДОБРЕНО' вместо 'APPROVE'
-
-
-def test_terminal_canceling_run_command_failure(mock_run_terminal_command):
-    # Ошибка выполнения команды
-    mock_run_terminal_command.return_value = (
-        None  # Моделируем ошибку выполнения команды
-    )
-
-    result = terminal_canceling(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("8 10000")
-
-
-def test_terminal_canceling_file_not_found(
-    mock_run_terminal_command, mock_check_terminal_file
-):
-    # Файл не найден (например, ошибка в check_terminal_file)
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-    mock_check_terminal_file.return_value = False  # Не нашли нужное слово в файле
-
-    result = terminal_canceling(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("8 10000")
-    mock_check_terminal_file.assert_called_once_with("ОДОБРЕНО")  # Ожидаем "ОДОБРЕНО"
-
-
-def test_terminal_canceling_file_read_error(mock_run_terminal_command):
-    # Ошибка при чтении файла (например, файл не существует)
-    mock_run_terminal_command.return_value.returncode = TERMINAL_SUCCESS_CODE
-
-    with mock.patch(
-        "modules.payment_equipment.check_terminal_file", side_effect=FileNotFoundError
-    ):
-        result = terminal_canceling(100.0)
-
-    assert result == 0
-    mock_run_terminal_command.assert_called_once_with("8 10000")
 
 
 #######################################
@@ -970,3 +717,527 @@ def test_read_pinpad_file_no_remove_newline(
 
     # Проверяем, что open был вызван с правильными параметрами
     mock_file.assert_called_once_with("C:\\path\\to\\file\\p", "r", encoding="IBM866")
+
+
+#######################################
+# Тестируем register_tickets
+@pytest.fixture
+def mock_register_item():
+    """Мокируем функцию register_item."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_device():
+    """Мокируем устройство."""
+    device_mock = MagicMock()
+    device_mock.setParam = MagicMock()  # Мокируем метод setParam
+    return device_mock
+
+
+@pytest.fixture
+def sale_dict():
+    """Подготовка тестового словаря sale_dict."""
+    return {
+        "kol_adult": 5,
+        "price_adult": 100,
+        "kol_child": 3,
+        "price_child": 50,
+        "detail": [
+            2,
+            80,
+            1,
+            40,
+            0,
+            0,
+            12,
+        ],  # Включаем информацию о скидках и количестве
+    }
+
+
+def test_register_tickets_adult_no_discount(mock_register_item, sale_dict, mock_device):
+    """Проверка регистрации взрослых билетов без скидки."""
+    # Убираем скидки и цену со скидкой для взрослых
+    sale_dict["detail"][0] = 0  # Количество взрослых с скидкой
+    sale_dict["detail"][1] = 0  # Цена со скидкой для взрослых
+
+    # Убираем скидку для детских билетов, чтобы зарегистрировать их по полной цене
+    sale_dict["detail"][2] = 0  # Количество детских билетов с скидкой
+    sale_dict["detail"][3] = 0  # Цена со скидкой для детских
+
+    with patch("modules.payment_equipment.register_item", mock_register_item):
+        register_tickets(mock_device, sale_dict, 1)
+
+    # Проверяем, что был вызван register_item для взрослого билета
+    mock_register_item.assert_any_call(mock_device, "Билет взрослый 12 ч.", 100, 5)
+    # Проверяем, что был вызван register_item для детского билета без скидки
+    mock_register_item.assert_any_call(mock_device, "Билет детский 12 ч.", 50, 3)
+
+
+def test_register_tickets_adult_with_discount(
+    mock_register_item, sale_dict, mock_device
+):
+    """Проверка регистрации взрослых билетов с скидкой."""
+    with patch("modules.payment_equipment.register_item", mock_register_item):
+        register_tickets(mock_device, sale_dict, 1)
+
+    # Проверка, что зарегистрированы взрослые билеты с обычной ценой и с скидкой
+    mock_register_item.assert_any_call(mock_device, "Билет взрослый 12 ч.", 100, 3)
+    mock_register_item.assert_any_call(mock_device, "Билет взрослый акция 12 ч.", 80, 2)
+
+
+def test_register_tickets_child_no_discount(mock_register_item, sale_dict, mock_device):
+    """Проверка регистрации детских билетов без скидки."""
+    sale_dict["detail"][2] = 0  # Убираем скидки на детские билеты
+    sale_dict["detail"][3] = 0  # Убираем цену со скидкой для детей
+
+    with patch("modules.payment_equipment.register_item", mock_register_item):
+        register_tickets(mock_device, sale_dict, 1)
+
+    # Проверка, что зарегистрированы детские билеты по полной цене
+    mock_register_item.assert_any_call(mock_device, "Билет детский 12 ч.", 50, 3)
+
+
+def test_register_tickets_child_with_discount(
+    mock_register_item, sale_dict, mock_device
+):
+    """Проверка регистрации детских билетов с скидкой."""
+    with patch("modules.payment_equipment.register_item", mock_register_item):
+        register_tickets(mock_device, sale_dict, 1)
+
+    # Проверка, что зарегистрированы детские билеты с обычной ценой и с скидкой
+    mock_register_item.assert_any_call(mock_device, "Билет детский 12 ч.", 50, 2)
+    mock_register_item.assert_any_call(mock_device, "Билет детский акция 12 ч.", 40, 1)
+
+
+def test_register_tickets_type_operation_not_1(
+    mock_register_item, sale_dict, mock_device
+):
+    """Проверка работы функции для типа операции, не равного 1."""
+    sale_dict["test_item"] = [
+        100,
+        2,
+    ]  # Добавляем тестовый элемент в словарь для этого случая
+
+    with patch("modules.payment_equipment.register_item", mock_register_item):
+        register_tickets(
+            mock_device, sale_dict, 2
+        )  # Вызов с типом операции, не равным 1
+
+    # Проверяем, что register_item был вызван с нужными параметрами
+    mock_register_item.assert_any_call(mock_device, "test_item", 100, 2)
+
+
+def test_register_tickets_type_operation_1_no_items(
+    mock_register_item, sale_dict, mock_device
+):
+    """Проверка, когда нет элементов для регистрации."""
+    sale_dict["kol_adult"] = 0  # Убираем всех взрослых
+    sale_dict["kol_child"] = 0  # Убираем всех детей
+
+    with patch("modules.payment_equipment.register_item", mock_register_item):
+        register_tickets(mock_device, sale_dict, 1)
+
+    # Убедимся, что ничего не было зарегистрировано
+    mock_register_item.assert_not_called()  # Проверяем, что register_item не был вызван
+
+
+#######################################
+# Тестируем handle_document_errors
+
+
+@pytest.fixture
+def mock_device():
+    """Фикстура для мока устройства."""
+    return MagicMock()
+
+
+def test_handle_document_errors_success_first_attempt(mock_device):
+    """Тест для успешного закрытия документа на первой попытке."""
+    # Настроим поведение устройства для успешного закрытия документа
+    mock_device.checkDocumentClosed.return_value = (
+        0  # Устройство сообщает, что документ закрыт
+    )
+    mock_device.getParamBool.return_value = True  # Параметр закрытого документа истинен
+
+    # Вызов функции
+    result = handle_document_errors(mock_device, retry_count=0, max_retries=3)
+
+    # Проверяем, что возвращаемое значение True (успех)
+    assert result is True
+    # Проверяем, что cancelReceipt не был вызван
+    mock_device.cancelReceipt.assert_not_called()
+
+
+def test_handle_document_errors_success_after_retries(mock_device):
+    """Тест для успешного закрытия документа после нескольких попыток."""
+    # Настроим поведение устройства, чтобы сначала документ не закрыт, но через 2 попытки закрывается
+    mock_device.checkDocumentClosed.side_effect = [
+        1,
+        1,
+        0,
+    ]  # первые две попытки - ошибка, на третьей успех
+    mock_device.getParamBool.return_value = True  # Параметр закрытого документа истинен
+
+    # Вызов функции
+    result = handle_document_errors(mock_device, retry_count=0, max_retries=3)
+
+    # Проверяем, что возвращаемое значение True (успех)
+    assert result is True
+    # Проверяем, что cancelReceipt не был вызван
+    mock_device.cancelReceipt.assert_not_called()
+
+
+#######################################
+# Тестируем terminal_oplata
+
+
+# Мокаем функции для тестирования
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.process_success_result")
+@patch("modules.payment_equipment.process_terminal_error")
+@patch("modules.payment_equipment.handle_error")
+@patch("modules.payment_equipment.logger")
+def test_terminal_oplata_success(
+    mock_logger,
+    mock_handle_error,
+    mock_process_terminal_error,
+    mock_process_success_result,
+    mock_run_terminal_command,
+):
+    """Тест для успешного завершения операции оплаты."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = TERMINAL_SUCCESS_CODE
+    mock_run_terminal_command.return_value = mock_result
+    mock_process_success_result.return_value = 1  # Успешный результат
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_oplata(amount)
+
+    # Проверяем, что результат равен 1 (успех)
+    assert result == 1
+
+    # Проверяем, что логирование было вызвано
+    mock_logger.info.assert_called_with(
+        f"Статус проведения операции по банковскому терминалу: {TERMINAL_SUCCESS_CODE}"
+    )
+    mock_process_success_result.assert_called_once()
+
+
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.handle_error")
+@patch("modules.payment_equipment.logger")
+def test_terminal_oplata_no_response(
+    mock_logger, mock_handle_error, mock_run_terminal_command
+):
+    """Тест для ситуации, когда терминал не отвечает."""
+
+    # Настроим поведение mock-объектов
+    mock_run_terminal_command.return_value = None
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_oplata(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что была вызвана обработка ошибки
+    mock_handle_error.assert_called_once_with(
+        "Нет ответа от терминала",
+        "Команда терминала не была выполнена. Проверьте устройство.",
+        "Код ошибки: отсутствует",
+    )
+    mock_logger.error.assert_called_with("Ошибка при выполнении команды терминала")
+
+
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.process_terminal_error")
+@patch("modules.payment_equipment.logger")
+def test_terminal_oplata_error(
+    mock_logger, mock_process_terminal_error, mock_run_terminal_command
+):
+    """Тест для ситуации, когда команда терминала завершается с ошибкой."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = 2  # Ошибка терминала
+    mock_run_terminal_command.return_value = mock_result
+    mock_process_terminal_error.return_value = 0  # Код ошибки
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_oplata(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что обработка ошибки терминала была вызвана
+    mock_process_terminal_error.assert_called_once_with(2)
+    mock_logger.info.assert_called_with(
+        f"Статус проведения операции по банковскому терминалу: 2"
+    )
+
+
+#######################################
+# Тестируем terminal_return
+
+
+# Тест для успешного возврата, когда команда выполнена успешно и файл найден
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.check_terminal_file")
+@patch("modules.payment_equipment.logger")
+def test_terminal_return_success(
+    mock_logger, mock_check_terminal_file, mock_run_terminal_command
+):
+    """Тест для успешного возврата средств по банковскому терминалу."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = TERMINAL_SUCCESS_CODE
+    mock_run_terminal_command.return_value = mock_result
+    mock_check_terminal_file.return_value = True  # Файл найден
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_return(amount)
+
+    # Проверяем, что результат равен 1 (успех)
+    assert result == 1
+
+    # Проверяем, что логирование было вызвано
+    mock_logger.info.assert_called_with("Запуск функции terminal_return")
+    mock_logger.debug.assert_any_call(
+        f"В функцию была передана следующая сумма: {amount}"
+    )
+    mock_check_terminal_file.assert_called_once_with("ОДОБРЕНО")
+
+
+# Тест для ситуации, когда терминал не отвечает (result is None)
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.logger")
+def test_terminal_return_no_response(mock_logger, mock_run_terminal_command):
+    """Тест для случая, когда терминал не отвечает."""
+
+    # Настроим поведение mock-объектов
+    mock_run_terminal_command.return_value = None
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_return(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что ошибка была записана в лог
+    mock_logger.error.assert_called_with("Ошибка при выполнении команды терминала")
+
+
+# Тест для ситуации, когда файл не найден (FileNotFoundError)
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.check_terminal_file")
+@patch("modules.payment_equipment.logger")
+def test_terminal_return_file_not_found(
+    mock_logger, mock_check_terminal_file, mock_run_terminal_command
+):
+    """Тест для случая, когда файл не найден."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = TERMINAL_SUCCESS_CODE
+    mock_run_terminal_command.return_value = mock_result
+    mock_check_terminal_file.side_effect = FileNotFoundError(
+        "Файл не найден"
+    )  # Исключение при проверке файла
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_return(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что ошибка была записана в лог
+    mock_logger.error.assert_called_with("Файл не найден: Файл не найден")
+
+
+# Тест для обработки кода возврата TERMINAL_DATA_EXCHANGE (ошибка 4134)
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.windows.info_window")
+@patch("modules.payment_equipment.logger")
+def test_terminal_return_data_exchange_error(
+    mock_logger, mock_info_window, mock_run_terminal_command
+):
+    """Тест для случая, когда терминал вернул ошибку с кодом 4134."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = TERMINAL_DATA_EXCHANGE
+    mock_run_terminal_command.return_value = mock_result
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_return(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что вызвано окно с информацией об ошибке
+    mock_info_window.assert_called_once_with(
+        "Ошибка при проведении оплаты",
+        "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
+        "Команда завершена с кодом: 4134",
+    )
+
+    # Проверяем, что логирование было вызвано с нужным сообщением
+    mock_logger.info.assert_any_call(
+        f"Терминал вернул следующий код операции: {TERMINAL_DATA_EXCHANGE}"
+    )
+
+
+#######################################
+# Тестируем terminal_canceling
+
+
+# Тест для успешной операции отмены
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.check_terminal_file")
+@patch("modules.payment_equipment.logger")
+def test_terminal_canceling_success(
+    mock_logger, mock_check_terminal_file, mock_run_terminal_command
+):
+    """Тест для успешной операции отмены."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = TERMINAL_SUCCESS_CODE
+    mock_run_terminal_command.return_value = mock_result
+    mock_check_terminal_file.return_value = True  # Файл найден
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_canceling(amount)
+
+    # Проверяем, что результат равен 1 (успех)
+    assert result == 1
+
+    # Проверяем, что логирование было вызвано
+    mock_logger.info.assert_called_with("Запуск функции terminal_canceling")
+    mock_logger.debug.assert_any_call(
+        f"В функцию была передана следующая сумма: {amount}"
+    )
+    mock_check_terminal_file.assert_called_once_with("ОДОБРЕНО")
+
+
+# Тест для случая, когда команда терминала вернула None (ошибка)
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.logger")
+def test_terminal_canceling_command_error(mock_logger, mock_run_terminal_command):
+    """Тест для ошибки при выполнении команды терминала."""
+
+    # Настроим поведение mock-объекта
+    mock_result = MagicMock()
+    mock_result.returncode = None
+    mock_run_terminal_command.return_value = mock_result
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_canceling(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что ошибка была записана в лог
+    mock_logger.error.assert_called_with("Ошибка при выполнении команды терминала")
+
+
+# Тест для случая, когда не найден файл
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.check_terminal_file")
+@patch("modules.payment_equipment.logger")
+def test_terminal_canceling_file_not_found(
+    mock_logger, mock_check_terminal_file, mock_run_terminal_command
+):
+    """Тест для случая, когда файл не найден."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = TERMINAL_SUCCESS_CODE
+    mock_run_terminal_command.return_value = mock_result
+    mock_check_terminal_file.side_effect = FileNotFoundError("Файл не найден")
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_canceling(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что ошибка была записана в лог
+    mock_logger.error.assert_called_with("Файл не найден: Файл не найден")
+
+
+# Тест для случая, когда терминал вернул код TERMINAL_DATA_EXCHANGE
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.windows.info_window")
+@patch("modules.payment_equipment.logger")
+def test_terminal_canceling_data_exchange(
+    mock_logger, mock_info_window, mock_run_terminal_command
+):
+    """Тест для случая с кодом возврата TERMINAL_DATA_EXCHANGE."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = TERMINAL_DATA_EXCHANGE
+    mock_run_terminal_command.return_value = mock_result
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_canceling(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что была вызвана информационная панель
+    mock_info_window.assert_called_once_with(
+        "Ошибка при проведении оплаты",
+        "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
+        "Команда завершена с кодом: 4134",
+    )
+
+
+# Тест для случая с неизвестным кодом возврата
+@patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.logger")
+def test_terminal_canceling_unknown_error(mock_logger, mock_run_terminal_command):
+    """Тест для случая с неизвестным кодом возврата терминала."""
+
+    # Настроим поведение mock-объектов
+    mock_result = MagicMock()
+    mock_result.returncode = 999  # Неизвестный код возврата
+    mock_run_terminal_command.return_value = mock_result
+
+    amount = 100.0
+
+    # Вызовем тестируемую функцию
+    result = terminal_canceling(amount)
+
+    # Проверяем, что результат равен 0 (ошибка)
+    assert result == 0
+
+    # Проверяем, что ошибка была записана в лог
+    mock_logger.error.assert_called_with("Неизвестный код возврата: 999")

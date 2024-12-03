@@ -278,6 +278,7 @@ def terminal_return(amount):
             logger.error(f"Файл не найден: {not_found}")
             return 0
     elif result.returncode == TERMINAL_DATA_EXCHANGE:
+        logger.info(f"Терминал вернул следующий код операции: {TERMINAL_DATA_EXCHANGE}")
         windows.info_window(
             "Ошибка при проведении оплаты",
             "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
@@ -286,13 +287,18 @@ def terminal_return(amount):
         return 0
     else:
         logger.error(f"Неизвестный код возврата: {result.returncode}")
+        windows.info_window(
+            "Ошибка при проведении оплаты",
+            "Неизвестный код возврата",
+            f"Команда завершена с кодом: {result.returncode}"
+        )
         return 0
 
 
 @logger_wraps()
 def terminal_canceling(amount):
-    """Операуия отмены по банковскому терминалу.
-
+    """Операуия отмены по банковскому терминалу."""
+    """
     Параметры:
         amount (float):
             Сумма, которую необходимо отменить.
@@ -307,7 +313,7 @@ def terminal_canceling(amount):
     # Добавляем '00' для копеек
     result = run_terminal_command(f"1 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
-    if result is None:
+    if result is None or result.returncode is None:
         logger.error("Ошибка при выполнении команды терминала")
         return 0
     if result.returncode == TERMINAL_SUCCESS_CODE:
@@ -1247,7 +1253,7 @@ def register_tickets(device, sale_dict, type_operation):
         time = sale_dict["detail"][6]
         # Взрослые билеты
         kol_adult_edit = sale_dict["kol_adult"] - sale_dict["detail"][0]
-        if kol_adult_edit > 0:
+        if kol_adult_edit > 0:  # Регистрация только если есть билеты
             register_item(
                 device,
                 f"Билет взрослый {time} ч.",
@@ -1255,7 +1261,8 @@ def register_tickets(device, sale_dict, type_operation):
                 kol_adult_edit,
             )
         # Взрослые билеты со скидкой
-        if sale_dict["detail"][0] > 0 and sale_dict["detail"][1] > 0:
+        if sale_dict["detail"][0] > 0 and sale_dict["detail"][
+            1] > 0 and kol_adult_edit > 0:  # Дополнительно проверяем количество обычных билетов
             register_item(
                 device,
                 f"Билет взрослый акция {time} ч.",
@@ -1264,7 +1271,7 @@ def register_tickets(device, sale_dict, type_operation):
             )
         # Детские билеты
         kol_child_edit = sale_dict["kol_child"] - sale_dict["detail"][2]
-        if kol_child_edit > 0:
+        if kol_child_edit > 0:  # Регистрация только если есть билеты
             register_item(
                 device,
                 f"Билет детский {time} ч.",
@@ -1272,7 +1279,8 @@ def register_tickets(device, sale_dict, type_operation):
                 kol_child_edit,
             )
         # Детские билеты со скидкой
-        if sale_dict["detail"][2] > 0 and sale_dict["detail"][3] > 0:
+        if sale_dict["detail"][2] > 0 and sale_dict["detail"][
+            3] > 0 and kol_child_edit > 0:  # Дополнительно проверяем количество обычных детских билетов
             register_item(
                 device,
                 f"Билет детский акция {time} ч.",
@@ -1280,8 +1288,14 @@ def register_tickets(device, sale_dict, type_operation):
                 sale_dict["detail"][2],
             )
     else:
+        # Для других типов операций, регистрация остальных товаров
         for item_name, item_data in sale_dict.items():
-            register_item(device, item_name, item_data[0], item_data[1])
+            if isinstance(item_data, list) and item_data[0] > 0 and item_data[
+                1] > 0:  # Проверяем наличие количества и цены
+                register_item(device, item_name, item_data[0], item_data[1])
+            else:
+                # Обработка других типов данных
+                logger.error(f"Ошибка типа данных. Item_data - не список.")
 
 
 def process_payment(device, payment_type, bank, sale_dict, price):
