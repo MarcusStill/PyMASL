@@ -1,31 +1,20 @@
-from sqlalchemy import (
-    Column,
-    SmallInteger,
-    Date,
-)
+from datetime import date
+
+from sqlalchemy import Date
+from sqlalchemy.orm import Mapped, mapped_column
 
 from db.models.base import Base
 
 
 class Holiday(Base):
+    __tablename__ = "holiday"
+    __tableargs__ = {"comment": "Информация о праздничных днях"}
 
-    __tablename__ = 'holiday'
-    __tableargs__ = {
-        'comment': 'Информация о праздничных днях'
-    }
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, unique=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False, comment="Праздничная дата")
 
-    id = Column(
-        SmallInteger,
-        nullable=False,
-        unique=True,
-        primary_key=True,
-    )
-    date = Column(Date, nullable=False, comment='Праздничная дата')
+    def __str__(self) -> str:
+        return f"{self.id} {self.date}"
 
-
-    def __str__(self):
-        return f'{self.id} {self.date}'
-
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
