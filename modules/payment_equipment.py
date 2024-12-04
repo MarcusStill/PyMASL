@@ -298,7 +298,7 @@ def terminal_return(amount):
         windows.info_window(
             "Ошибка при проведении оплаты",
             "Неизвестный код возврата",
-            f"Команда завершена с кодом: {result.returncode}"
+            f"Команда завершена с кодом: {result.returncode}",
         )
         return 0
 
@@ -1263,7 +1263,8 @@ def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT2
         tax_type (int, optional): Тип налога для товара (по умолчанию используется НДС 20%).
 
     Возвращаемое значение:
-        None: Функция не возвращает значений, но выполняет регистрацию товара на устройстве. """
+        None: Функция не возвращает значений, но выполняет регистрацию товара на устройстве.
+    """
     logger.info("Запуск функции register_item")
     device.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
     device.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
@@ -1324,8 +1325,11 @@ def register_tickets(device, sale_dict, type_operation):
                 kol_adult_edit,
             )
         # Взрослые билеты со скидкой
-        if sale_dict["detail"][0] > 0 and sale_dict["detail"][
-            1] > 0 and kol_adult_edit > 0:  # Дополнительно проверяем количество обычных билетов
+        if (
+            sale_dict["detail"][0] > 0
+            and sale_dict["detail"][1] > 0
+            and kol_adult_edit > 0
+        ):  # Дополнительно проверяем количество обычных билетов
             register_item(
                 device,
                 f"Билет взрослый акция {time} ч.",
@@ -1342,8 +1346,11 @@ def register_tickets(device, sale_dict, type_operation):
                 kol_child_edit,
             )
         # Детские билеты со скидкой
-        if sale_dict["detail"][2] > 0 and sale_dict["detail"][
-            3] > 0 and kol_child_edit > 0:  # Дополнительно проверяем количество обычных детских билетов
+        if (
+            sale_dict["detail"][2] > 0
+            and sale_dict["detail"][3] > 0
+            and kol_child_edit > 0
+        ):  # Дополнительно проверяем количество обычных детских билетов
             register_item(
                 device,
                 f"Билет детский акция {time} ч.",
@@ -1353,8 +1360,9 @@ def register_tickets(device, sale_dict, type_operation):
     else:
         # Для других типов операций, регистрация остальных товаров
         for item_name, item_data in sale_dict.items():
-            if isinstance(item_data, list) and item_data[0] > 0 and item_data[
-                1] > 0:  # Проверяем наличие количества и цены
+            if (
+                isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0
+            ):  # Проверяем наличие количества и цены
                 register_item(device, item_name, item_data[0], item_data[1])
             else:
                 # Обработка других типов данных
