@@ -1,3 +1,4 @@
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMessageBox
 
 
@@ -23,6 +24,8 @@ def info_dialog_window(title, text):
     buttonY.setText("Да")
     buttonN = box.button(QMessageBox.No)
     buttonN.setText("Нет")
+    # Отображаем окно поверх всех
+    box.setWindowFlags(box.windowFlags() | Qt.WindowStaysOnTopHint)
     box.exec_()
 
     if box.clickedButton() == buttonY:
