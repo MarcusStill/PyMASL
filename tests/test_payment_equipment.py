@@ -1,7 +1,7 @@
 import os
+import subprocess
 from unittest import mock
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock, call
 
 import pytest
 
@@ -81,111 +81,173 @@ def mock_subprocess_run():
 
 
 # Тест успешного выполнения команды
-def test_run_terminal_command_successful(mock_config, mock_subprocess_run):
+@patch("subprocess.Popen")
+def test_run_terminal_command_successful(mock_popen, mock_config):
     """Тестируем успешный запуск команды на терминале."""
-
-    # Мокаем путь к терминалу, который вернется через метод get
     mock_config.return_value = "C:\\sc552"
-
-    # Мокаем возврат команды для subprocess.run
-    mock_run = mock_subprocess_run.return_value
-    mock_run.returncode = 0  # Успешное выполнение команды
-
-    # Параметры для теста
-    command_params = "1 123"
-
-    # Вызов функции
-    result = run_terminal_command(command_params)
-
-    # Проверяем, что subprocess.run был вызван с правильными аргументами
-    mock_subprocess_run.assert_called_once_with(
-        "C:\\sc552\\loadparm.exe 1 123", check=False
+    mock_process = mock_popen.return_value
+    mock_process.wait.return_value = None
+    mock_process.communicate.return_value = (
+        b"\xd0\xa3\xd1\x81\xd0\xbf\xd0\xb5\xd1\x88\xd0\xbd\xd0\xbe",
+        b"",
     )
+    mock_process.returncode = 0
 
-    # Проверяем, что результат выполнения функции не является None
+    command_params = "1 123"
+    timeout = 5
+
+    result = run_terminal_command(command_params, timeout=timeout)
+
+    mock_popen.assert_called_once_with(
+        "C:\\sc552\\loadparm.exe 1 123",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    mock_process.wait.assert_called_once_with(timeout=timeout)
+    mock_process.communicate.assert_called_once()
+
     assert result is not None
     assert result.returncode == 0
+    assert result.stdout == b"\xd0\xa3\xd1\x81\xd0\xbf\xd0\xb5\xd1\x88\xd0\xbd\xd0\xbe"
+    assert result.stderr == b""
 
 
-def test_run_terminal_command_with_error(mock_subprocess_run, mock_config):
+# Тест выполнения команды с ошибкой
+@patch("subprocess.Popen")
+def test_run_terminal_command_with_error(mock_popen, mock_config):
     """Тестируем выполнение команды с ошибкой."""
-
-    # Подготовка мока
-    mock_run = mock_subprocess_run.return_value
-    mock_run.returncode = 1  # Ошибка при выполнении команды
-
-    # Мокаем конфигурацию, возвращаем путь к утилите
-    mock_config.return_value = "C:\\sc552"  # Путь без имени файла
-
-    # Параметры для теста
-    command_params = "1 123"
-
-    # Вызов функции
-    result = run_terminal_command(command_params)
-
-    # Проверяем, что subprocess.run был вызван с правильными параметрами
-    mock_subprocess_run.assert_called_once_with(
-        "C:\\sc552\\loadparm.exe 1 123",
-        check=False,  # Путь должен быть без удвоенного имени файла
+    mock_config.return_value = "C:\\sc552"
+    mock_process = mock_popen.return_value
+    mock_process.wait.return_value = None
+    mock_process.communicate.return_value = (
+        b"",
+        b"\xd0\x9e\xd1\x88\xd0\xb8\xd0\xba\xd0\xb0 \xd0\xb2\xd1\x8b\xd0\xbb\xd0\xbe\xd0\xb6\xd0\xb5\xd0\xbd\xd0\xb8\xd1\x8f",
     )
+    mock_process.returncode = 1
 
-    # Проверяем, что результат выполнения команды правильный (ошибка)
+    command_params = "1 123"
+    timeout = 1
+
+    result = run_terminal_command(command_params, timeout=timeout)
+
+    mock_popen.assert_called_once_with(
+        "C:\\sc552\\loadparm.exe 1 123",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    mock_process.wait.assert_called_once_with(timeout=timeout)
+    mock_process.communicate.assert_called_once()
+
     assert result is not None
     assert result.returncode == 1
+    assert (
+        result.stderr
+        == b"\xd0\x9e\xd1\x88\xd0\xb8\xd0\xba\xd0\xb0 \xd0\xb2\xd1\x8b\xd0\xbb\xd0\xbe\xd0\xb6\xd0\xb5\xd0\xbd\xd0\xb8\xd1\x8f"
+    )
 
 
-def test_run_terminal_command_with_invalid_command(mock_subprocess_run, mock_config):
+# Тест выполнения команды с некорректными параметрами
+@patch("subprocess.Popen")
+def test_run_terminal_command_with_invalid_command(mock_popen, mock_config):
     """Тестируем выполнение команды с некорректными параметрами."""
+    mock_config.return_value = "C:\\sc552"
+    mock_process = mock_popen.return_value
+    mock_process.wait.return_value = None
+    mock_process.communicate.return_value = (
+        b"\xd0\xa3\xd1\x81\xd0\xbf\xd0\xb5\xd1\x88\xd0\xbd\xd0\xbe",
+        b"",
+    )
+    mock_process.returncode = 0
 
-    # Подготовка мока
-    mock_run = mock_subprocess_run.return_value
-    mock_run.returncode = 0  # Симулируем успешное выполнение команды
+    command_params = "99"
+    timeout = 1
 
-    # Мокаем конфигурацию, возвращаем путь к утилите
-    mock_config.return_value = "C:\\sc552"  # Путь без имени файла
+    result = run_terminal_command(command_params, timeout=timeout)
 
-    # Параметры для теста
-    command_params = "99"  # Некорректные параметры
-
-    # Вызов функции
-    result = run_terminal_command(command_params)
-
-    # Проверяем, что subprocess.run был вызван с правильными параметрами
-    mock_subprocess_run.assert_called_once_with(
+    mock_popen.assert_called_once_with(
         "C:\\sc552\\loadparm.exe 99",
-        check=False,  # Путь должен быть без повторного добавления имени файла
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
+    mock_process.wait.assert_called_once_with(timeout=timeout)
+    mock_process.communicate.assert_called_once()
 
-    # Проверяем, что результат выполнения команды правильный
     assert result is not None
     assert result.returncode == 0
+    assert result.stdout == b"\xd0\xa3\xd1\x81\xd0\xbf\xd0\xb5\xd1\x88\xd0\xbd\xd0\xbe"
 
 
-def test_run_terminal_command_missing_parameters(mock_subprocess_run, mock_config):
+# Тест выполнения команды без параметров
+@patch("subprocess.Popen")
+def test_run_terminal_command_missing_parameters(mock_popen, mock_config):
     """Тестируем выполнение команды без параметров (или с недостаточным количеством)."""
-
-    # Подготовка мока
-    mock_run = mock_subprocess_run.return_value
-    mock_run.returncode = 0
-
-    # Мокаем конфигурацию, возвращаем путь к утилите
-    mock_config.return_value = "C:\\sc552"  # Путь без имени файла
-
-    # Параметры для теста
-    command_params = "1"  # Например, команда оплаты без суммы
-
-    # Вызов функции
-    result = run_terminal_command(command_params)
-
-    # Проверяем, что subprocess.run был вызван с правильными параметрами
-    mock_subprocess_run.assert_called_once_with(
-        "C:\\sc552\\loadparm.exe 1",
-        check=False,  # Путь должен быть без повторного добавления имени файла
+    mock_config.return_value = "C:\\sc552"
+    mock_process = mock_popen.return_value
+    mock_process.wait.return_value = None
+    mock_process.communicate.return_value = (
+        b"\xd0\xa3\xd1\x81\xd0\xbf\xd0\xb5\xd1\x88\xd0\xbd\xd0\xbe",
+        b"",
     )
+    mock_process.returncode = 0
 
-    # Проверяем, что результат выполнения команды правильный
+    command_params = "1"
+    timeout = 1
+
+    result = run_terminal_command(command_params, timeout=timeout)
+
+    mock_popen.assert_called_once_with(
+        "C:\\sc552\\loadparm.exe 1",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    mock_process.wait.assert_called_once_with(timeout=timeout)
+    mock_process.communicate.assert_called_once()
+
     assert result is not None
     assert result.returncode == 0
+    assert result.stdout == b"\xd0\xa3\xd1\x81\xd0\xbf\xd0\xb5\xd1\x88\xd0\xbd\xd0\xbe"
+
+
+# Тест превышения таймаута
+@patch("modules.windows.info_dialog_window")
+@patch("subprocess.Popen")
+def test_run_terminal_command_timeout(mock_popen, mock_dialog, mock_config):
+    """Тестируем выполнение команды с превышением таймаута."""
+    mock_config.return_value = "C:\\sc552"
+    mock_process = mock_popen.return_value
+    mock_process.wait.side_effect = [
+        subprocess.TimeoutExpired(cmd="loadparm.exe", timeout=1),
+        None,  # Second wait after terminate
+    ]
+    mock_process.communicate.return_value = (b"", b"")
+    mock_process.returncode = None
+
+    def set_returncode(*args, **kwargs):
+        mock_process.returncode = 1  # Set returncode after terminate
+
+    mock_process.terminate.side_effect = set_returncode
+    mock_dialog.return_value = 1
+
+    command_params = "1 123"
+    timeout = 1
+
+    result = run_terminal_command(command_params, timeout=timeout)
+
+    mock_popen.assert_called_once_with(
+        "C:\\sc552\\loadparm.exe 1 123",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert mock_process.wait.call_count == 2
+    mock_process.wait.assert_has_calls([call(timeout=1), call(timeout=5)])
+    mock_dialog.assert_called_once_with(
+        "Внимание", "Процесс loadparm.exe выполняется слишком долго. Завершить его?"
+    )
+    mock_process.terminate.assert_called_once()
+    mock_process.kill.assert_not_called()
+
+    assert result is not None
+    assert result.returncode == 1  # Expecting returncode to be 1 after terminate
 
 
 def test_config_file_not_found(mock_subprocess_run):

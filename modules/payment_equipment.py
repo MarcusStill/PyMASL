@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 from contextlib import contextmanager
+from subprocess import TimeoutExpired
 
 from modules import windows
 from modules.config import Config
@@ -19,12 +20,29 @@ except Exception as e:
 # Константы для работы с кодами терминала
 TERMINAL_SUCCESS_CODE: int = 0
 TERMINAL_USER_CANCEL_CODE: int = 2000
+TERMINAL_USER_TIMEOUT: int = 2002
 TERMINAL_DATA_EXCHANGE: int = 4134
 TERMINAL_NO_MONEY: int = 4451
 TERMINAL_KLK: int = 4120
 TERMINAL_CARD_BLOCKED: set[int] = {2004, 2005, 2006, 2007, 2405, 2406, 2407}
+TERMINAL_CARD_LIMIT: set[int] = {4113, 4114}
 TERMINAL_INVALID_CURRENCY_CODE: int = 4336
 TERMINAL_NO_ADDRESS_TO_CONTACT: int = 4139
+TERMINAL_ERROR_PIN: int = 4137
+TERMINAL_CARD_LIMIT_WITHOUT_BANK: int = 4150
+TERMINAL_BIOMETRIC_ERROR: set[int] = {
+    4160,
+    4161,
+    4162,
+    4163,
+    4164,
+    4165,
+    4166,
+    4167,
+    4168,
+    4169,
+    4171,
+}
 APPROVE: str = "ОДОБРЕНО"
 COINCIDENCE: str = "совпали"
 EMAIL: str = "test.check@pymasl.ru"
@@ -51,11 +69,12 @@ def fptr_connection(device):
         device.close()
 
 
-def run_terminal_command(command_params: str):
+def run_terminal_command(command_params: str, timeout: int = 90):
     """Запуск команды на терминале и возврат результата.
 
     Параметры:
         command_params (str): Параметры команды, которую нужно выполнить.
+        timeout (int): Таймаут в секундах перед выводом диалогового окна.
 
     Возвращаемое значение:
         subprocess.CompletedProcess или None:
@@ -70,10 +89,39 @@ def run_terminal_command(command_params: str):
     pinpad_run: str = f"{pinpad_run_path} {command_params}"
     logger.info(f"Запуск команды: {pinpad_run}")
     try:
-        # check=False позволяет самостоятельно обрабатывать коды возврата
-        result = subprocess.run(pinpad_run, check=False)
-        logger.info(f"Команда завершена с кодом: {result.returncode}")
-        return result
+        process = subprocess.Popen(
+            pinpad_run, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        try:
+            process.wait(timeout=timeout)
+        except TimeoutExpired:
+            user_choice = windows.info_dialog_window(
+                "Внимание",
+                f"Процесс {pinpad_file} выполняется слишком долго. Завершить его?",
+            )
+            if user_choice == 1:
+                logger.warning(
+                    f"Процесс {process.pid} превысил таймаут {timeout} секунд. Завершение по пользовательскому запросу."
+                )
+                process.terminate()
+                try:
+                    process.wait(timeout=5)  # Ожидаем завершения после terminate()
+                except TimeoutExpired:
+                    logger.warning(
+                        f"Процесс {process.pid} не завершился после terminate(). Используется kill()."
+                    )
+                    process.kill()
+                    process.wait()  # Ожидаем завершения после kill()
+            else:
+                logger.info(
+                    f"Процесс {process.pid} продолжает выполнение по выбору пользователя."
+                )
+                process.wait()  # Ожидаем завершения без таймаута
+        stdout, stderr = process.communicate()
+        code = process.returncode
+        return subprocess.CompletedProcess(
+            args=pinpad_run, returncode=code, stdout=stdout, stderr=stderr
+        )
     except subprocess.SubprocessError as e:
         logger.error(f"Ошибка выполнения команды: {e}")
         return None
@@ -174,6 +222,7 @@ def process_terminal_error(returncode):
     logger.info("Запуск функции process_terminal_error")
     error_handlers = {
         TERMINAL_USER_CANCEL_CODE: ("Оплата отменена пользователем", None),
+        TERMINAL_USER_TIMEOUT: ("Слишком долгий ввод ПИН-кода", None),
         TERMINAL_DATA_EXCHANGE: (
             "Ошибка при проведении оплаты",
             "Требуется сделать сверку итогов и повторить операцию.",
@@ -194,6 +243,14 @@ def process_terminal_error(returncode):
             "Ошибка при проведении оплаты",
             "Терминал потерял связь с банком. Обратитесь в банк для выяснения причины.",
         ),
+        TERMINAL_ERROR_PIN: (
+            "Ошибка при проведении оплаты",
+            "Ошибка в вводе ПИН-кода.",
+        ),
+        TERMINAL_CARD_LIMIT_WITHOUT_BANK: (
+            "Ошибка при проведении оплаты",
+            "Превышен лимит операций без связи с банком.",
+        ),
     }
 
     if returncode in TERMINAL_CARD_BLOCKED:
@@ -201,6 +258,20 @@ def process_terminal_error(returncode):
             returncode,
             "Ошибка при проведении оплаты",
             "Карта клиента заблокирована. Обратитесь в банк для выяснения причины.",
+        )
+        return 0
+    if returncode in TERMINAL_CARD_LIMIT:
+        handle_error(
+            returncode,
+            "Ошибка при проведении оплаты",
+            "Превышен лимит операций. Обратитесь в банк для выяснения причины.",
+        )
+        return 0
+    if returncode in TERMINAL_BIOMETRIC_ERROR:
+        handle_error(
+            returncode,
+            "Ошибка при проведении оплаты",
+            "Ошибка в работе с биометрическими данными. Обратитесь в банк для выяснения причины.",
         )
         return 0
 
