@@ -85,6 +85,14 @@ class AuthForm(QDialog):
         # Запуск предпродажных проверок
         if perform_pre_sale_checks(login, password) == 1:
             auth.close()
+            kkt_model = pq.get_info(hide=True)
+            if kkt_model == 0:
+                windows.info_window(
+                    "Внимание",
+                    "Соединение с кассовым аппаратом не установлено!",
+                    "Попробуйте устранить ошибку и после этого запросить информацию с ККТ:"
+                    "Вкладка `Операции с ККТ` -> `Информация о ККТ` или `Дата и время ККТ`.",
+                )
             window = MainWindow()
             window.showMaximized()
             # Установка заголовка окна

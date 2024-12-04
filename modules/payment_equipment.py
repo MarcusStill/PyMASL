@@ -667,16 +667,16 @@ def print_pinpad_check(count: int = 2):
 
 
 @logger_wraps()
-def get_info():
+def get_info(hide: bool = False) -> int:
     """Запрос информации о ККТ.
 
     Параметры:
-        None:
-            Функция не принимает параметров.
+        hide (bool): Если True, не показывать окно с информацией о ККТ
 
     Возвращаемое значение:
-        None:
-            Функция не возвращает значений, но может открывать окно с информацией о ККТ.
+        int или None:
+            - Возвращает номер модели ККТ.
+            - Возвращает None, в случае ошибки или если hide=False.
     """
     logger.info("Запуск функции get_info")
     try:
@@ -690,7 +690,10 @@ def get_info():
             f"Номер модели ККТ: {model}.\nНаименование ККТ: {model_name}.\n"
             f"Версия ПО ККТ: {firmware_version}"
         )
-        windows.info_window("Смотрите подробную информацию.", "", info)
+        if not hide:
+            windows.info_window("Смотрите подробную информацию.", "", info)
+            return None
+        return model
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к ККТ: {ce}")
         windows.info_window(
