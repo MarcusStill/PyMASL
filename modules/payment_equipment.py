@@ -1337,6 +1337,7 @@ def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT2
         None: Функция не возвращает значений, но выполняет регистрацию товара на устройстве.
     """
     logger.info("Запуск функции register_item")
+    logger.info(f"В функцию переданы параметры: {name}, {price}, {quantity}")
     device.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
     device.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
     device.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, quantity)
@@ -1399,7 +1400,7 @@ def register_tickets(device, sale_dict, type_operation):
         if (
             sale_dict["detail"][0] > 0
             and sale_dict["detail"][1] > 0
-            and kol_adult_edit > 0
+            and sale_dict["kol_adult"] > 0  # Проверяем общее количество взрослых
         ):  # Дополнительно проверяем количество обычных билетов
             register_item(
                 device,
@@ -1420,7 +1421,7 @@ def register_tickets(device, sale_dict, type_operation):
         if (
             sale_dict["detail"][2] > 0
             and sale_dict["detail"][3] > 0
-            and kol_child_edit > 0
+            and sale_dict["kol_child"] > 0  # Проверяем общее количество детей
         ):  # Дополнительно проверяем количество обычных детских билетов
             register_item(
                 device,
