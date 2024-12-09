@@ -1658,7 +1658,6 @@ def continue_print():
         )
 
 
-@logger_wraps()
 def print_text(text: str):
     """Печать слип-чека.
 
