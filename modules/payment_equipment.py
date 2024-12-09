@@ -21,15 +21,29 @@ except Exception as e:
 TERMINAL_SUCCESS_CODE: int = 0
 TERMINAL_USER_CANCEL_CODE: int = 2000
 TERMINAL_USER_TIMEOUT: int = 2002
-TERMINAL_DATA_EXCHANGE: int = 4134
-TERMINAL_NO_MONEY: int = 4451
-TERMINAL_KLK: int = 4120
-TERMINAL_CARD_BLOCKED: set[int] = {2004, 2005, 2006, 2007, 2405, 2406, 2407}
+TERMINAL_DATA_EXCHANGE: set[int] = {4134, 4332}
+TERMINAL_NO_MONEY: set[int] = {4451, 521}
+TERMINAL_KLK: set[int] = {4120, 4122, 4123, 4124, 4128}
+TERMINAL_CARD_BLOCKED: set[int] = {
+    2004,
+    2005,
+    2006,
+    2007,
+    2405,
+    2406,
+    2407,
+    574,
+    579,
+    705,
+    706,
+    707,
+    572,
+}
 TERMINAL_CARD_LIMIT: set[int] = {4113, 4114}
 TERMINAL_INVALID_CURRENCY_CODE: int = 4336
 TERMINAL_NO_ADDRESS_TO_CONTACT: int = 4139
-TERMINAL_ERROR_PIN: int = 4137
-TERMINAL_CARD_LIMIT_WITHOUT_BANK: int = 4150
+TERMINAL_ERROR_PIN_CODE: set[int] = {4117, 4137, 403, 405, 708, 709}
+TERMINAL_LIMIT_OPERATION: set[int] = {4150, 4113, 4114}
 TERMINAL_BIOMETRIC_ERROR: set[int] = {
     4160,
     4161,
@@ -43,6 +57,57 @@ TERMINAL_BIOMETRIC_ERROR: set[int] = {
     4169,
     4171,
 }
+TERMINAL_NO_CONNECTION_BANK: set[int] = {4100, 4119}
+TERMINAL_NEED_CASH_COLLECTION: set[int] = {4101, 4102, 4110, 4111, 4112}
+TERMINAL_CARD_ERROR: set[int] = {
+    444,
+    507,
+    4148,
+    4149,
+    4313,
+    4314,
+    4334,
+    4339,
+    5002,
+    4302,
+    4108,
+    584,
+    585,
+    4125,
+}
+TERMINAL_OPERATION_CANCELED: int = 4132
+TERMINAL_SERVER_ROUTINE_MAINTENANCE: set[int] = {3019, 3020, 3021}
+TERMINAL_PIN_PAD_ERROR: set[int] = {
+    99,
+    362,
+    363,
+    364,
+    518,
+    4103,
+    4104,
+    4121,
+    4130,
+    4131,
+    4136,
+    4139,
+    4143,
+    4144,
+    4145,
+    4146,
+    4146,
+    4202,
+    4203,
+    4208,
+    4209,
+    4211,
+    4300,
+    4303,
+    4305,
+    4306,
+    4309,
+}
+TERMINAL_COMMAND_ERROR: set[int] = {4139, 4140, 4141, 4142, 4301, 4335}
+TERMINAL_SUPPORT: str = "0321"
 APPROVE: str = "ОДОБРЕНО"
 COINCIDENCE: str = "совпали"
 EMAIL: str = "test.check@pymasl.ru"
@@ -223,58 +288,118 @@ def process_terminal_error(returncode):
     error_handlers = {
         TERMINAL_USER_CANCEL_CODE: ("Оплата отменена пользователем", None),
         TERMINAL_USER_TIMEOUT: ("Слишком долгий ввод ПИН-кода", None),
-        TERMINAL_DATA_EXCHANGE: (
-            "Ошибка при проведении оплаты",
-            "Требуется сделать сверку итогов и повторить операцию.",
-        ),
-        TERMINAL_NO_MONEY: (
-            "Ошибка при проведении оплаты",
-            "Недостаточно средств на карте.",
-        ),
-        TERMINAL_KLK: (
-            "Ошибка в работе терминала",
-            "Необходимо обратиться в службу поддержки банка.",
-        ),
         TERMINAL_INVALID_CURRENCY_CODE: (
-            "Ошибка при проведении оплаты",
-            "Указан неверный код валюты. Обратитесь в банк для выяснения причины.",
+            "Указан неверный код валюты",
+            f"Указан неверный код валюты. Обратитесь в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
         ),
         TERMINAL_NO_ADDRESS_TO_CONTACT: (
-            "Ошибка при проведении оплаты",
-            "Терминал потерял связь с банком. Обратитесь в банк для выяснения причины.",
+            "Терминал потерял связь с банком",
+            f"Терминал потерял связь с банком. Обратитесь в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
         ),
-        TERMINAL_ERROR_PIN: (
-            "Ошибка при проведении оплаты",
-            "Ошибка в вводе ПИН-кода.",
-        ),
-        TERMINAL_CARD_LIMIT_WITHOUT_BANK: (
-            "Ошибка при проведении оплаты",
-            "Превышен лимит операций без связи с банком.",
+        TERMINAL_OPERATION_CANCELED: (
+            "Операция отменена",
+            f"Ошибка возникает тогда, когда карту достают из терминала быстрее, чем пройдет оплата. Необходимо повторить операцию.",
         ),
     }
 
     if returncode in TERMINAL_CARD_BLOCKED:
         handle_error(
             returncode,
-            "Ошибка при проведении оплаты",
-            "Карта клиента заблокирована. Обратитесь в банк для выяснения причины.",
+            "Карта клиента заблокирована",
+            f"Карта клиента заблокирована. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
         )
         return 0
     if returncode in TERMINAL_CARD_LIMIT:
         handle_error(
             returncode,
-            "Ошибка при проведении оплаты",
-            "Превышен лимит операций. Обратитесь в банк для выяснения причины.",
+            "Превышен лимит операций",
+            "Превышен лимит операций. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
         )
         return 0
     if returncode in TERMINAL_BIOMETRIC_ERROR:
         handle_error(
             returncode,
-            "Ошибка при проведении оплаты",
-            "Ошибка в работе с биометрическими данными. Обратитесь в банк для выяснения причины.",
+            "Ошибка в работе с биометрическими данными",
+            f"Ошибка в работе с биометрическими данными. Обратитесь в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
         )
         return 0
-
+    if returncode in TERMINAL_ERROR_PIN_CODE:
+        handle_error(
+            returncode,
+            "Ошибка при вводе ПИН-кода",
+            "ПИН-код не был введен, либо введен неверно, либо вводимый ПИН-код заблокирован. Попробуйте повторить операцию оплаты.",
+        )
+        return 0
+    if returncode in TERMINAL_NO_CONNECTION_BANK:
+        handle_error(
+            returncode,
+            "Нет связи с банком",
+            f"Попробуйте повторить операцию через пару минут. При повторении ошибки необходимо обратиться в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+        )
+        return 0
+    if returncode in TERMINAL_NEED_CASH_COLLECTION:
+        handle_error(
+            returncode,
+            "Необходимо произвести инкассацию",
+            f"Необходимо произвести инкассацию. Обратитесь в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+        )
+        return 0
+    if returncode in TERMINAL_LIMIT_OPERATION:
+        handle_error(
+            returncode,
+            "Превышен лимит операций",
+            f"Превышен лимит операций. Обратитесь в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+        )
+        return 0
+    if returncode in TERMINAL_DATA_EXCHANGE:
+        handle_error(
+            returncode,
+            "Требуется сделать сверку итогов",
+            "Требуется сделать сверку итогов и повторить операцию.",
+        )
+        return 0
+    if returncode in TERMINAL_KLK:
+        handle_error(
+            returncode,
+            "Ошибка в работе терминала",
+            f"Необходимо обратиться в службу поддержки банка. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+        )
+        return 0
+    if returncode in TERMINAL_CARD_ERROR:
+        handle_error(
+            returncode,
+            "Операцию невозможно выполнить для этой карты",
+            f"Необходимо повторить попытку. Если проблема сохраняется – использовать другую карту. Код возврата: {returncode}.",
+        )
+        return 0
+    if returncode in TERMINAL_SERVER_ROUTINE_MAINTENANCE:
+        handle_error(
+            returncode,
+            "Сервера Сбербанка недоступны",
+            f"Сервера Сбербанка находятся на обслуживании/ремонте/регламентных работах. Попробуйте повторить операцию позже. Если проблема сохраняется - обратитесь в службу поддержки. Телефон тех.поддержки {TERMINAL_SUPPORT}.Код возврата: {returncode}.",
+        )
+        return 0
+    if returncode in TERMINAL_NO_MONEY:
+        handle_error(
+            returncode,
+            "Недостаточно средств на карте",
+            f"Недостаточно средств на карте. Попробуйте произвести оплату другой картой.",
+        )
+        return 0
+    if returncode in TERMINAL_COMMAND_ERROR:
+        handle_error(
+            returncode,
+            "Нет нужного варианта связи для операции",
+            f"Нет нужного варианта связи для операции. Обратитесь в службу поддержки ПО. Код возврата: {returncode}.",
+        )
+        return 0
+    if returncode in TERMINAL_PIN_PAD_ERROR:
+        handle_error(
+            returncode,
+            "Проблема в работе ПИН-пада.",
+            f"Необходимо обратиться в службу поддержки банка. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+        )
+        return 0
     # Общие ошибки
     if returncode in error_handlers:
         title, message = error_handlers[returncode]
@@ -287,7 +412,7 @@ def process_terminal_error(returncode):
     handle_error(
         returncode,
         "Ошибка терминала",
-        "Возвращен неизвестный код ошибки. Обратитесь в службу поддержки.",
+        f"Возвращен неизвестный код ошибки. Обратитесь в службу поддержки. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
     )
     return 0
 
@@ -347,31 +472,44 @@ def terminal_return(amount):
     # Добавляем '00' для копеек
     result = run_terminal_command(f"1 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
+    # if result is None:
+    #     logger.error("Ошибка при выполнении команды терминала")
+    #     handle_error(
+    #         "Нет ответа от терминала",
+    #         "Команда терминала не была выполнена. Проверьте устройство.",
+    #         "Код ошибки: отсутствует",
+    #     )
+    #     return 0
+    #
+    # logger.info(
+    #     f"Статус проведения операции по банковскому терминалу: {result.returncode}"
+    # )
+    #
+    # # Успешный результат
+    # if result.returncode == TERMINAL_SUCCESS_CODE:
+    #     return process_success_result()
+    #
+    # # Обработка ошибок
+    # return process_terminal_error(result.returncode)
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
+        handle_error(
+            "Нет ответа от терминала",
+            "Команда терминала не была выполнена. Проверьте устройство.",
+            "Код ошибки: отсутствует",
+        )
         return 0
+
+    logger.info(
+        f"Статус проведения операции по банковскому терминалу: {result.returncode}"
+    )
+
+    # Успешный результат
     if result.returncode == TERMINAL_SUCCESS_CODE:
-        try:
-            return 1 if check_terminal_file(APPROVE) else 0
-        except FileNotFoundError as not_found:
-            logger.error(f"Файл не найден: {not_found}")
-            return 0
-    elif result.returncode == TERMINAL_DATA_EXCHANGE:
-        logger.info(f"Терминал вернул следующий код операции: {TERMINAL_DATA_EXCHANGE}")
-        windows.info_window(
-            "Ошибка при проведении оплаты",
-            "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
-            "Команда завершена с кодом: 4134",
-        )
-        return 0
-    else:
-        logger.error(f"Неизвестный код возврата: {result.returncode}")
-        windows.info_window(
-            "Ошибка при проведении оплаты",
-            "Неизвестный код возврата",
-            f"Команда завершена с кодом: {result.returncode}",
-        )
-        return 0
+        return process_success_result()
+
+    # Обработка ошибок
+    return process_terminal_error(result.returncode)
 
 
 @logger_wraps()
@@ -392,25 +530,25 @@ def terminal_canceling(amount):
     # Добавляем '00' для копеек
     result = run_terminal_command(f"1 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
-    if result is None or result.returncode is None:
+    if result is None:
         logger.error("Ошибка при выполнении команды терминала")
-        return 0
-    if result.returncode == TERMINAL_SUCCESS_CODE:
-        try:
-            return 1 if check_terminal_file(APPROVE) else 0
-        except FileNotFoundError as not_found:
-            logger.error(f"Файл не найден: {not_found}")
-            return 0
-    elif result.returncode == TERMINAL_DATA_EXCHANGE:
-        windows.info_window(
-            "Ошибка при проведении оплаты",
-            "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
-            "Команда завершена с кодом: 4134",
+        handle_error(
+            "Нет ответа от терминала",
+            "Команда терминала не была выполнена. Проверьте устройство.",
+            "Код ошибки: отсутствует",
         )
         return 0
-    else:
-        logger.error(f"Неизвестный код возврата: {result.returncode}")
-        return 0
+
+    logger.info(
+        f"Статус проведения операции по банковскому терминалу: {result.returncode}"
+    )
+
+    # Успешный результат
+    if result.returncode == TERMINAL_SUCCESS_CODE:
+        return process_success_result()
+
+    # Обработка ошибок
+    return process_terminal_error(result.returncode)
 
 
 @logger_wraps()

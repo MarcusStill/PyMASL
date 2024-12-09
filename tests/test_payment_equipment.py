@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock, call
 import pytest
 
 from modules.config import Config
+from modules.payment_equipment import TERMINAL_SUCCESS_CODE
 from modules.payment_equipment import (
     fptr_connection,
     run_terminal_command,
@@ -21,18 +22,8 @@ from modules.payment_equipment import (
     read_pinpad_file,
     register_tickets,
     handle_document_errors,
+    process_terminal_error,
 )
-
-# Константы для тестирования
-TERMINAL_SUCCESS_CODE: int = 0
-TERMINAL_USER_CANCEL_CODE: int = 2000
-TERMINAL_DATA_EXCHANGE: int = 4134
-TERMINAL_NO_MONEY: int = 4451
-TERMINAL_KLK: int = 4120
-TERMINAL_CARD_BLOCKED: set[int] = {2004, 2005, 2006, 2007, 2405, 2406, 2407}
-TERMINAL_INVALID_CURRENCY_CODE: int = 4336
-TERMINAL_NO_ADDRESS_TO_CONTACT: int = 4139
-APPROVE = "APPROVE"  # Слово для проверки в файле
 
 
 # Мок-объект для fptr
@@ -1054,9 +1045,17 @@ def test_terminal_oplata_error(
 # Тест для успешного возврата, когда команда выполнена успешно и файл найден
 @patch("modules.payment_equipment.run_terminal_command")
 @patch("modules.payment_equipment.check_terminal_file")
+@patch("modules.payment_equipment.process_success_result")
+@patch("modules.payment_equipment.process_terminal_error")
+@patch("modules.payment_equipment.handle_error")
 @patch("modules.payment_equipment.logger")
 def test_terminal_return_success(
-    mock_logger, mock_check_terminal_file, mock_run_terminal_command
+    mock_logger,
+    mock_handle_error,
+    mock_process_terminal_error,
+    mock_process_success_result,
+    mock_check_terminal_file,
+    mock_run_terminal_command,
 ):
     """Тест для успешного возврата средств по банковскому терминалу."""
 
@@ -1065,6 +1064,7 @@ def test_terminal_return_success(
     mock_result.returncode = TERMINAL_SUCCESS_CODE
     mock_run_terminal_command.return_value = mock_result
     mock_check_terminal_file.return_value = True  # Файл найден
+    mock_process_success_result.return_value = 1  # Успешный результат
 
     amount = 100.0
 
@@ -1074,22 +1074,37 @@ def test_terminal_return_success(
     # Проверяем, что результат равен 1 (успех)
     assert result == 1
 
-    # Проверяем, что логирование было вызвано
-    mock_logger.info.assert_called_with("Запуск функции terminal_return")
+    # Проверяем, что логирование было вызвано для "Запуск функции terminal_return"
+    mock_logger.info.assert_any_call("Запуск функции terminal_return")
+
+    # Проверяем, что логирование было вызвано для "Статус проведения операции по банковскому терминалу"
+    mock_logger.info.assert_any_call(
+        f"Статус проведения операции по банковскому терминалу: {TERMINAL_SUCCESS_CODE}"
+    )
+
+    # Проверяем, что логирование было вызвано для "В функцию была передана следующая сумма"
     mock_logger.debug.assert_any_call(
         f"В функцию была передана следующая сумма: {amount}"
     )
-    mock_check_terminal_file.assert_called_once_with("ОДОБРЕНО")
+
+    # Проверяем, что вызвана функция process_success_result
+    mock_process_success_result.assert_called_once()
 
 
 # Тест для ситуации, когда терминал не отвечает (result is None)
 @patch("modules.payment_equipment.run_terminal_command")
+@patch("modules.payment_equipment.handle_error")
 @patch("modules.payment_equipment.logger")
-def test_terminal_return_no_response(mock_logger, mock_run_terminal_command):
+def test_terminal_return_no_response(
+    mock_logger, mock_handle_error, mock_run_terminal_command
+):
     """Тест для случая, когда терминал не отвечает."""
 
     # Настроим поведение mock-объектов
     mock_run_terminal_command.return_value = None
+    mock_handle_error.return_value = (
+        None  # Убедимся, что handle_error не вызывает побочных эффектов
+    )
 
     amount = 100.0
 
@@ -1101,6 +1116,11 @@ def test_terminal_return_no_response(mock_logger, mock_run_terminal_command):
 
     # Проверяем, что ошибка была записана в лог
     mock_logger.error.assert_called_with("Ошибка при выполнении команды терминала")
+    mock_handle_error.assert_called_once_with(
+        "Нет ответа от терминала",
+        "Команда терминала не была выполнена. Проверьте устройство.",
+        "Код ошибки: отсутствует",
+    )
 
 
 # Тест для ситуации, когда файл не найден (FileNotFoundError)
@@ -1129,10 +1149,13 @@ def test_terminal_return_file_not_found(
     assert result == 0
 
     # Проверяем, что ошибка была записана в лог
-    mock_logger.error.assert_called_with("Файл не найден: Файл не найден")
+    mock_logger.error.assert_called_with(
+        "Файл подтверждения транзакции не найден: Файл не найден"
+    )
 
 
 # Тест для обработки кода возврата TERMINAL_DATA_EXCHANGE (ошибка 4134)
+# Исправленный тест, учитывая, что логируется другое сообщение
 @patch("modules.payment_equipment.run_terminal_command")
 @patch("modules.payment_equipment.windows.info_window")
 @patch("modules.payment_equipment.logger")
@@ -1143,7 +1166,7 @@ def test_terminal_return_data_exchange_error(
 
     # Настроим поведение mock-объектов
     mock_result = MagicMock()
-    mock_result.returncode = TERMINAL_DATA_EXCHANGE
+    mock_result.returncode = 4134  # Устанавливаем один из кодов ошибки из множества
     mock_run_terminal_command.return_value = mock_result
 
     amount = 100.0
@@ -1156,62 +1179,88 @@ def test_terminal_return_data_exchange_error(
 
     # Проверяем, что вызвано окно с информацией об ошибке
     mock_info_window.assert_called_once_with(
-        "Ошибка при проведении оплаты",
-        "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
+        "Требуется сделать сверку итогов",  # Обновлено
+        "Требуется сделать сверку итогов и повторить операцию.",  # Обновлено
         "Команда завершена с кодом: 4134",
     )
 
-    # Проверяем, что логирование было вызвано с нужным сообщением
+    # Проверяем, что логирование было вызвано с другим сообщением
     mock_logger.info.assert_any_call(
-        f"Терминал вернул следующий код операции: {TERMINAL_DATA_EXCHANGE}"
+        f"Статус проведения операции по банковскому терминалу: 4134"  # Обновлено
     )
 
 
 #######################################
 # Тестируем terminal_canceling
-
-
-# Тест для успешной операции отмены
 @patch("modules.payment_equipment.run_terminal_command")
 @patch("modules.payment_equipment.check_terminal_file")
+@patch("modules.payment_equipment.process_success_result")
+@patch("modules.payment_equipment.process_terminal_error")
+@patch("modules.payment_equipment.handle_error")
 @patch("modules.payment_equipment.logger")
 def test_terminal_canceling_success(
-    mock_logger, mock_check_terminal_file, mock_run_terminal_command
+    mock_logger,
+    mock_handle_error,
+    mock_process_terminal_error,
+    mock_process_success_result,
+    mock_check_terminal_file,
+    mock_run_terminal_command,
 ):
     """Тест для успешной операции отмены."""
 
     # Настроим поведение mock-объектов
     mock_result = MagicMock()
-    mock_result.returncode = TERMINAL_SUCCESS_CODE
+    mock_result.returncode = TERMINAL_SUCCESS_CODE  # Успешный код возврата
     mock_run_terminal_command.return_value = mock_result
     mock_check_terminal_file.return_value = True  # Файл найден
+    mock_process_success_result.return_value = (
+        1  # Эмулируем успешный возврат из process_success_result
+    )
 
     amount = 100.0
 
     # Вызовем тестируемую функцию
     result = terminal_canceling(amount)
 
-    # Проверяем, что результат равен 1 (успех)
+    # Проверим результат
     assert result == 1
 
-    # Проверяем, что логирование было вызвано
-    mock_logger.info.assert_called_with("Запуск функции terminal_canceling")
+    # Проверяем, что логирование было вызвано для "Запуск функции terminal_canceling"
+    mock_logger.info.assert_any_call("Запуск функции terminal_canceling")
+
+    # Проверяем, что логирование было вызвано для "Статус проведения операции по банковскому терминалу"
+    mock_logger.info.assert_any_call(
+        f"Статус проведения операции по банковскому терминалу: {TERMINAL_SUCCESS_CODE}"
+    )
+
+    # Проверяем, что логирование было вызвано для "В функцию была передана следующая сумма"
     mock_logger.debug.assert_any_call(
         f"В функцию была передана следующая сумма: {amount}"
     )
-    mock_check_terminal_file.assert_called_once_with("ОДОБРЕНО")
+
+    # Проверяем, что вызвана функция process_success_result
+    mock_process_success_result.assert_called_once()
+
+    # Убираем ожидание вызова check_terminal_file с параметром "ОДОБРЕНО"
+    # Проверяем, что check_terminal_file не была вызвана
+    mock_check_terminal_file.assert_not_called()
+
+    # Проверяем, что команда терминала была вызвана правильно
+    mock_run_terminal_command.assert_called_once_with(f"1 {amount}00")
 
 
-# Тест для случая, когда команда терминала вернула None (ошибка)
 @patch("modules.payment_equipment.run_terminal_command")
 @patch("modules.payment_equipment.logger")
-def test_terminal_canceling_command_error(mock_logger, mock_run_terminal_command):
+@patch("modules.payment_equipment.handle_error")
+def test_terminal_canceling_command_error(
+    mock_handle_error, mock_logger, mock_run_terminal_command
+):
     """Тест для ошибки при выполнении команды терминала."""
 
     # Настроим поведение mock-объекта
-    mock_result = MagicMock()
-    mock_result.returncode = None
-    mock_run_terminal_command.return_value = mock_result
+    mock_run_terminal_command.return_value = (
+        None  # Симулируем отсутствие ответа от терминала
+    )
 
     amount = 100.0
 
@@ -1223,6 +1272,13 @@ def test_terminal_canceling_command_error(mock_logger, mock_run_terminal_command
 
     # Проверяем, что ошибка была записана в лог
     mock_logger.error.assert_called_with("Ошибка при выполнении команды терминала")
+
+    # Проверяем, что была вызвана обработка ошибки (handle_error)
+    mock_handle_error.assert_called_once_with(
+        "Нет ответа от терминала",
+        "Команда терминала не была выполнена. Проверьте устройство.",
+        "Код ошибки: отсутствует",
+    )
 
 
 # Тест для случая, когда не найден файл
@@ -1238,7 +1294,7 @@ def test_terminal_canceling_file_not_found(
     mock_result = MagicMock()
     mock_result.returncode = TERMINAL_SUCCESS_CODE
     mock_run_terminal_command.return_value = mock_result
-    mock_check_terminal_file.side_effect = FileNotFoundError("Файл не найден")
+    mock_check_terminal_file.return_value = False  # Симулируем, что файл не найден
 
     amount = 100.0
 
@@ -1249,7 +1305,9 @@ def test_terminal_canceling_file_not_found(
     assert result == 0
 
     # Проверяем, что ошибка была записана в лог
-    mock_logger.error.assert_called_with("Файл не найден: Файл не найден")
+    mock_logger.error.assert_called_with(
+        "Файл подтверждения транзакции отсутствует или поврежден."
+    )
 
 
 # Тест для случая, когда терминал вернул код TERMINAL_DATA_EXCHANGE
@@ -1263,7 +1321,7 @@ def test_terminal_canceling_data_exchange(
 
     # Настроим поведение mock-объектов
     mock_result = MagicMock()
-    mock_result.returncode = TERMINAL_DATA_EXCHANGE
+    mock_result.returncode = 4134  # Один из кодов из множества TERMINAL_DATA_EXCHANGE
     mock_run_terminal_command.return_value = mock_result
 
     amount = 100.0
@@ -1276,8 +1334,8 @@ def test_terminal_canceling_data_exchange(
 
     # Проверяем, что была вызвана информационная панель
     mock_info_window.assert_called_once_with(
-        "Ошибка при проведении оплаты",
-        "Требуется сделать сверку итогов и после этого повторить операцию оплаты",
+        "Требуется сделать сверку итогов",
+        "Требуется сделать сверку итогов и повторить операцию.",
         "Команда завершена с кодом: 4134",
     )
 
@@ -1285,7 +1343,13 @@ def test_terminal_canceling_data_exchange(
 # Тест для случая с неизвестным кодом возврата
 @patch("modules.payment_equipment.run_terminal_command")
 @patch("modules.payment_equipment.logger")
-def test_terminal_canceling_unknown_error(mock_logger, mock_run_terminal_command):
+@patch("modules.payment_equipment.handle_error")
+@patch.dict(
+    "os.environ", {"TERMINAL_SUPPORT": "123456"}
+)  # Заменим на фиктивный номер телефона
+def test_terminal_canceling_unknown_error(
+    mock_handle_error, mock_logger, mock_run_terminal_command
+):
     """Тест для случая с неизвестным кодом возврата терминала."""
 
     # Настроим поведение mock-объектов
@@ -1301,5 +1365,76 @@ def test_terminal_canceling_unknown_error(mock_logger, mock_run_terminal_command
     # Проверяем, что результат равен 0 (ошибка)
     assert result == 0
 
+    # Проверяем, что handle_error был вызван с правильными параметрами
+    mock_handle_error.assert_called_with(
+        999,
+        "Ошибка терминала",
+        "Возвращен неизвестный код ошибки. Обратитесь в службу поддержки. Телефон тех.поддержки 0321. Код возврата: 999.",
+    )
+
+
+#######################################
+# Тестируем process_terminal_error
+@pytest.fixture
+def mock_logger():
+    with patch("modules.payment_equipment.logger") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_handle_error():
+    with patch("modules.payment_equipment.handle_error") as mock:
+        yield mock
+
+
+# Тест для обработки неизвестного кода возврата
+def test_process_terminal_error_unknown_code(mock_logger, mock_handle_error):
+    returncode = 9999  # Неизвестный код возврата
+    process_terminal_error(returncode)
+
     # Проверяем, что ошибка была записана в лог
-    mock_logger.error.assert_called_with("Неизвестный код возврата: 999")
+    mock_logger.error.assert_called_once_with(f"Неизвестный код возврата: {returncode}")
+
+    # Проверяем, что был вызван handle_error с правильными параметрами для неизвестной ошибки
+    mock_handle_error.assert_called_once_with(
+        returncode,
+        "Ошибка терминала",
+        f"Возвращен неизвестный код ошибки. Обратитесь в службу поддержки. Телефон тех.поддержки 0321. Код возврата: {returncode}.",
+    )
+
+
+# Тест для обработки кода из множества TERMINAL_CARD_BLOCKED
+@pytest.mark.parametrize("returncode", [4134, 4332])
+def test_process_terminal_error_in_set(mock_logger, mock_handle_error, returncode):
+    # Заменим RETURN_CODES_SET на наш тестируемый код
+    process_terminal_error(returncode)
+
+    # Проверяем, что был вызван handle_error с правильными параметрами
+    if returncode == 4332:
+        mock_handle_error.assert_called_once_with(
+            returncode,
+            "Требуется сделать сверку итогов",
+            "Требуется сделать сверку итогов и повторить операцию.",
+        )
+    elif returncode == 4134:
+        mock_handle_error.assert_called_once_with(
+            returncode,
+            "Требуется сделать сверку итогов",
+            "Требуется сделать сверку итогов и повторить операцию.",
+        )
+
+
+# Тест для обработки кода, который не соответствует никакому набору
+def test_process_terminal_error_code_not_found(mock_logger, mock_handle_error):
+    returncode = 99999  # Неизвестный код возврата
+    process_terminal_error(returncode)
+
+    # Проверяем, что ошибка была записана в лог
+    mock_logger.error.assert_called_once_with(f"Неизвестный код возврата: {returncode}")
+
+    # Проверяем, что был вызван handle_error с правильными параметрами
+    mock_handle_error.assert_called_once_with(
+        returncode,
+        "Ошибка терминала",
+        f"Возвращен неизвестный код ошибки. Обратитесь в службу поддержки. Телефон тех.поддержки 0321. Код возврата: {returncode}.",
+    )
