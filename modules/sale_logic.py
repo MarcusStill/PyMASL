@@ -19,7 +19,7 @@ def calculate_age(birth_date: date) -> int:
     Возвращаемое значение:
         int: Возраст.
     """
-    logger.info("Запуск функцию calculate_age")
+    logger.info("Запуск функции calculate_age")
     # Используем функцию get_today_date для получения текущей даты
     today = get_today_date()
     return (
@@ -31,7 +31,7 @@ def calculate_age(birth_date: date) -> int:
 
 def get_today_date():
     """Функция для получения текущей даты (можно подменить в тестах)."""
-    logger.info("Запуск функцию get_today_date")
+    logger.info("Запуск функции get_today_date")
     return date.today()
 
 
@@ -45,7 +45,7 @@ def calculate_ticket_type(age: int) -> str:
     Возвращаемое значение:
         str: Тип билета (бесплатный, детский, взрослый).
     """
-    logger.info("Запуск функцию calculate_ticket_type")
+    logger.info("Запуск функции calculate_ticket_type")
     result: str = ""
     if age < system.age["min"]:
         result = "бесплатный"
@@ -67,7 +67,7 @@ def calculated_ticket_price(type_ticket: str, time: int) -> int:
     Возвращаемое значение:
         str: Тип билета (бесплатный, детский, взрослый).
     """
-    logger.info("Запуск функцию calculated_ticket_price")
+    logger.info("Запуск функции calculated_ticket_price")
     try:
         if type_ticket == "бесплатный":
             return system.price["ticket_free"]
@@ -93,7 +93,7 @@ def calculate_adult_price() -> int:
     Возвращаемое значение:
         int: Цена взрослого билета.
     """
-    logger.info("Запуск функцию calculate_adult_price")
+    logger.info("Запуск функции calculate_adult_price")
     duration = system.sale_dict["detail"][6]
     # Если продолжительность посещения 1 час
     if duration == 1:
@@ -131,7 +131,7 @@ def calculate_child_price() -> int:
     Возвращаемое значение:
         int: Цена взрослого билета.
     """
-    logger.info("Запуск функцию calculate_child_price")
+    logger.info("Запуск функции calculate_child_price")
     duration = system.sale_dict["detail"][6]
     is_weekend = system.what_a_day != 0
     if duration == 1:
@@ -173,7 +173,7 @@ def calculate_discounted_price(price: int, type_ticket: str):
     Возвращает:
         tuple[int, bool, str]: Итоговая цена, флаг особой продажи, категория билета.
     """
-    logger.info("Запуск функцию calculate_discounted_price")
+    logger.info("Запуск функции calculate_discounted_price")
     new_price = price
     category = ""
     discount_status = False
@@ -209,7 +209,7 @@ def calculate_discount(value_1, value_2) -> Decimal:
     Возвращаемое значение:
         Decimal: Новая цена после применения скидки.
     """
-    logger.info("Запуск функцию calculate_discount")
+    logger.info("Запуск функции calculate_discount")
     # Проверка на корректность скидки: 0 ≤ value_2 ≤ 100
     price = Decimal(value_1)
     sale_discount = Decimal(max(0, min(value_2, 100)))
@@ -226,7 +226,7 @@ def calculate_itog() -> int:
     Возвращаемое значение:
         None: Функция не возвращает значений, вставляет фамилию в поле формы.
     """
-    logger.info("Запуск функцию calculate_itog")
+    logger.info("Запуск функции calculate_itog")
     # Проверка на корректность данных (например, отрицательные значения)
     if (
         system.sale_dict["kol_adult"] < 0
@@ -258,7 +258,7 @@ def get_talent_based_on_time(time_ticket: int):
     Возвращаемое значение:
         tuple[int, int]: Количество талантов и соответствующее значение таланта из системы.
     """
-    logger.info("Запуск функцию get_talent_based_on_time")
+    logger.info("Запуск функции get_talent_based_on_time")
     if time_ticket == 1:
         return 1, system.talent["1_hour"]
     elif time_ticket == 2:
@@ -278,7 +278,7 @@ def update_sale_dict_adult_many_child() -> None:
     Возвращаемое значение:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
-    logger.info("Запуск функцию update_sale_dict_adult_many_child")
+    logger.info("Запуск функции update_sale_dict_adult_many_child")
     logger.debug("Добавляем взрослого многодетного в sale_dict[detail]")
     system.sale_dict["detail"][0] = system.count_number_of_visitors[
         "kol_adult_many_child"
@@ -296,7 +296,7 @@ def update_sale_dict_adult_invalid() -> None:
     Возвращаемое значение:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
-    logger.info("Запуск функцию update_sale_dict_adult_invalid")
+    logger.info("Запуск функции update_sale_dict_adult_invalid")
     system.sale_dict["detail"][0] = system.count_number_of_visitors["kol_adult_invalid"]
     system.sale_dict["detail"][1] = system.price["ticket_free"]
 
@@ -311,7 +311,7 @@ def update_sale_dict_child_many_child() -> None:
     Возвращаемое значение:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
-    logger.info("Запуск функцию update_sale_dict_child_many_child")
+    logger.info("Запуск функции update_sale_dict_child_many_child")
     system.sale_dict["detail"][2] = system.count_number_of_visitors[
         "kol_child_many_child"
     ]
@@ -328,7 +328,7 @@ def update_sale_dict_child_invalid() -> None:
     Возвращаемое значение:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
-    logger.info("Запуск функцию update_sale_dict_child_invalid")
+    logger.info("Запуск функции update_sale_dict_child_invalid")
     system.sale_dict["detail"][2] = system.count_number_of_visitors["kol_child_invalid"]
     system.sale_dict["detail"][3] = system.price["ticket_free"]
 
@@ -343,7 +343,7 @@ def update_adult_count() -> None:
     Возвращаемое значение:
         None: Функция не возвращает значений, вставляет фамилию в поле формы.
     """
-    logger.info("Запуск функцию update_adult_count")
+    logger.info("Запуск функции update_adult_count")
     system.count_number_of_visitors["kol_adult"] += 1
     system.sale_dict["kol_adult"] = system.count_number_of_visitors["kol_adult"]
 
@@ -358,7 +358,7 @@ def update_child_count() -> None:
     Возвращаемое значение:
         None: Функция не возвращает значений, вставляет фамилию в поле формы.
     """
-    logger.info("Запуск функцию update_child_count")
+    logger.info("Запуск функции update_child_count")
     system.count_number_of_visitors["kol_child"] += 1
     system.sale_dict["kol_child"] = system.count_number_of_visitors["kol_child"]
 
@@ -371,6 +371,7 @@ def convert_sale_dict_values(sale_dict):
     :param sale_dict: Словарь с данными продажи.
     :return: Обновленный словарь с корректными типами данных.
     """
+    logger.info("Запуск функции convert_sale_dict_values")
     for key, value in sale_dict.items():
         if isinstance(value, list):
             # Если значение - это список, проходим по его элементам
