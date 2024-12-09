@@ -85,6 +85,14 @@ class AuthForm(QDialog):
         # Запуск предпродажных проверок
         if perform_pre_sale_checks(login, password) == 1:
             auth.close()
+            kkt_model = pq.get_info(hide=True)
+            if kkt_model == 0:
+                windows.info_window(
+                    "Внимание",
+                    "Соединение с кассовым аппаратом не установлено!",
+                    "Попробуйте устранить ошибку и после этого запросить информацию с ККТ:"
+                    "Вкладка `Операции с ККТ` -> `Информация о ККТ` или `Дата и время ККТ`.",
+                )
             window = MainWindow()
             window.showMaximized()
             # Установка заголовка окна
@@ -168,9 +176,9 @@ class ClientForm(QDialog):
             if system.client_update != 1:
                 logger.info("Добавляем нового клиента")
                 with Session(system.engine) as session:
-                    # # получаем максимальный id в таблице клиентов
-                    query = func.max(Client.id)
-                    client_index: int = session.execute(query).scalars().first()
+                    # получаем максимальный id в таблице клиентов
+                    query = func.coalesce(func.max(Client.id), 0)  # Если таблица пуста, будет возвращен 0
+                    client_index: int = session.execute(query).scalar()
                     logger.debug(f"Количество клиентов в бд: {client_index}")
                     new_client = Client(
                         id=client_index + 1,
@@ -947,7 +955,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
         """
-        logger.info("Запуск функцию sale_update")
+        logger.info("Запуск функции sale_update")
         # Используем для подсчета количества посетителей
         # В id_adult запоминаем идентификатор для "привязки" продажи ко взрослому
         # Флаг "многодетные": 1 - 2 часа бесплатно, 2 - скидка 50%
@@ -1062,7 +1070,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None
         """
-        logger.info("Запуск функцию apply_discounts")
+        logger.info("Запуск функции apply_discounts")
         # Устанавливаем цену в таблицу и пересчитываем
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{price}"))
         system.sale_discount = int(self.ui.comboBox_2.currentText())
@@ -1115,7 +1123,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             int: Цена билета.
         """
-        logger.info("Запуск функцию ticket_counting")
+        logger.info("Запуск функции ticket_counting")
 
         if type_ticket == "взрослый":
             return self.calculate_adult(row)
@@ -1187,7 +1195,7 @@ class SaleForm(QDialog):
 
         Возвращаемое значение: None
         """
-        logger.info("Запуск функцию analyzing_visitor_category")
+        logger.info("Запуск функции analyzing_visitor_category")
         visitor_category = self.ui.tableWidget_2.item(row, 4).text()
         if visitor_category == "м":
             self.handle_many_children_discount(row)
@@ -1314,7 +1322,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None
         """
-        logger.info("Запуск функцию adult_exclusion")
+        logger.info("Запуск функции adult_exclusion")
         if self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).isChecked():
             # Исключаем взрослого из продажи номер строки не запоминали
             if system.sale_checkbox_row is None:
@@ -1408,10 +1416,8 @@ class SaleForm(QDialog):
             with Session(system.engine) as session:
                 session.add(add_sale)
                 session.commit()
-            # Получаем номер сохраненной продажи
-            with Session(system.engine) as session:
-                query = func.max(Sale.id)
-                system.sale_id = session.execute(query).scalars().first()
+                # Запоминаем номер сохраненной продажи
+                system.sale_id = add_sale.id
             # Сохраняем билеты
             type_ticket: int | None = None
             logger.debug("Сохраняем билеты в БД")
@@ -1478,7 +1484,7 @@ class SaleForm(QDialog):
                     )
                     return  # Остановка выполнения, если операция не удалась
                 elif bank == 1:
-                    logger.debug("Операция прошла успешно. Сохраняем чек возврата.")
+                    logger.debug("Операция прошла успешно. Сохраняем чек.")
                     if payment == 3:  # Если оплата offline банковской картой
                         check = "offline"
                     else:
@@ -1796,7 +1802,7 @@ class SaleForm(QDialog):
                             state_check = pq.check_open(
                                 tickets, payment_type, system.user, 2, 1, price, bank
                             )
-                # Если отмена прошела
+                # Если отмена прошла
                 if state_check == 1:
                     # Изменяем статус для отмененного платежа
                     status_info: int = 8
@@ -2348,6 +2354,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             user_filter: str = self.ui.lineEdit_2.text().title()
             # Разбиваем поисковую фразу на две
             lst: Any = user_filter.split()
+            # Инициализация переменной search пустым списком, чтобы избежать ошибки
+            search: list[Type[Client]] = []
             if len(lst) == 2:
                 with Session(system.engine) as session:
                     search: list[Type[Client]] = (
@@ -2432,7 +2440,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
-        logger.info("Запуск функции edit_client_in_sale")
+        logger.info("Запуск функции main_edit_client")
         # Ищем индекс и значение ячейки
         row_number: int = self.ui.tableWidget.currentRow()
         # Проверяем, что строка выбрана

@@ -35,6 +35,7 @@ class Config:
                 - pinpad_path (str): Путь к каталогу с ПО эквайрингового терминалу.
                 - ticket_coordinates_file (str): Путь к файлу с координатами для макета билета.
         """
+        logger.info("Запуск функции load_config")
         config = ConfigParser()
         try:
             if not os.path.exists(self.config_file):
