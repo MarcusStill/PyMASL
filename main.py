@@ -177,7 +177,8 @@ class ClientForm(QDialog):
                 logger.info("Добавляем нового клиента")
                 with Session(system.engine) as session:
                     # получаем максимальный id в таблице клиентов
-                    query = func.coalesce(func.max(Client.id), 0)  # Если таблица пуста, будет возвращен 0
+                    query = func.coalesce(func.max(Client.id), 0)
+                    # Если таблица пуста, будет возвращен 0
                     client_index: int = session.execute(query).scalar()
                     logger.debug(f"Количество клиентов в бд: {client_index}")
                     new_client = Client(
@@ -2068,9 +2069,19 @@ class SaleForm(QDialog):
             payment_type: int = Payment.Cash
             self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Offline:
-            logger.info("Оплата банковской картой offline")
-            payment_type: int = Payment.Offline
-            self.sale_transaction(payment_type, system.print_check)
+            user_choice = windows.info_dialog_window(
+                "Внимание",
+                f"Вы точно хотите провести оплату методом offline?\n\n"
+                f"Это надо делать ТОЛЬКО после успешной проверки проведения операции по банковскому терминалу!\n"
+                f"Для этого выполните команду: Касса -> Операции с банковским терминалом -> Печать ранее подготовленного документа.\n\n"
+                f"Операция считается успешной, если в распечатанном банковском слип-чеке:\n"
+                f" - сумма, дата и время проведения операции операции совпадают с данными из заказа;\n"
+                f" - указано слово 'ОДОБРЕНО'.",
+            )
+            if user_choice == 1:
+                logger.info("Оплата банковской картой offline")
+                payment_type: int = Payment.Offline
+                self.sale_transaction(payment_type, system.print_check)
         # Закрываем окно продажи и возвращаем QDialog.Accepted
         self.accept()
 
