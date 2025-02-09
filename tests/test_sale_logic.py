@@ -21,6 +21,7 @@ from modules.sale_logic import (
     update_adult_count,
     update_child_count,
     convert_sale_dict_values,
+    generating_parts_for_partial_returns
 )
 from modules.system import System
 
@@ -1164,3 +1165,70 @@ def test_no_conversion_needed():
     assert updated_dict["price_adult"] == 250
     assert updated_dict["price_child"] == 750
     assert updated_dict["detail"] == [125, 375]
+
+
+#######################################
+# Тестируем generating_parts_for_partial_returns
+# 1. Корректный возврат, когда сумма кратна стоимости билетов
+def test_valid_return():
+    tickets = {"adult": [100, 2], "child": [50, 2]}
+    amount = 150
+    expected = {"adult": [100, 1], "child": [50, 1]}  # 1 взрослый билет + 1 детский
+    assert generating_parts_for_partial_returns(tickets, amount) == expected
+
+# 2. Возврат с неполным покрытием билета (создаётся акция)
+def test_partial_ticket_return():
+    tickets = {"adult": [100, 2], "child": [50, 2]}
+    amount = 120
+    expected = {"adult": [100, 1], "child акция": [20, 1]}  # 1 взрослый билет + 20 рублей акцией
+    assert generating_parts_for_partial_returns(tickets, amount) == expected
+
+# 3. Недостаточная сумма (меньше минимального билета)
+def test_not_enough_amount():
+    tickets = {"adult": [100, 2], "child": [50, 2]}
+    amount = 30
+    expected = {"child акция": [30, 1]}  # 30 рублей акцией
+    assert generating_parts_for_partial_returns(tickets, amount) == expected
+
+# 4. Сумма возврата больше, чем стоимость всех билетов
+def test_return_more_than_total():
+    tickets = {"adult": [100, 1], "child": [50, 1]}
+    amount = 200  # Всего билетов на 150
+    expected = {"adult": [100, 1], "child": [50, 1]}  # Возвращает только 150, остальное игнорируется
+    assert generating_parts_for_partial_returns(tickets, amount) == expected
+
+# 5. Пустой словарь билетов
+def test_empty_tickets():
+    assert generating_parts_for_partial_returns({}, 100) == {}
+
+# 6. Сумма возврата 0
+def test_zero_amount():
+    tickets = {"adult": [100, 2], "child": [50, 2]}
+    assert generating_parts_for_partial_returns(tickets, 0) == {}
+
+# 7. Неверные входные данные (tickets не словарь)
+@pytest.mark.parametrize("invalid_tickets", [None, [], "string", 123])
+def test_invalid_tickets(invalid_tickets):
+    assert generating_parts_for_partial_returns(invalid_tickets, 100) == {}
+
+# 8. Неверные входные данные (amount не число или отрицательное)
+@pytest.mark.parametrize("invalid_amount", [None, "text", -10])
+def test_invalid_amount(invalid_amount):
+    tickets = {"adult": [100, 2]}
+    assert generating_parts_for_partial_returns(tickets, invalid_amount) == {}
+
+# 9. Билеты с некорректными значениями (отрицательная цена, строка вместо числа)
+def test_invalid_ticket_values():
+    tickets = {
+        "adult": [-100, 2],  # Отрицательная цена
+        "child": ["50", 2],  # Строка вместо числа
+        "infant": [30, -1]   # Отрицательное количество
+    }
+    assert generating_parts_for_partial_returns(tickets, 100) == {}
+
+# 10. Один билет в продаже
+def test_single_ticket():
+    tickets = {"adult": [100, 1]}
+    amount = 100
+    expected = {"adult": [100, 1]}
+    assert generating_parts_for_partial_returns(tickets, amount) == expected
