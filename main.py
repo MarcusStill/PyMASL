@@ -42,10 +42,11 @@ from modules.sale_logic import (
     calculate_discounted_price,
     calculate_discount,
     calculate_itog,
+    convert_sale_dict_values,
+    generating_parts_for_partial_returns,
     get_talent_based_on_time,
     update_adult_count,
     update_child_count,
-    convert_sale_dict_values,
 )
 from modules.system import System
 
@@ -1576,7 +1577,7 @@ class SaleForm(QDialog):
         if sale.status == 5:
             logger.debug("Требуется частичный возврат.")
             amount: int = int(sale.partial_return)
-            new_tickets = self.generating_parts_for_partial_returns(tickets, amount)
+            new_tickets = generating_parts_for_partial_returns(tickets, amount)
             logger.debug(f"new_tickets: {new_tickets}")
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
@@ -1901,79 +1902,79 @@ class SaleForm(QDialog):
             dct[type_ticket] = ticket
         return dct
 
-    @logger.catch()
-    def generating_parts_for_partial_returns(self, tickets, amount):
-        """
-        Функция формирует список позиций для чека частичного возврата прихода.
-
-        Параметры:
-            tickets (dict): Словарь с билетами.
-            amount (int): Сумма возврата.
-
-        Возвращаемое значение:
-            dict: Список позиций для чека частичного возврата.
-        """
-        logger.info("Запуск функции generating_parts_for_partial_returns")
-        logger.debug(f"tickets: {tickets}, amount = {amount}")
-        # Проверка входных данных
-        if not isinstance(tickets, dict):
-            logger.error("Ошибка: tickets должен быть словарем")
-            return {}
-        if not isinstance(amount, (int, float)) or amount < 0:
-            logger.error("Ошибка: amount должен быть положительным числом")
-            return {}
-        if not tickets:
-            logger.warning("Предупреждение: Передан пустой словарь tickets")
-            return {}
-        try:
-            count_tickets = len(tickets)
-            dct: dict = dict(list())
-            last_element_title = ""
-            last_element_price = 0
-            # Записываем сумму возврата в сумму остатка
-            residue_all: int = amount
-            i: int = 0
-            # Сохраняем список с остатками
-            residue: list = []
-            sale = tickets.items()
-            for item in sale:
-                ticket_name, ticket_data = item
-                # Проверяем, что ticket_data корректный
-                if not isinstance(ticket_data, list) or len(ticket_data) != 2:
-                    logger.error(f"Ошибка: Некорректный формат данных для {ticket_name}: {ticket_data}")
-                    continue  # Пропускаем этот билет
-                ticket_price, ticket_count = ticket_data
-                # Проверяем, что цена и количество корректные
-                if not isinstance(ticket_price, (int, float)) or ticket_price <= 0:
-                    logger.error(f"Ошибка: Некорректная цена билета {ticket_name}: {ticket_price}")
-                    continue  # Пропускаем этот билет
-                if not isinstance(ticket_count, int) or ticket_count < 0:
-                    logger.error(f"Ошибка: Некорректное количество билетов {ticket_name}: {ticket_count}")
-                    continue  # Пропускаем этот билет
-                # Если сумма билета >= суммы возврата
-                if residue_all >= ticket_price:
-                    count = residue_all // ticket_price
-                    value = residue_all - (count * ticket_price)
-                    # Сохраняем остаток
-                    residue.append(value)
-                    dct[ticket_name] = [ticket_price, count]
-                    # Обновляем сумму остатка
-                    residue_all = residue[i]
-                    i += 1
-                    # Если все позиции просмотрели, но остаток != 0
-                    if count_tickets == i and residue_all != 0:
-                        last_element_title = ticket_name + " акция"
-                        last_element_price = ticket_price
-                else:
-                    last_element_title = ticket_name + " акция"
-                    last_element_price = ticket_price
-            if residue_all != 0:
-                if residue_all < last_element_price:
-                    dct[last_element_title] = [residue_all, 1]
-            return dct
-        except Exception as e:
-            logger.exception(f"Ошибка в функции generating_parts_for_partial_returns: {e}")
-            return {}
+    # @logger.catch()
+    # def generating_parts_for_partial_returns(self, tickets, amount):
+    #     """
+    #     Функция формирует список позиций для чека частичного возврата прихода.
+    #
+    #     Параметры:
+    #         tickets (dict): Словарь с билетами.
+    #         amount (int): Сумма возврата.
+    #
+    #     Возвращаемое значение:
+    #         dict: Список позиций для чека частичного возврата.
+    #     """
+    #     logger.info("Запуск функции generating_parts_for_partial_returns")
+    #     logger.debug(f"tickets: {tickets}, amount = {amount}")
+    #     # Проверка входных данных
+    #     if not isinstance(tickets, dict):
+    #         logger.error("Ошибка: tickets должен быть словарем")
+    #         return {}
+    #     if not isinstance(amount, (int, float)) or amount < 0:
+    #         logger.error("Ошибка: amount должен быть положительным числом")
+    #         return {}
+    #     if not tickets:
+    #         logger.warning("Предупреждение: Передан пустой словарь tickets")
+    #         return {}
+    #     try:
+    #         count_tickets = len(tickets)
+    #         dct: dict = dict(list())
+    #         last_element_title = ""
+    #         last_element_price = 0
+    #         # Записываем сумму возврата в сумму остатка
+    #         residue_all: int = amount
+    #         i: int = 0
+    #         # Сохраняем список с остатками
+    #         residue: list = []
+    #         sale = tickets.items()
+    #         for item in sale:
+    #             ticket_name, ticket_data = item
+    #             # Проверяем, что ticket_data корректный
+    #             if not isinstance(ticket_data, list) or len(ticket_data) != 2:
+    #                 logger.error(f"Ошибка: Некорректный формат данных для {ticket_name}: {ticket_data}")
+    #                 continue  # Пропускаем этот билет
+    #             ticket_price, ticket_count = ticket_data
+    #             # Проверяем, что цена и количество корректные
+    #             if not isinstance(ticket_price, (int, float)) or ticket_price <= 0:
+    #                 logger.error(f"Ошибка: Некорректная цена билета {ticket_name}: {ticket_price}")
+    #                 continue  # Пропускаем этот билет
+    #             if not isinstance(ticket_count, int) or ticket_count < 0:
+    #                 logger.error(f"Ошибка: Некорректное количество билетов {ticket_name}: {ticket_count}")
+    #                 continue  # Пропускаем этот билет
+    #             # Если сумма билета >= суммы возврата
+    #             if residue_all >= ticket_price:
+    #                 count = residue_all // ticket_price
+    #                 value = residue_all - (count * ticket_price)
+    #                 # Сохраняем остаток
+    #                 residue.append(value)
+    #                 dct[ticket_name] = [ticket_price, count]
+    #                 # Обновляем сумму остатка
+    #                 residue_all = residue[i]
+    #                 i += 1
+    #                 # Если все позиции просмотрели, но остаток != 0
+    #                 if count_tickets == i and residue_all != 0:
+    #                     last_element_title = ticket_name + " акция"
+    #                     last_element_price = ticket_price
+    #             else:
+    #                 last_element_title = ticket_name + " акция"
+    #                 last_element_price = ticket_price
+    #         if residue_all != 0:
+    #             if residue_all < last_element_price:
+    #                 dct[last_element_title] = [residue_all, 1]
+    #         return dct
+    #     except Exception as e:
+    #         logger.exception(f"Ошибка в функции generating_parts_for_partial_returns: {e}")
+    #         return {}
 
     @logger.catch()
     def sale_generate_saved_tickets(self):
