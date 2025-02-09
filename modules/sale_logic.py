@@ -449,7 +449,7 @@ def generating_parts_for_partial_returns(tickets, amount):
                 continue  # Пропускаем этот билет
             # Если сумма билета >= суммы возврата
             if residue_all >= ticket_price:
-                count = residue_all // ticket_price
+                count = min(ticket_count, residue_all // ticket_price)  # Не больше купленного кол-ва билетов
                 value = residue_all - (count * ticket_price)
                 # Сохраняем остаток
                 residue.append(value)
