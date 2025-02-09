@@ -42,10 +42,11 @@ from modules.sale_logic import (
     calculate_discounted_price,
     calculate_discount,
     calculate_itog,
+    convert_sale_dict_values,
+    generating_parts_for_partial_returns,
     get_talent_based_on_time,
     update_adult_count,
     update_child_count,
-    convert_sale_dict_values,
 )
 from modules.system import System
 
@@ -177,7 +178,8 @@ class ClientForm(QDialog):
                 logger.info("Добавляем нового клиента")
                 with Session(system.engine) as session:
                     # получаем максимальный id в таблице клиентов
-                    query = func.coalesce(func.max(Client.id), 0)  # Если таблица пуста, будет возвращен 0
+                    query = func.coalesce(func.max(Client.id), 0)
+                    # Если таблица пуста, будет возвращен 0
                     client_index: int = session.execute(query).scalar()
                     logger.debug(f"Количество клиентов в бд: {client_index}")
                     new_client = Client(
@@ -1575,7 +1577,7 @@ class SaleForm(QDialog):
         if sale.status == 5:
             logger.debug("Требуется частичный возврат.")
             amount: int = int(sale.partial_return)
-            new_tickets = self.generating_parts_for_partial_returns(tickets, amount)
+            new_tickets = generating_parts_for_partial_returns(tickets, amount)
             logger.debug(f"new_tickets: {new_tickets}")
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
@@ -1848,133 +1850,72 @@ class SaleForm(QDialog):
         adult_promotion = 0
         child = 0
         child_promotion = 0
+        # Определение типов билетов
+        adult_ticket_types = {
+            1: ("Билет взрослый 1 ч.", "Билет взрослый акция 1 ч.", "ticket_adult_1"),
+            2: ("Билет взрослый 2 ч.", "Билет взрослый акция 2 ч.", "ticket_adult_2"),
+            3: ("Билет взрослый 3 ч.", "Билет взрослый акция 3 ч.", "ticket_adult_3"),
+        }
+        child_ticket_types = {
+            1: (
+                "Билет детский 1 ч.",
+                "Билет детский акция 1 ч.",
+                ["ticket_child_1", "ticket_child_week_1"],
+            ),
+            2: (
+                "Билет детский 2 ч.",
+                "Билет детский акция 2 ч.",
+                ["ticket_child_2", "ticket_child_week_2"],
+            ),
+            3: (
+                "Билет детский 3 ч.",
+                "Билет детский акция 3 ч.",
+                ["ticket_child_3", "ticket_child_week_3"],
+            ),
+        }
         for ticket_in_sale in system.sale_tickets:
-            if ticket_in_sale[8] >= system.age["max"]:
-                # Взрослый билет
-                # исключаем из списка нулевые билеты
-                if ticket_in_sale[4] != 0:
-                    # проверяем продолжительность
-                    if ticket_in_sale[9] == 1:
-                        if ticket_in_sale[4] == system.price["ticket_adult_1"]:
-                            type_ticket = "Билет взрослый 1 ч."
-                            adult += 1
-                            ticket = [ticket_in_sale[4], adult]
-                        else:
-                            type_ticket = "Билет взрослый акция 1 ч."
-                            adult_promotion += 1
-                            ticket = [ticket_in_sale[4], adult_promotion]
-                    elif ticket_in_sale[9] == 2:
-                        if ticket_in_sale[4] == system.price["ticket_adult_2"]:
-                            type_ticket = "Билет взрослый 2 ч."
-                            adult += 1
-                            ticket = [ticket_in_sale[4], adult]
-                        else:
-                            type_ticket = "Билет взрослый акция 2 ч."
-                            adult_promotion += 1
-                            ticket = [ticket_in_sale[4], adult_promotion]
-                    elif ticket_in_sale[9] == 3:
-                        if ticket_in_sale[4] == system.price["ticket_adult_3"]:
-                            type_ticket = "Билет взрослый 3 ч."
-                            adult += 1
-                            ticket = [ticket_in_sale[4], adult]
-                        else:
-                            type_ticket = "Билет взрослый акция 3 ч."
-                            adult_promotion += 1
-                            ticket = [ticket_in_sale[4], adult_promotion]
-                    dct[type_ticket] = ticket
-            else:
-                # Детский билет
-                # исключаем из списка нулевые билеты
-                if ticket_in_sale[4] != 0:
-                    # проверяем продолжительность
-                    if ticket_in_sale[9] == 1:
-                        if (
-                            ticket_in_sale[4] == system.price["ticket_child_1"]
-                            or ticket_in_sale[4] == system.price["ticket_child_week_1"]
-                        ):
-                            type_ticket = "Билет детский 1 ч."
-                            child += 1
-                            ticket = [ticket_in_sale[4], child]
-                        else:
-                            type_ticket = "Билет детский акция 1 ч."
-                            child_promotion += 1
-                            ticket = [ticket_in_sale[4], child_promotion]
-                    elif ticket_in_sale[9] == 2:
-                        if (
-                            ticket_in_sale[4] == system.price["ticket_child_2"]
-                            or ticket_in_sale[4] == system.price["ticket_child_week_2"]
-                        ):
-                            type_ticket = "Билет детский 2 ч."
-                            child += 1
-                            ticket = [ticket_in_sale[4], child]
-                        else:
-                            type_ticket = "Билет детский акция 2 ч."
-                            child_promotion += 1
-                            ticket = [ticket_in_sale[4], child_promotion]
-                    elif ticket_in_sale[9] == 3:
-                        if (
-                            ticket_in_sale[4] == system.price["ticket_child_3"]
-                            or ticket_in_sale[4] == system.price["ticket_child_week_3"]
-                        ):
-                            type_ticket = "Билет детский 3 ч."
-                            child += 1
-                            ticket = [ticket_in_sale[4], child]
-                        else:
-                            type_ticket = "Билет детский акция 3 ч."
-                            child_promotion += 1
-                            ticket = [ticket_in_sale[4], child_promotion]
-                    dct[type_ticket] = ticket
-        return dct
-
-    @logger.catch()
-    def generating_parts_for_partial_returns(self, tickets, amount):
-        """
-        Функция формирует список позиций для чека частичного возврата прихода.
-
-        Параметры:
-            tickets (dict): Словарь с билетами.
-            amount (int): Сумма возврата.
-
-        Возвращаемое значение:
-            dict: Список позиций для чека частичного возврата.
-        """
-        logger.info("Запуск функции generating_parts_for_partial_returns")
-        logger.debug(f"tickets: {tickets}, amount = {amount}")
-        count_tickets = len(tickets)
-        dct: dict = dict(list())
-        last_element_title = ""
-        last_element_price = 0
-        # Записываем сумму возврата в сумму остатка
-        residue_all: int = amount
-        i: int = 0
-        # Сохраняем список с остатками
-        residue: list = []
-        sale = tickets.items()
-        for item in sale:
-            # Если сумма билета >= суммы возврата
-            if residue_all >= item[1][0]:
-                count = residue_all // item[1][0]
-                value = residue_all - (count * item[1][0])
-                # Сохраняем остаток
-                residue.append(value)
-                dct[item[0]] = [item[1][0], count]
-                # Обновляем сумму остатка
-                residue_all = residue[i]
-                i += 1
-                # Если все позиции в билетах просмотрели, но остаток != 0
-                if count_tickets == i and residue_all != 0:
-                    # Запоминаем название и цену последней позиции
-                    last_element_title = item[0] + " акция"
-                    last_element_price = item[1][0]
-            else:
-                # Если остаток меньше стоимости последнего билета, запоминаем название и цену последней позиции
-                last_element_title = item[0] + " акция"
-                last_element_price = item[1][0]
-        if residue_all != 0:
-            # Если все позиции в билетах просмотрели, но остаток != 0
-            if residue_all < last_element_price:
-                # Если остаток меньше стоимости последнего просмотренного билета
-                dct[last_element_title] = [residue_all, 1]
+            ticket_price = ticket_in_sale[3]  # цена билета
+            client_age = ticket_in_sale[6]  # возраст
+            duration = ticket_in_sale[7]  # продолжительность
+            if ticket_price == 0:
+                continue  # Пропускаем нулевые билеты
+            ticket_types = (
+                adult_ticket_types
+                if client_age >= system.age["max"]
+                else child_ticket_types
+            )
+            if duration not in ticket_types:
+                logger.error(f"Неизвестная продолжительность билета: {duration}")
+                continue  # Пропускаем некорректные данные
+            type_ticket, promo_ticket, price_keys = ticket_types[duration]
+            if isinstance(price_keys, list):  # Для детских билетов
+                if ticket_price in (system.price[key] for key in price_keys):
+                    ticket_category = "child"
+                    type_ticket = type_ticket
+                else:
+                    ticket_category = "child_promotion"
+                    type_ticket = promo_ticket
+            else:  # Для взрослых билетов
+                if ticket_price == system.price[price_keys]:
+                    ticket_category = "adult"
+                    type_ticket = type_ticket
+                else:
+                    ticket_category = "adult_promotion"
+                    type_ticket = promo_ticket
+            # Увеличение счетчика соответствующего типа билетов
+            if ticket_category == "adult":
+                adult += 1
+                ticket = [ticket_price, adult]
+            elif ticket_category == "adult_promotion":
+                adult_promotion += 1
+                ticket = [ticket_price, adult_promotion]
+            elif ticket_category == "child":
+                child += 1
+                ticket = [ticket_price, child]
+            else:  # "child_promotion"
+                child_promotion += 1
+                ticket = [ticket_price, child_promotion]
+            dct[type_ticket] = ticket
         return dct
 
     @logger.catch()
@@ -2068,9 +2009,19 @@ class SaleForm(QDialog):
             payment_type: int = Payment.Cash
             self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Offline:
-            logger.info("Оплата банковской картой offline")
-            payment_type: int = Payment.Offline
-            self.sale_transaction(payment_type, system.print_check)
+            user_choice = windows.info_dialog_window(
+                "Внимание",
+                f"Вы точно хотите провести оплату методом offline?\n\n"
+                f"Это надо делать ТОЛЬКО после успешной проверки проведения операции по банковскому терминалу!\n"
+                f"Для этого выполните команду: Касса -> Операции с банковским терминалом -> Печать ранее подготовленного документа.\n\n"
+                f"Операция считается успешной, если в распечатанном банковском слип-чеке:\n"
+                f" - сумма, дата и время проведения операции операции совпадают с данными из заказа;\n"
+                f" - указано слово 'ОДОБРЕНО'.",
+            )
+            if user_choice == 1:
+                logger.info("Оплата банковской картой offline")
+                payment_type: int = Payment.Offline
+                self.sale_transaction(payment_type, system.print_check)
         # Закрываем окно продажи и возвращаем QDialog.Accepted
         self.accept()
 

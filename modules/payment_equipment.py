@@ -107,6 +107,7 @@ TERMINAL_PIN_PAD_ERROR: set[int] = {
     4309,
 }
 TERMINAL_COMMAND_ERROR: set[int] = {4139, 4140, 4141, 4142, 4301, 4335}
+TERMINAL_QR_ERROR: int = 21069
 TERMINAL_SUPPORT: str = "0321"
 APPROVE: str = "ОДОБРЕНО"
 COINCIDENCE: str = "совпали"
@@ -299,6 +300,11 @@ def process_terminal_error(returncode):
         TERMINAL_OPERATION_CANCELED: (
             "Операция отменена",
             f"Ошибка возникает тогда, когда карту достают из терминала быстрее, чем пройдет оплата. Необходимо повторить операцию.",
+        ),
+        TERMINAL_QR_ERROR: (
+            "Ошибка операции по QR-коду",
+            f"Необходимо провести возврат при помощи банковской карты. Если была попытка проведения операции оплаты, \n"
+            f"то следует обратиться в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}. ",
         ),
     }
 
