@@ -1849,91 +1849,56 @@ class SaleForm(QDialog):
         adult_promotion = 0
         child = 0
         child_promotion = 0
+        # Определение типов билетов
+        adult_ticket_types = {
+            1: ("Билет взрослый 1 ч.", "Билет взрослый акция 1 ч.", "ticket_adult_1"),
+            2: ("Билет взрослый 2 ч.", "Билет взрослый акция 2 ч.", "ticket_adult_2"),
+            3: ("Билет взрослый 3 ч.", "Билет взрослый акция 3 ч.", "ticket_adult_3"),
+        }
+        child_ticket_types = {
+            1: ("Билет детский 1 ч.", "Билет детский акция 1 ч.", ["ticket_child_1", "ticket_child_week_1"]),
+            2: ("Билет детский 2 ч.", "Билет детский акция 2 ч.", ["ticket_child_2", "ticket_child_week_2"]),
+            3: ("Билет детский 3 ч.", "Билет детский акция 3 ч.", ["ticket_child_3", "ticket_child_week_3"]),
+        }
         for ticket_in_sale in system.sale_tickets:
             ticket_price = ticket_in_sale[3]  # цена билета
             client_age = ticket_in_sale[6]  # возраст
             duration = ticket_in_sale[7]  # продолжительность
-            if client_age >= system.age["max"]:
-                # Взрослый билет
-                # исключаем из списка нулевые билеты
-                if ticket_price != 0:
-                    # проверяем продолжительность
-                    if duration == 1:
-                        if ticket_price == system.price["ticket_adult_1"]:
-                            type_ticket = "Билет взрослый 1 ч."
-                            adult += 1
-                            ticket = [ticket_price, adult]
-                        else:
-                            type_ticket = "Билет взрослый акция 1 ч."
-                            adult_promotion += 1
-                            ticket = [ticket_price, adult_promotion]
-                    elif duration == 2:
-                        if ticket_price == system.price["ticket_adult_2"]:
-                            type_ticket = "Билет взрослый 2 ч."
-                            adult += 1
-                            ticket = [ticket_price, adult]
-                        else:
-                            type_ticket = "Билет взрослый акция 2 ч."
-                            adult_promotion += 1
-                            ticket = [ticket_price, adult_promotion]
-                    elif duration == 3:
-                        if ticket_price == system.price["ticket_adult_3"]:
-                            type_ticket = "Билет взрослый 3 ч."
-                            adult += 1
-                            ticket = [ticket_price, adult]
-                        else:
-                            type_ticket = "Билет взрослый акция 3 ч."
-                            adult_promotion += 1
-                            ticket = [ticket_price, adult_promotion]
-                    else:
-                        logger.error(f"Неизвестная продолжительность билета: {duration}")
-                        continue  # Пропускаем этот билет
-                    dct[type_ticket] = ticket
-            else:
-                # Детский билет
-                # исключаем из списка нулевые билеты
-                if ticket_price != 0:
-                    # проверяем продолжительность
-                    if duration == 1:
-                        if (
-                            ticket_price == system.price["ticket_child_1"]
-                            or ticket_price == system.price["ticket_child_week_1"]
-                        ):
-                            type_ticket = "Билет детский 1 ч."
-                            child += 1
-                            ticket = [ticket_price, child]
-                        else:
-                            type_ticket = "Билет детский акция 1 ч."
-                            child_promotion += 1
-                            ticket = [ticket_price, child_promotion]
-                    elif duration == 2:
-                        if (
-                            ticket_price == system.price["ticket_child_2"]
-                            or ticket_price == system.price["ticket_child_week_2"]
-                        ):
-                            type_ticket = "Билет детский 2 ч."
-                            child += 1
-                            ticket = [ticket_price, child]
-                        else:
-                            type_ticket = "Билет детский акция 2 ч."
-                            child_promotion += 1
-                            ticket = [ticket_price, child_promotion]
-                    elif duration == 3:
-                        if (
-                            ticket_price == system.price["ticket_child_3"]
-                            or ticket_price == system.price["ticket_child_week_3"]
-                        ):
-                            type_ticket = "Билет детский 3 ч."
-                            child += 1
-                            ticket = [ticket_price, child]
-                        else:
-                            type_ticket = "Билет детский акция 3 ч."
-                            child_promotion += 1
-                            ticket = [ticket_price, child_promotion]
-                    else:
-                        logger.error(f"Неизвестная продолжительность билета: {duration}")
-                        continue  # Пропускаем этот билет
-                    dct[type_ticket] = ticket
+            if ticket_price == 0:
+                continue  # Пропускаем нулевые билеты
+            ticket_types = adult_ticket_types if client_age >= system.age["max"] else child_ticket_types
+            if duration not in ticket_types:
+                logger.error(f"Неизвестная продолжительность билета: {duration}")
+                continue  # Пропускаем некорректные данные
+            type_ticket, promo_ticket, price_keys = ticket_types[duration]
+            if isinstance(price_keys, list):  # Для детских билетов
+                if ticket_price in (system.price[key] for key in price_keys):
+                    ticket_category = "child"
+                    type_ticket = type_ticket
+                else:
+                    ticket_category = "child_promotion"
+                    type_ticket = promo_ticket
+            else:  # Для взрослых билетов
+                if ticket_price == system.price[price_keys]:
+                    ticket_category = "adult"
+                    type_ticket = type_ticket
+                else:
+                    ticket_category = "adult_promotion"
+                    type_ticket = promo_ticket
+            # Увеличение счетчика соответствующего типа билетов
+            if ticket_category == "adult":
+                adult += 1
+                ticket = [ticket_price, adult]
+            elif ticket_category == "adult_promotion":
+                adult_promotion += 1
+                ticket = [ticket_price, adult_promotion]
+            elif ticket_category == "child":
+                child += 1
+                ticket = [ticket_price, child]
+            else:  # "child_promotion"
+                child_promotion += 1
+                ticket = [ticket_price, child_promotion]
+            dct[type_ticket] = ticket
         return dct
 
     @logger.catch()
