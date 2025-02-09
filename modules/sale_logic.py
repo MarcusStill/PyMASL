@@ -437,19 +437,27 @@ def generating_parts_for_partial_returns(tickets, amount):
             ticket_name, ticket_data = item
             # Проверяем, что ticket_data корректный
             if not isinstance(ticket_data, list) or len(ticket_data) != 2:
-                logger.error(f"Ошибка: Некорректный формат данных для {ticket_name}: {ticket_data}")
+                logger.error(
+                    f"Ошибка: Некорректный формат данных для {ticket_name}: {ticket_data}"
+                )
                 continue  # Пропускаем этот билет
             ticket_price, ticket_count = ticket_data
             # Проверяем, что цена и количество корректные
             if not isinstance(ticket_price, (int, float)) or ticket_price <= 0:
-                logger.error(f"Ошибка: Некорректная цена билета {ticket_name}: {ticket_price}")
+                logger.error(
+                    f"Ошибка: Некорректная цена билета {ticket_name}: {ticket_price}"
+                )
                 continue  # Пропускаем этот билет
             if not isinstance(ticket_count, int) or ticket_count < 0:
-                logger.error(f"Ошибка: Некорректное количество билетов {ticket_name}: {ticket_count}")
+                logger.error(
+                    f"Ошибка: Некорректное количество билетов {ticket_name}: {ticket_count}"
+                )
                 continue  # Пропускаем этот билет
             # Если сумма билета >= суммы возврата
             if residue_all >= ticket_price:
-                count = min(ticket_count, residue_all // ticket_price)  # Не больше купленного кол-ва билетов
+                count = min(
+                    ticket_count, residue_all // ticket_price
+                )  # Не больше купленного кол-ва билетов
                 value = residue_all - (count * ticket_price)
                 # Сохраняем остаток
                 residue.append(value)
