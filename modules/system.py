@@ -1,3 +1,4 @@
+import base64
 import calendar
 import datetime as dt
 import json
@@ -131,7 +132,12 @@ class System:
             "talent": 0,
         }
 
-    def user_authorization(self, login, password) -> int:
+    @staticmethod
+    def decode_password(encoded_password: str) -> str:
+        """Декодирует пароль из Base64."""
+        return base64.b64decode(encoded_password.encode()).decode()
+
+    def user_authorization(self, login: str, password: str) -> int:
         """
         Функция проверяет есть ли пользователь в БД с данными, указанными на форме авторизации.
 
@@ -145,11 +151,10 @@ class System:
         logger.info("Запуск функции user_authorization")
         try:
             with Session(self.engine) as session:
-                query = select(User).where(
-                    User.login == login, User.password == password
-                )
+                query = select(User).where(User.login == login)
                 kassir = session.execute(query).scalars().first()
-            if kassir:
+            stored_password = System.decode_password(kassir.password)
+            if stored_password == password:
                 self.user = kassir
                 logger.info(f"Успешная авторизация: {kassir.last_name}")
                 return 1
@@ -158,6 +163,7 @@ class System:
                     f"Неудачная попытка авторизации для пользователя {login}"
                 )
                 return 0
+
         except SQLAlchemyError as e:
             logger.error(f"Ошибка базы данных при авторизации пользователя: {e}")
             return 0
@@ -231,8 +237,7 @@ class System:
         # Устанавливаем цены, используя данные из db_prices или дефолтные значения
         for key, value in db_prices.items():
             if isinstance(value, Price):
-                # Если value является объектом Price, используем его атрибут price
-                price_value = value.price
+                price_value = value.price ^ 42
             else:
                 # Если value — это просто число, берем его как цену
                 price_value = value
