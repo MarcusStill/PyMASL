@@ -120,7 +120,7 @@ class ClientForm(QDialog):
         super().__init__()
         self.ui = Ui_Dialog_Client()
         self.ui.setupUi(self)
-        self.ui.pushButton.clicked.connect(self.client_data_save)
+        self.ui.pushButton.clicked.connect(self.client_save)
         self.ui.pushButton_2.clicked.connect(self.close)
         self.ui.pushButton_3.clicked.connect(self.client_data_copy)
         self.ui.pushButton_4.clicked.connect(self.client_data_paste)
@@ -155,7 +155,7 @@ class ClientForm(QDialog):
         logger.info("Запуск функции client_data_paste")
         self.ui.lineEdit.setText(system.last_name)
 
-    def client_data_save(self):
+    def client_save(self):
         """
         Функция сохраняет в БД сведения о новом клиенте.
 
@@ -166,7 +166,7 @@ class ClientForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
         """
-        logger.info("Запуск функции client_data_save")
+        logger.info("Запуск функции client_save")
         # сбрасываем id последнего добавленного клиента
         system.add_new_client_in_sale = 0
         # делаем заглавными первые буквы фамилии и имени
@@ -177,13 +177,7 @@ class ClientForm(QDialog):
             if system.client_update != 1:
                 logger.info("Добавляем нового клиента")
                 with Session(system.engine) as session:
-                    # получаем максимальный id в таблице клиентов
-                    query = func.coalesce(func.max(Client.id), 0)
-                    # Если таблица пуста, будет возвращен 0
-                    client_index: int = session.execute(query).scalar()
-                    logger.debug(f"Количество клиентов в бд: {client_index}")
                     new_client = Client(
-                        id=client_index + 1,
                         last_name=system.last_name,
                         first_name=str(self.ui.lineEdit_2.text()),
                         middle_name=str(self.ui.lineEdit_3.text()),
@@ -195,8 +189,8 @@ class ClientForm(QDialog):
                     )
                     session.add(new_client)
                     session.commit()
-                # сохраняем id нового клиента
-                system.id_new_client_in_sale = client_index + 1
+                    # сохраняем id нового клиента
+                    system.id_new_client_in_sale = new_client.id
             elif system.client_update == 1:
                 # обновляем информацию о клиенте
                 logger.info("Обновляем информацию о клиенте")
