@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QWidget,
 )
-from sqlalchemy import and_, select, func, update, desc, or_
+from sqlalchemy import and_, select, update, desc, or_
 from sqlalchemy.orm import Session
 
 from db.models import Client
@@ -1038,7 +1038,9 @@ class SaleForm(QDialog):
                     ).setEnabled(False)
                 # Флаг состояния QCheckBox не активирован (вернули в продажу)
                 else:
-                    logger.debug("Активируем QCheckBox строке - возвращаем клиента в продажу")
+                    logger.debug(
+                        "Активируем QCheckBox строке - возвращаем клиента в продажу"
+                    )
                     self.ui.tableWidget_2.cellWidget(row, 8).findChild(
                         QCheckBox
                     ).setEnabled(True)
@@ -1444,7 +1446,9 @@ class SaleForm(QDialog):
             None
         """
         logger.info("Запуск функции sale_transaction")
-        logger.debug(f"system.sale_status: {system.sale_status}, system.sale_id: {system.sale_id}")
+        logger.debug(
+            f"system.sale_status: {system.sale_status}, system.sale_id: {system.sale_id}"
+        )
         # Если продажа новая
         if system.sale_id is None:
             self.save_sale()
