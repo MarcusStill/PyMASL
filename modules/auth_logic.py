@@ -26,7 +26,6 @@ def perform_pre_sale_checks(login: str, password: str) -> int:
     logger.info("Запуск функции starting_the_main_form_logic")
     # Выполняем авторизацию через экземпляр system
     if system.user_authorization(login, password) != 1:
-        logger.warning(f"Неудачная авторизация пользователя: {login}")
         return 0
     # Загружаем прайс-лист
     system.get_price()

@@ -105,7 +105,6 @@ class AuthForm(QDialog):
             window.main_button_all_sales()
             window.exec_()
         else:
-            logger.warning(f"Неудачная авторизация пользователя: {login}")
             windows.info_window(
                 "Пользователь не найден",
                 "Проверьте правильность ввода логина и пароля.",
@@ -284,8 +283,6 @@ class SaleForm(QDialog):
             system.client_id = search_client.id  # Присваиваем id клиента
         else:
             logger.error(f"Клиент с id {client_id} не найден.")
-        # Сохраняем id клиента # TODO: what?
-        # system.client_id = int(search_client.id)
         # Передаем в форму данные клиента
         client = ClientForm()
         client.ui.lineEdit.setText(search_client.last_name)
@@ -792,7 +789,7 @@ class SaleForm(QDialog):
         self.ui.tableWidget_3.setColumnWidth(3, 7)
         # Если продажа новая - обновляем статус
         system.sale_status = 0
-        logger.warning(f"Статус продажи - новая: {system.sale_status}")
+        logger.warning(f"Статус продажи - новая")
         row_number: int = self.ui.tableWidget.currentRow()
         res: str = self.ui.tableWidget.item(row_number, 5).text()
         with Session(system.engine) as session:
@@ -1065,14 +1062,12 @@ class SaleForm(QDialog):
             price, type_ticket
         )
         # Применяем скидку
-        logger.info("Применяем скидку")
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
         # Если категория изменена, устанавливаем ее в таблицу
         if category:
             self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(category))
         # Иначе проверяем активен ли checkbox со скидкой и размер > 0
         if self.ui.checkBox_2.isChecked():
-            logger.info("Checkbox со скидкой активен - обычный гость")
             if system.sale_discount > 0:
                 system.sale_dict["detail"][4] = system.sale_discount
                 if system.sale_discount > 0:
@@ -2479,8 +2474,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     ._asdict()
                     .get("status")
                 )
-            logger.info(f"client_in_sale: {client_in_sale}")
-            logger.info(f"sale_status: {sale_status}")
+            logger.info(f"client_in_sale: {client_in_sale}, sale_status: {sale_status}")
             # Передаем в форму данные клиента
             sale: SaleForm = SaleForm()
             sale.ui.tableWidget_2.setRowCount(0)
@@ -3285,10 +3279,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
             dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
             # Формируем данные
-            logger.info(
-                f"Формируем сведения для отчета: {self.ui.tableWidget_3.item(0, 0).text()}"
-            )
-            logger.info(f"Имя ПК: {system.pc_name}")
+            # logger.info(
+            #     f"Формируем сведения для отчета: {self.ui.tableWidget_3.item(0, 0).text()}"
+            # )
+            # logger.info(f"Имя ПК: {system.pc_name}")
             if system.pc_name == self.ui.tableWidget_4.item(0, 0).text():
                 values: list[str] = [
                     self.ui.tableWidget_4.item(0, 1).text(),

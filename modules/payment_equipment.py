@@ -1800,7 +1800,6 @@ def print_text(text: str):
         None:
             Функция не возвращает значений, но может вызывать исключения в случае ошибок при печати.
     """
-    logger.info("Запуск функции print_text")
     try:
         # Устанавливаем параметры для печати строки
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, text)
