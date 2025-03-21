@@ -211,7 +211,6 @@ def check_terminal_file(word: str):
     try:
         with open(pinpad_file, encoding="IBM866") as file:
             text = file.read()
-        logger.debug(f"Содержимое файла терминала: {text}")
         if word in text:
             logger.info("Проверка файла успешно завершена")
             return True
@@ -846,7 +845,6 @@ def print_pinpad_check(count: int = 2):
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
         try:
-            logger.debug("Функция печати нефискального документа")
             with fptr_connection(fptr):
                 fptr.beginNonfiscalDocument()
 
@@ -1097,7 +1095,6 @@ def last_document():
                 IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT
             )
             fptr.report()
-        logger.info("Печать последнего документа успешно выполнена")
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к ККТ: {ce}")
         windows.info_window(
@@ -1138,7 +1135,6 @@ def report_payment():
                 IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS
             )
             fptr.report()
-        logger.info("Отчет о состоянии расчетов успешно распечатан.")
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
@@ -1179,7 +1175,6 @@ def report_x():
         with fptr_connection(fptr):
             fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
             fptr.report()
-        logger.info("X-отчет успешно распечатан.")
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
@@ -1255,14 +1250,12 @@ def deposit_of_money(amount):
             Функция не возвращает значений.
     """
     logger.info("Запуск функции cash_deposit")
-    logger.info(f"Внесено в кассу: {amount}")
     if amount <= 0:
         logger.error(
             f"Некорректная сумма для внесения: {amount}. Сумма должна быть положительной."
         )
         windows.info_window("Ошибка", "Сумма внесения должна быть положительной.")
         return
-    logger.info(f"Внесено в кассу: {amount}")
     try:
         with fptr_connection(fptr):
             fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
@@ -1302,14 +1295,12 @@ def payment(amount):
             Функция не возвращает значений.
     """
     logger.info("Запуск функции payment")
-    logger.info(f"Выплачено из кассы: {amount}")
     if amount <= 0:
         logger.error(
             f"Некорректная сумма для выплаты: {amount}. Сумма должна быть положительной."
         )
         windows.info_window("Ошибка", "Сумма выплаты должна быть положительной.", "")
         return
-    logger.info(f"Выплачено из кассы: {amount}")
     try:
         with fptr_connection(fptr):
             fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
@@ -1413,7 +1404,6 @@ def operation_on_the_terminal(payment_type, type_operation, price):
     try:
         if payment_type == PAYMENT_ELECTRONIC:
             payment = 1
-            logger.debug("оплата банковской картой")
             if type_operation == 1:
                 logger.info("Запускаем оплату по банковскому терминалу")
                 # результат операции по терминалу
@@ -1446,7 +1436,6 @@ def operation_on_the_terminal(payment_type, type_operation, price):
                     return 0, payment
         # если offline оплата банковской картой
         elif payment_type == PAYMENT_OFFLINE:
-            logger.debug("Продажа новая. Начинаем оплату")
             payment = 3
             # результат операции по терминалу
             logger.info("Запускаем offline оплату по банковскому терминалу")
@@ -1761,7 +1750,7 @@ def smena_close(user):
                 windows.info_window(
                     "Сверка итогов по банковскому терминалу завершена неудачно.", "", ""
                 )
-                logger.warning(f"Состояние смены: {state}")
+                logger.info(f"Состояние смены: {state}")
         else:
             # Логирование успешного состояния
             logger.info("Смена уже закрыта.")
@@ -1790,7 +1779,6 @@ def continue_print():
     try:
         # Попытка продолжить печать
         fptr.continuePrint()
-        logger.info("Продолжение печати выполнено успешно.")
     except Exception as e:
         # Логирование ошибки
         logger.error(f"Ошибка при продолжении печати: {e}")

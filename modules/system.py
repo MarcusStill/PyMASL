@@ -232,6 +232,7 @@ class System:
                     db_prices[key] = default_prices[key]
         else:
             # Если записей нет, используем дефолтные значения для всех элементов
+            logger.warning(f"Используем дефолтные значения для прайс-листа")
             db_prices = default_prices
 
         # Устанавливаем цены, используя данные из db_prices или дефолтные значения
@@ -245,7 +246,6 @@ class System:
             price_value = (
                 price_value if price_value is not None else 0
             )  # Если вдруг None, ставим 0
-            logger.debug(f"Устанавливаем прайс для {key}: {price_value}")
             # Устанавливаем цену в словарь
             self.price[key] = (
                 int(price_value) if price_value != 0 else default_prices[key]
@@ -291,6 +291,7 @@ class System:
                     logger.info("Сегодня дополнительный выходной")
                 else:
                     status_day = 0
+                    logger.info("Сегодня обычный день")
         return status_day
 
     @staticmethod

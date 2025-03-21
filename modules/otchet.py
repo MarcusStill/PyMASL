@@ -23,11 +23,8 @@ def generate_saved_tickets(values):
     coordinates = system.load_coordinates(
         config
     )  # Путь к файлу координат берется из Config
-    logger.info("Устанавливаем параметры макета билета")
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
     c = canvas.Canvas(path, pagesize=(landscape(letter)))
-    logger.debug("Сохраняем билеты")
-
     for i in range(len(client_in_sale)):
         age = int(client_in_sale[i][6])
         not_go = client_in_sale[i][4]
