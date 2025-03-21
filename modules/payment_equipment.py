@@ -475,27 +475,8 @@ def terminal_return(amount):
     logger.info("Запуск функции terminal_return")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"1 {amount}00")
+    result = run_terminal_command(f"3 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
-    # if result is None:
-    #     logger.error("Ошибка при выполнении команды терминала")
-    #     handle_error(
-    #         "Нет ответа от терминала",
-    #         "Команда терминала не была выполнена. Проверьте устройство.",
-    #         "Код ошибки: отсутствует",
-    #     )
-    #     return 0
-    #
-    # logger.info(
-    #     f"Статус проведения операции по банковскому терминалу: {result.returncode}"
-    # )
-    #
-    # # Успешный результат
-    # if result.returncode == TERMINAL_SUCCESS_CODE:
-    #     return process_success_result()
-    #
-    # # Обработка ошибок
-    # return process_terminal_error(result.returncode)
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
         handle_error(
@@ -533,7 +514,7 @@ def terminal_canceling(amount):
     logger.info("Запуск функции terminal_canceling")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"1 {amount}00")
+    result = run_terminal_command(f"8 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
