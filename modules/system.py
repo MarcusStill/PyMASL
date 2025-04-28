@@ -38,9 +38,12 @@ class System:
         self.software_version = self.config.get("version")
         self.log_file = self.config.get("log_file")
         # Информация о РМ
-        self.kol_pc = self.config.get("kol")
-        self.pc_1 = self.config.get("pc_1")
-        self.pc_2 = self.config.get("pc_2")
+        self.kol_pc = int(self.config.get("kol_pc") or 1)
+        self.pcs = []  # список имен ПК
+        # Загружаем имена ПК из конфига
+        for i in range(1, self.kol_pc + 1):
+            pc_name = self.config.get(f"pc_{i}")
+            self.pcs.append(pc_name)
 
         load_dotenv()  # Загружаем переменные окружения из .env файла
         pswrd = os.getenv("DB_PASSWORD")
