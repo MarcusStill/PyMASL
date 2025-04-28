@@ -2876,7 +2876,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         end_time: str = " 23:59:59"
         dt1: str = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
         dt2: str = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
-
+        if dt1 > dt2:
+            raise ValueError("Начальная дата не может быть больше конечной")
         # Запросы к базе данных
         with Session(system.engine) as session:
             sales = session.execute(
@@ -2902,9 +2903,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 )
             ).all()
         # Инициализация касс
-        pcs = {}
-        for name in system.pcs:
-            pcs[name] = {
+        pcs = {
+            name: {
                 "card": 0,
                 "cash": 0,
                 "return": 0,
@@ -2913,22 +2913,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 "return_card": 0,
                 "return_cash": 0,
             }
+            for name in system.pcs
+        }
         # Типы оплат
         type_rm: list[int] = [1, 2]  # 1 - карта, 2 - наличные
         # Обработка продаж
         for sale in sales:
             pc_name = sale[0]
-            if pc_name in pcs:
-                if sale[1] == type_rm[0]:  # карта
-                    pcs[pc_name]["card"] += sale[2]
-                else:  # наличные
-                    pcs[pc_name]["cash"] += sale[2]
+            # Проверка на None
+            if pc_name not in pcs:
+                continue
+            if sale[1] == type_rm[0]:  # карта
+                pcs[pc_name]["card"] += sale[2]
+            else:  # наличные
+                pcs[pc_name]["cash"] += sale[2]
         # Словарь соответствий кодов возвратов
         RETURN_FIELDS = {
             2: "return",
             4: "return_again",
             6: "return_partial",
         }
+        # Перед обработкой sales
+        if not sales and not sales_return:
+            logger.warning("Нет данных о продажах и возвратах за период")
+            return
         # Обработка возвратов
         for sale in sales_return:
             pc_name = sale[0]
@@ -2941,23 +2949,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     else:  # наличные
                         pcs[pc_name]["return_cash"] += sale[2]
         # Формирование таблицы продаж
+        data = []
+        for name in system.pcs:
+            stats = pcs[name]
+            data.append((
+                name,
+                stats["card"],
+                stats["cash"],
+                None,
+                stats["return_card"],
+                stats["return_cash"],
+                stats["return_card"] + stats["return_cash"]
+            ))
+        # Добавление строки "Итого"
         total_card = sum(pc["card"] for pc in pcs.values())
         total_cash = sum(pc["cash"] for pc in pcs.values())
-        total_sum = total_card + total_cash
-        total_return = sum(pc["return_card"] + pc["return_cash"] for pc in pcs.values())
-        data = []
-        for name, pc in pcs.items():
-            pc_return = pc["return_card"] + pc["return_cash"]
-            data.append(
-                (name, pc["card"], pc["cash"], None, pc["return_card"], pc["return_cash"], pc_return)
-            )
-        data.append(("Итого", total_card, total_cash, total_sum, None, None, total_return))
+        data.append(("Итого", total_card, total_cash, total_card + total_cash, None, None, sum(pc["return_card"] + pc["return_cash"] for pc in pcs.values())))
         # Заполняем таблицу продаж
         self.ui.tableWidget_4.setRowCount(len(data))
-        for row, values in enumerate(data):
-            for col, value in enumerate(values):
+        for row, row_data in enumerate(data):
+            for col, value in enumerate(row_data):
                 if value is not None:
-                    self.ui.tableWidget_4.setItem(row, col, QTableWidgetItem(f"{value}"))
+                    self.ui.tableWidget_4.setItem(row, col, QTableWidgetItem(str(value)))
+        logger.debug(f"Обработано {len(sales)} продаж и {len(sales_return)} возвратов")
+        logger.debug(f"Сформировано {len(data)} строк статистики")
         # Считаем билеты
         type_tickets: list[int | str] = [0, 1, "м", "и", "-"]
         time_arrival: list[int] = [1, 2, 3]
