@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from subprocess import TimeoutExpired
 
 from modules import windows
@@ -904,6 +905,72 @@ def get_info(hide: bool = False) -> int:
         logger.error(f"Неизвестная ошибка: {e}")
         windows.info_window(
             "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
+        )
+
+
+@logger_wraps()
+def get_last_document(day: int = 7) -> None:
+    """Запрос информации о последнем чеке в ФН и проверка даты.
+
+    Параметры:
+        day (int): Количество дней простоя кассового аппарата, после которого рекомендуется сделать обмен данными
+
+    Возвращаемое значение:
+        int или None:
+            - Возвращает номер модели ККТ.
+            - Возвращает None, в случае ошибки или если hide=False.
+    """
+    logger.info("Запуск функции get_last_document")
+    try:
+        last_check = get_last_document_datetime()
+        check_stale_document(last_check, day)
+    except (ConnectionError, AttributeError) as e:
+        logger.error(f"Ошибка при работе с ККТ: {e}")
+        windows.info_window(
+            "Ошибка", "Не удалось получить данные от ККТ.", "Проверьте подключение и настройки."
+        )
+    except Exception as e:
+        logger.exception(f"Неизвестная ошибка в get_last_document: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
+        )
+
+def get_last_document_datetime() -> datetime:
+    """ Получает дату и время последнего зарегистрированного чека из фискального накопителя.
+
+    Возвращаемое значение:
+        datetime: Дата и время последнего документа в фискальном накопителе.
+
+    Исключения:
+        Генерирует исключение в случае ошибки соединения или некорректной работы оборудования.
+    """
+    with fptr_connection(fptr):
+        fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_LAST_DOCUMENT)
+        fptr.fnQueryData()
+        last_document: datetime = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+        return last_document
+
+def check_stale_document(last_check: datetime, max_days: int = 7) -> None:
+    """
+    Проверяет, не превышает ли возраст последнего чека заданное количество дней.
+
+    Параметры:
+        last_check (datetime): Дата и время последнего зарегистрированного чека.
+        max_days (int): Максимально допустимое количество дней с момента последнего чека (по умолчанию 7).
+
+    Действие:
+        Если разница между текущей датой и датой последнего чека больше max_days,
+        отображается предупреждающее окно с рекомендацией провести сверку итогов.
+    """
+    current_date = datetime.now()
+    if (current_date - last_check) > timedelta(days=max_days):
+        info = f"Дата и время последнего чека в ФН: {last_check.strftime('%Y-%m-%d %H:%M:%S')}"
+        windows.info_window(
+            "Внимание",
+            "Дата последнего документа, записанного в фискальном накопителе, старше 7 дней.\n\n"
+            "Для корректного проведения платежей по банковскому терминалу "
+            "необходимо сделать сверку итогов (вкладка \"Касса\" -> \"Сверка итогов\").\n",
+            info
         )
 
 

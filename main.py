@@ -94,6 +94,7 @@ class AuthForm(QDialog):
                     "Попробуйте устранить ошибку и после этого запросить информацию с ККТ:"
                     "Вкладка `Операции с ККТ` -> `Информация о ККТ` или `Дата и время ККТ`.",
                 )
+            pq.get_last_document()
             window = MainWindow()
             window.showMaximized()
             # Установка заголовка окна
@@ -1268,6 +1269,9 @@ class SaleForm(QDialog):
         self.ui.comboBox_2.setCurrentIndex(15)
         self.ui.comboBox_2.setEnabled(False)
         system.sale_dict["detail"][4] = 100
+        if system.count_number_of_visitors["many_child"] == 1:
+            logger.debug("Изменяем цену посещения для взрослого")
+            system.price["ticket_adult_2"] = 0
         # Отключаем кнопку возврата
         self.ui.pushButton_6.setEnabled(False)
 
