@@ -1246,7 +1246,7 @@ def test_terminal_canceling_success(
     mock_check_terminal_file.assert_not_called()
 
     # Проверяем, что команда терминала была вызвана правильно
-    mock_run_terminal_command.assert_called_once_with(f"1 {amount}00")
+    mock_run_terminal_command.assert_called_once_with(f"8 {amount}00")
 
 
 @patch("modules.payment_equipment.run_terminal_command")

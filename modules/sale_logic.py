@@ -279,7 +279,6 @@ def update_sale_dict_adult_many_child() -> None:
         None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
     """
     logger.info("Запуск функции update_sale_dict_adult_many_child")
-    logger.debug("Добавляем взрослого многодетного в sale_dict[detail]")
     system.sale_dict["detail"][0] = system.count_number_of_visitors[
         "kol_adult_many_child"
     ]

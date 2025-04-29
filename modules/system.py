@@ -38,9 +38,8 @@ class System:
         self.software_version = self.config.get("version")
         self.log_file = self.config.get("log_file")
         # Информация о РМ
-        self.kol_pc = self.config.get("kol")
-        self.pc_1 = self.config.get("pc_1")
-        self.pc_2 = self.config.get("pc_2")
+        self.kol_pc = int(self.config.get("kol"))
+        self.pcs = self.config.pcs  # список рабочих станций
 
         load_dotenv()  # Загружаем переменные окружения из .env файла
         pswrd = os.getenv("DB_PASSWORD")
@@ -232,6 +231,7 @@ class System:
                     db_prices[key] = default_prices[key]
         else:
             # Если записей нет, используем дефолтные значения для всех элементов
+            logger.warning(f"Используем дефолтные значения для прайс-листа")
             db_prices = default_prices
 
         # Устанавливаем цены, используя данные из db_prices или дефолтные значения
@@ -245,7 +245,6 @@ class System:
             price_value = (
                 price_value if price_value is not None else 0
             )  # Если вдруг None, ставим 0
-            logger.debug(f"Устанавливаем прайс для {key}: {price_value}")
             # Устанавливаем цену в словарь
             self.price[key] = (
                 int(price_value) if price_value != 0 else default_prices[key]
@@ -291,6 +290,7 @@ class System:
                     logger.info("Сегодня дополнительный выходной")
                 else:
                     status_day = 0
+                    logger.info("Сегодня обычный день")
         return status_day
 
     @staticmethod

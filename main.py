@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QWidget,
 )
-from sqlalchemy import and_, select, func, update, desc, or_
+from sqlalchemy import and_, select, update, desc, or_
 from sqlalchemy.orm import Session
 
 from db.models import Client
@@ -94,6 +94,7 @@ class AuthForm(QDialog):
                     "Попробуйте устранить ошибку и после этого запросить информацию с ККТ:"
                     "Вкладка `Операции с ККТ` -> `Информация о ККТ` или `Дата и время ККТ`.",
                 )
+            pq.get_last_document()
             window = MainWindow()
             window.showMaximized()
             # Установка заголовка окна
@@ -105,7 +106,6 @@ class AuthForm(QDialog):
             window.main_button_all_sales()
             window.exec_()
         else:
-            logger.warning(f"Неудачная авторизация пользователя: {login}")
             windows.info_window(
                 "Пользователь не найден",
                 "Проверьте правильность ввода логина и пароля.",
@@ -120,7 +120,7 @@ class ClientForm(QDialog):
         super().__init__()
         self.ui = Ui_Dialog_Client()
         self.ui.setupUi(self)
-        self.ui.pushButton.clicked.connect(self.client_data_save)
+        self.ui.pushButton.clicked.connect(self.client_save)
         self.ui.pushButton_2.clicked.connect(self.close)
         self.ui.pushButton_3.clicked.connect(self.client_data_copy)
         self.ui.pushButton_4.clicked.connect(self.client_data_paste)
@@ -155,7 +155,7 @@ class ClientForm(QDialog):
         logger.info("Запуск функции client_data_paste")
         self.ui.lineEdit.setText(system.last_name)
 
-    def client_data_save(self):
+    def client_save(self):
         """
         Функция сохраняет в БД сведения о новом клиенте.
 
@@ -166,7 +166,7 @@ class ClientForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
         """
-        logger.info("Запуск функции client_data_save")
+        logger.info("Запуск функции client_save")
         # сбрасываем id последнего добавленного клиента
         system.add_new_client_in_sale = 0
         # делаем заглавными первые буквы фамилии и имени
@@ -177,13 +177,7 @@ class ClientForm(QDialog):
             if system.client_update != 1:
                 logger.info("Добавляем нового клиента")
                 with Session(system.engine) as session:
-                    # получаем максимальный id в таблице клиентов
-                    query = func.coalesce(func.max(Client.id), 0)
-                    # Если таблица пуста, будет возвращен 0
-                    client_index: int = session.execute(query).scalar()
-                    logger.debug(f"Количество клиентов в бд: {client_index}")
                     new_client = Client(
-                        id=client_index + 1,
                         last_name=system.last_name,
                         first_name=str(self.ui.lineEdit_2.text()),
                         middle_name=str(self.ui.lineEdit_3.text()),
@@ -195,8 +189,8 @@ class ClientForm(QDialog):
                     )
                     session.add(new_client)
                     session.commit()
-                # сохраняем id нового клиента
-                system.id_new_client_in_sale = client_index + 1
+                    # сохраняем id нового клиента
+                    system.id_new_client_in_sale = new_client.id
             elif system.client_update == 1:
                 # обновляем информацию о клиенте
                 logger.info("Обновляем информацию о клиенте")
@@ -290,8 +284,6 @@ class SaleForm(QDialog):
             system.client_id = search_client.id  # Присваиваем id клиента
         else:
             logger.error(f"Клиент с id {client_id} не найден.")
-        # Сохраняем id клиента # TODO: what?
-        # system.client_id = int(search_client.id)
         # Передаем в форму данные клиента
         client = ClientForm()
         client.ui.lineEdit.setText(search_client.last_name)
@@ -315,8 +307,7 @@ class SaleForm(QDialog):
         client.show()
         # Сохраняем параметры данных об уже существующем клиенте
         system.client_update = 1
-        logger.info(f"Обновляем инф. клиента {system.client_update}")
-        logger.debug(f"id клиента: {system.client_id}")
+        logger.info(f"Обновляем инф. клиента {system.client_id}")
         client.exec_()
 
     def adding_new_client_to_sale(self) -> None:
@@ -342,7 +333,7 @@ class SaleForm(QDialog):
         if search_client is None:
             logger.error(f"Клиент с ID {system.id_new_client_in_sale} не найден.")
             return
-        logger.debug(f"Найденный клиент: {search_client}")
+        logger.debug(f"Найденный клиент: {search_client.id}")
         # Вычисляем возраст клиента
         age: int = calculate_age(
             search_client.birth_date
@@ -501,7 +492,7 @@ class SaleForm(QDialog):
         # Получаем строковое представление даты
         get_date: str = str(self.ui.dateEdit.date())
         date_slice: str = get_date[21 : (len(get_date) - 1)]
-        logger.debug(date_slice)
+        # logger.debug(date_slice)
         # get_date: str = date_slice.replace(", ", "-") TODO: надо ли
 
         # Поскольку check_day не требует аргументов, вызываем его без параметра
@@ -661,7 +652,7 @@ class SaleForm(QDialog):
                 search = (
                     session.query(Client).filter(Client.phone.ilike(user_filter)).all()
                 )
-            logger.debug(search)
+            # logger.debug(search)
             for client in search:
                 age = calculate_age(client.birth_date)
                 self.filling_client_table_widget(
@@ -799,7 +790,7 @@ class SaleForm(QDialog):
         self.ui.tableWidget_3.setColumnWidth(3, 7)
         # Если продажа новая - обновляем статус
         system.sale_status = 0
-        logger.warning(f"Статус продажи - новая: {system.sale_status}")
+        logger.warning(f"Статус продажи - новая")
         row_number: int = self.ui.tableWidget.currentRow()
         res: str = self.ui.tableWidget.item(row_number, 5).text()
         with Session(system.engine) as session:
@@ -1008,12 +999,7 @@ class SaleForm(QDialog):
             type_ticket: str = self.ui.tableWidget_2.item(row, 2).text()
             price = self.ticket_counting(row, type_ticket)
             self.apply_discounts(row, price, type_ticket)
-        logger.debug(f"system.sale_dict: {system.sale_dict}")
-        logger.debug(
-            f"system.count_number_of_visitors: {system.count_number_of_visitors}"
-        )
         itog: int = calculate_itog()
-        logger.debug(f"Итого: {itog}")
         self.ui.label_8.setText(str(itog))
         system.sale_dict["detail"][7] = itog
         self.ui.label_5.setText(str(system.count_number_of_visitors["kol_adult"]))
@@ -1024,8 +1010,6 @@ class SaleForm(QDialog):
         self.ui.label_19.setText(
             str(system.count_number_of_visitors["kol_child_many_child"])
         )
-        # Сохраняем данные продажи
-        logger.debug(f"Sale_dict: {system.sale_dict}")
         # Преобразуем значения в system.sale_dict к нужным типам данных
         system.sale_dict = convert_sale_dict_values(system.sale_dict)
         logger.debug(f"Обновленный system.sale_dict: {system.sale_dict}")
@@ -1033,14 +1017,11 @@ class SaleForm(QDialog):
         for row in range(rows):
             # Если установлена метка "не идет"
             if self.ui.tableWidget_2.item(row, 4).text() == "н":
-                # Изменяем цену
-                logger.debug("Изменяем цену в билете посетителя!")
                 self.ui.tableWidget_2.setItem(
                     row, 3, QTableWidgetItem(f"{system.price['ticket_free']}")
                 )
             self.generate_ticket_list(row, tickets, date_time)
         system.sale_tickets = tickets
-        logger.info(f"system.sale_tickets: {system.sale_tickets}")
         # Проверяем есть ли в продаже взрослый
         if system.sale_dict["kol_adult"] >= 1:
             self.ui.pushButton_5.setEnabled(True)
@@ -1055,7 +1036,9 @@ class SaleForm(QDialog):
                     ).setEnabled(False)
                 # Флаг состояния QCheckBox не активирован (вернули в продажу)
                 else:
-                    logger.debug("Активируем QCheckBox строке")
+                    logger.debug(
+                        "Активируем QCheckBox строке - возвращаем клиента в продажу"
+                    )
                     self.ui.tableWidget_2.cellWidget(row, 8).findChild(
                         QCheckBox
                     ).setEnabled(True)
@@ -1080,14 +1063,12 @@ class SaleForm(QDialog):
             price, type_ticket
         )
         # Применяем скидку
-        logger.info("Применяем скидку")
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{new_price}"))
         # Если категория изменена, устанавливаем ее в таблицу
         if category:
             self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem(category))
         # Иначе проверяем активен ли checkbox со скидкой и размер > 0
         if self.ui.checkBox_2.isChecked():
-            logger.info("Checkbox со скидкой активен - обычный гость")
             if system.sale_discount > 0:
                 system.sale_dict["detail"][4] = system.sale_discount
                 if system.sale_discount > 0:
@@ -1149,7 +1130,6 @@ class SaleForm(QDialog):
         # Если checkbox активен - взрослый в оплату не добавляется
         self.adult_exclusion(row)
         update_adult_count()
-        logger.debug(f"price adult {price}")
         system.sale_dict["price_adult"] = price
 
         return price
@@ -1167,7 +1147,6 @@ class SaleForm(QDialog):
         self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
         price = calculate_child_price()
         update_child_count()
-        logger.debug(f"price child {price}")
         system.sale_dict["price_child"] = price
 
         return price
@@ -1290,6 +1269,9 @@ class SaleForm(QDialog):
         self.ui.comboBox_2.setCurrentIndex(15)
         self.ui.comboBox_2.setEnabled(False)
         system.sale_dict["detail"][4] = 100
+        if system.count_number_of_visitors["many_child"] == 1:
+            logger.debug("Изменяем цену посещения для взрослого")
+            system.price["ticket_adult_2"] = 0
         # Отключаем кнопку возврата
         self.ui.pushButton_6.setEnabled(False)
 
@@ -1414,7 +1396,6 @@ class SaleForm(QDialog):
             )
             logger.debug(f"Получена продажа: {add_sale}")
             # Сохраняем продажу
-            logger.debug("Сохраняем продажу в БД")
             with Session(system.engine) as session:
                 session.add(add_sale)
                 session.commit()
@@ -1422,7 +1403,6 @@ class SaleForm(QDialog):
                 system.sale_id = add_sale.id
             # Сохраняем билеты
             type_ticket: int | None = None
-            logger.debug("Сохраняем билеты в БД")
             for i in range(len(system.sale_tickets)):
                 # Считаем количество начисленных талантов
                 if system.sale_tickets[i][2] == "взрослый":
@@ -1465,8 +1445,9 @@ class SaleForm(QDialog):
             None
         """
         logger.info("Запуск функции sale_transaction")
-        logger.debug(f"system.sale_status: {system.sale_status}")
-        logger.debug(f"system.sale_id: {system.sale_id}")
+        logger.debug(
+            f"system.sale_status: {system.sale_status}, system.sale_id: {system.sale_id}"
+        )
         # Если продажа новая
         if system.sale_id is None:
             self.save_sale()
@@ -1578,7 +1559,7 @@ class SaleForm(QDialog):
             logger.debug("Требуется частичный возврат.")
             amount: int = int(sale.partial_return)
             new_tickets = generating_parts_for_partial_returns(tickets, amount)
-            logger.debug(f"new_tickets: {new_tickets}")
+            logger.debug(f"Список билетов: {new_tickets}")
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
             payment_type: int = 101
@@ -1596,7 +1577,6 @@ class SaleForm(QDialog):
                 )
         # Продолжаем если возврат по банковской карте или если баланс наличных денег в кассе больше суммы возврата
         if sale.payment_type == 1 or balance_error == 0:
-            logger.debug("Проверяем статус продажи")
             # Если нужен обычный возврат или частичный возврат
             if sale.status in (1, 5):
                 logger.debug("Продажа оплачена. Запускаем возврат")
@@ -1620,7 +1600,6 @@ class SaleForm(QDialog):
                                 payment_type, 2, amount
                             )
                         if bank == 1:
-                            logger.debug("Сохраняем чек возврата.")
                             check = pq.read_pinpad_file(remove_newline=False)
                             logger.debug(f"Чек возврата: {check}")
                             with Session(system.engine) as session:
@@ -1742,12 +1721,10 @@ class SaleForm(QDialog):
         logger.info("Запуск функции sale_canceling")
         # Счетчик для отслеживания корректности проведения возврата за наличный способ расчета
         tickets = self.generating_items_for_the_return_check()
-        logger.info("Запрашиваем информацию о продаже в БД")
         with Session(system.engine) as session:
             query = select(Sale).filter(Sale.id == system.sale_id)
             sale = session.execute(query).scalars().one()
         logger.debug(f"Итоговая сумма: {sale.price}, тип оплаты: {sale.payment_type}")
-        logger.debug(f"Сохраняем id продажи: {sale.id}")
         system.sale_id = sale.id
         price: int = sale.price
         payment_type: int = 0
@@ -1756,7 +1733,6 @@ class SaleForm(QDialog):
             payment_type: int = 101
         # Продолжаем если возврат по банковской карте
         if sale.payment_type == 1:
-            logger.debug("Проверяем статус продажи")
             if sale.status == 1:
                 logger.debug("Продажа оплачена. Запускаем отмену")
                 if payment_type == 101:
@@ -1769,7 +1745,6 @@ class SaleForm(QDialog):
                             payment_type, 3, price
                         )
                         if bank == 1:
-                            logger.debug("Сохраняем чек возврата.")
                             check = pq.read_pinpad_file(remove_newline=False)
                             logger.debug(f"Чек возврата: {check}")
                             with Session(system.engine) as session:
@@ -2434,8 +2409,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         client.show()
         # Сохраняем параметры данных об уже существующем клиенте
         system.client_update = 1
-        logger.info(f"Обновляем информацию о клиенте: {system.client_update}")
-        logger.debug(f"id клиента: {system.client_id}")
+        logger.info(f"Обновляем информацию о клиенте")
         client.exec_()
 
     def main_filter_clear(self) -> None:
@@ -2504,8 +2478,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     ._asdict()
                     .get("status")
                 )
-            logger.info(f"client_in_sale: {client_in_sale}")
-            logger.info(f"sale_status: {sale_status}")
+            logger.info(f"client_in_sale: {client_in_sale}, sale_status: {sale_status}")
             # Передаем в форму данные клиента
             sale: SaleForm = SaleForm()
             sale.ui.tableWidget_2.setRowCount(0)
@@ -2542,7 +2515,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # обновляем данные о продаже
                 system.sale_tickets = None
                 system.sale_dict = {}  # Инициализация перед использованием
-                logger.debug(f"Инициализация перед использованием system.sale_dict")
                 sale.ui.pushButton_3.setEnabled(False)
                 sale.ui.pushButton_5.setEnabled(True)
                 sale.ui.pushButton_10.setEnabled(True)
@@ -2899,210 +2871,131 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции main_get_statistic")
-
-        # Устанавливаем временной период
+        # Временной период
         start_time: str = " 00:00:00"
         end_time: str = " 23:59:59"
         dt1: str = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
         dt2: str = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
-
+        if dt1 > dt2:
+            raise ValueError("Начальная дата не может быть больше конечной")
         # Запросы к базе данных
         with Session(system.engine) as session:
-            sales_query = select(
-                Sale.pc_name, Sale.payment_type, Sale.price, Sale.status
-            ).where(and_(Sale.status == "1", Sale.datetime.between(dt1, dt2)))
-
-            sales_return_query = select(
-                Sale.pc_name, Sale.payment_type, Sale.price, Sale.status
-            ).where(
-                and_(
+            sales = session.execute(
+                select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status)
+                .where(and_(Sale.status == "1", Sale.datetime.between(dt1, dt2)))
+            ).all()
+            sales_return = session.execute(
+                select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status)
+                .where(and_(
                     Sale.datetime_return.between(dt1, dt2),
-                    or_(
-                        Sale.status == 2,
-                        Sale.status == 3,
-                        Sale.status == 4,
-                        Sale.status == 5,
-                        Sale.status == 6,
-                    ),
+                    Sale.status.in_([2, 3, 4, 5, 6])
+                ))
+            ).all()
+            tickets = session.execute(
+                select(
+                    Ticket.ticket_type, Ticket.arrival_time, Ticket.description, Sale.status, Sale.id
+                ).where(
+                    and_(
+                        Sale.id == Ticket.id_sale,
+                        Sale.status == "1",
+                        Ticket.datetime.between(dt1, dt2),
+                        )
                 )
-            )
-
-            tickets_query = select(
-                Ticket.ticket_type,
-                Ticket.arrival_time,
-                Ticket.description,
-                Sale.status,
-                Sale.id,
-            ).where(
-                and_(
-                    Sale.id == Ticket.id_sale,
-                    Sale.status == "1",
-                    Ticket.datetime.between(dt1, dt2),
-                )
-            )
-
-            sales = session.execute(sales_query).all()
-            sales_return = session.execute(sales_return_query).all()
-            tickets = session.execute(tickets_query).all()
-
-        logger.debug(f"Продажи за выбранный период: {sales}")
-        logger.debug(f"sales return: {sales_return}")
-        logger.debug(f"Билеты: {tickets}")
-
-        # Предполагаем что кассовых РМ два
-        pc_1: dict[str, int | str] = {
-            "Name PC": f"{system.pc_1}",
-            "card": 0,
-            "cash": 0,
-            "return": 0,
-            "return_again": 0,
-            "return_partial": 0,
-            "return_card": 0,
-            "return_cash": 0,
+            ).all()
+        # Инициализация касс
+        pcs = {
+            name: {
+                "card": 0,
+                "cash": 0,
+                "return": 0,
+                "return_again": 0,
+                "return_partial": 0,
+                "return_card": 0,
+                "return_cash": 0,
+            }
+            for name in system.pcs
         }
-        pc_2: dict[str, int | str] = {
-            "Name PC": f"{system.pc_2}",
-            "card": 0,
-            "cash": 0,
-            "return": 0,
-            "return_again": 0,
-            "return_partial": 0,
-            "return_card": 0,
-            "return_cash": 0,
-        }
-
-        # Тип оплаты: 1 - карта, 2 - наличные
-        type_rm: list[int] = [1, 2]
-
+        # Типы оплат
+        type_rm: list[int] = [1, 2]  # 1 - карта, 2 - наличные
         # Обработка продаж
         for sale in sales:
-            pc = pc_1 if sale[0] == pc_1["Name PC"] else pc_2
-            if sale[1] == type_rm[0]:
-                pc["card"] += sale[2]
-            else:
-                pc["cash"] += sale[2]
-
-        card: int = pc_1["card"] + pc_2["card"]
-        cash: int = pc_1["cash"] + pc_2["cash"]
-        summa: int = card + cash
-
+            pc_name = sale[0]
+            # Проверка на None
+            if pc_name not in pcs:
+                continue
+            if sale[1] == type_rm[0]:  # карта
+                pcs[pc_name]["card"] += sale[2]
+            else:  # наличные
+                pcs[pc_name]["cash"] += sale[2]
+        # Словарь соответствий кодов возвратов
+        RETURN_FIELDS = {
+            2: "return",
+            4: "return_again",
+            6: "return_partial",
+        }
+        # Перед обработкой sales
+        if not sales and not sales_return:
+            logger.warning("Нет данных о продажах и возвратах за период")
+            return
         # Обработка возвратов
         for sale in sales_return:
-            pc = pc_1 if sale[0] == pc_1["Name PC"] else pc_2
-            if sale[3] == 2:
-                pc["return"] += 1
-                if sale[1] == 1:
-                    pc["return_card"] += sale[2]
-                else:
-                    pc["return_cash"] += sale[2]
-            elif sale[3] == 4:
-                pc["return_again"] += 1
-                if sale[1] == 1:
-                    pc["return_card"] += sale[2]
-            elif sale[3] == 6:
-                pc["return_partial"] += 1
-                if sale[1] == 1:
-                    pc["return_card"] += sale[2]
-                else:
-                    pc["return_cash"] += sale[2]
-
-        # Вычисляем возвращенные суммы для pc_1 и pc_2
-        pc_1_return = pc_1["return_card"] + pc_1["return_cash"]
-        pc_2_return = pc_2["return_card"] + pc_2["return_cash"]
-        # Данные для каждой строки таблицы
-        data = [
-            (
-                pc_1["Name PC"],
-                pc_1["card"],
-                pc_1["cash"],
+            pc_name = sale[0]
+            if pc_name in pcs:
+                return_type = sale[3]
+                if return_type in RETURN_FIELDS:
+                    pcs[pc_name][RETURN_FIELDS[return_type]] += 1
+                    if sale[1] == 1:  # карта
+                        pcs[pc_name]["return_card"] += sale[2]
+                    else:  # наличные
+                        pcs[pc_name]["return_cash"] += sale[2]
+        # Формирование таблицы продаж
+        data = []
+        for name in system.pcs:
+            stats = pcs[name]
+            data.append((
+                name,
+                stats["card"],
+                stats["cash"],
                 None,
-                pc_1["return_card"],
-                pc_1["return_cash"],
-                pc_1_return,
-            ),
-            (
-                pc_2["Name PC"],
-                pc_2["card"],
-                pc_2["cash"],
-                None,
-                pc_2["return_card"],
-                pc_2["return_cash"],
-                pc_2_return,
-            ),
-            ("Итого", card, cash, summa, None, None, pc_1_return + pc_2_return),
-        ]
-        # Устанавливаем количество строк в таблице и очищаем её
+                stats["return_card"],
+                stats["return_cash"],
+                stats["return_card"] + stats["return_cash"]
+            ))
+        # Добавление строки "Итого"
+        total_card = sum(pc["card"] for pc in pcs.values())
+        total_cash = sum(pc["cash"] for pc in pcs.values())
+        data.append(("Итого", total_card, total_cash, total_card + total_cash, None, None, sum(pc["return_card"] + pc["return_cash"] for pc in pcs.values())))
+        # Заполняем таблицу продаж
         self.ui.tableWidget_4.setRowCount(len(data))
-        # Заполняем таблицу в цикле
-        for row, values in enumerate(data):
-            for col, value in enumerate(values):
-                if value is not None:  # Пропускаем пустые значения
-                    self.ui.tableWidget_4.setItem(
-                        row, col, QTableWidgetItem(f"{value}")
-                    )
-
-        # Считаем оплаченные билеты
+        for row, row_data in enumerate(data):
+            for col, value in enumerate(row_data):
+                if value is not None:
+                    self.ui.tableWidget_4.setItem(row, col, QTableWidgetItem(str(value)))
+        logger.debug(f"Обработано {len(sales)} продаж и {len(sales_return)} возвратов")
+        logger.debug(f"Сформировано {len(data)} строк статистики")
+        # Считаем билеты
         type_tickets: list[int | str] = [0, 1, "м", "и", "-"]
         time_arrival: list[int] = [1, 2, 3]
-
-        # child
-        c: dict[str, int] = {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0}
-        # adult
-        a: dict[str, int] = {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0}
-        # many_child
-        m_c: dict[str, int] = {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0}
-        # many_adult
-        m_a: dict[str, int] = {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0}
-        # invalid
-        i_: dict[str, int] = {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0}
-
-        # Считаем количество билетов
+        c, a, m_c, m_a, i_ = (
+            {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0} for _ in range(5)
+        )
         for ticket in tickets:
-            if ticket[2] == type_tickets[4]:  # Обычный билет
-                if ticket[0] == type_tickets[0]:  # Взрослый
-                    a["sum"] += 1
-                    if ticket[1] == time_arrival[0]:
-                        a["t_1"] += 1
-                    elif ticket[1] == time_arrival[1]:
-                        a["t_2"] += 1
-                    elif ticket[1] == time_arrival[2]:
-                        a["t_3"] += 1
-                elif ticket[0] == type_tickets[1]:  # Детский
-                    c["sum"] += 1
-                    if ticket[1] == time_arrival[0]:
-                        c["t_1"] += 1
-                    elif ticket[1] == time_arrival[1]:
-                        c["t_2"] += 1
-                    elif ticket[1] == time_arrival[2]:
-                        c["t_3"] += 1
-            elif ticket[2] == type_tickets[2]:  # Многодетный
-                if ticket[0] == type_tickets[0]:  # Взрослый
-                    m_a["sum"] += 1
-                    if ticket[1] == time_arrival[0]:
-                        m_a["t_1"] += 1
-                    elif ticket[1] == time_arrival[1]:
-                        m_a["t_2"] += 1
-                    elif ticket[1] == time_arrival[2]:
-                        m_a["t_3"] += 1
-                elif ticket[0] == type_tickets[1]:  # Детский
-                    m_c["sum"] += 1
-                    if ticket[1] == time_arrival[0]:
-                        m_c["t_1"] += 1
-                    elif ticket[1] == time_arrival[1]:
-                        m_c["t_2"] += 1
-                    elif ticket[1] == time_arrival[2]:
-                        m_c["t_3"] += 1
-            elif ticket[2] == type_tickets[3]:  # Инвалид
-                i_["sum"] += 1
-                if ticket[1] == time_arrival[0]:
-                    i_["t_1"] += 1
-                elif ticket[1] == time_arrival[1]:
-                    i_["t_2"] += 1
-                elif ticket[1] == time_arrival[2]:
-                    i_["t_3"] += 1
-
-        # Выводим обобщенную информацию в таблицу
-        # Данные для каждой строки таблицы
+            if ticket[2] == type_tickets[4]:  # обычный
+                target = a if ticket[0] == type_tickets[0] else c
+            elif ticket[2] == type_tickets[2]:  # многодетный
+                target = m_a if ticket[0] == type_tickets[0] else m_c
+            elif ticket[2] == type_tickets[3]:  # инвалид
+                target = i_
+            else:
+                continue  # игнорируем другие типы
+            target["sum"] += 1
+            if ticket[1] == time_arrival[0]:
+                target["t_1"] += 1
+            elif ticket[1] == time_arrival[1]:
+                target["t_2"] += 1
+            elif ticket[1] == time_arrival[2]:
+                target["t_3"] += 1
+        # Заполняем таблицу билетов
         data = [
             ("взрослый", a),
             ("детский", c),
@@ -3112,7 +3005,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         ]
         # Устанавливаем количество строк в таблице и очищаем её
         self.ui.tableWidget_3.setRowCount(len(data))
-        # Заполняем таблицу с помощью цикла
+        # Заполняем таблицу
         for row, (label, values) in enumerate(data):
             self.ui.tableWidget_3.setItem(row, 0, QTableWidgetItem(label))
             self.ui.tableWidget_3.setItem(row, 1, QTableWidgetItem(f"{values['sum']}"))
@@ -3283,7 +3176,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     sum_adult + sum_child + sum_many_adult + sum_many_child,
                 ],
             ]
-            logger.debug(f"Сведения для отчета администратора: {data}")
+            # logger.debug(f"Сведения для отчета администратора: {data}")
             otchet.otchet_administratora(dt1, dt2, data)
             os.startfile(path)
 
@@ -3311,10 +3204,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
             dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
             # Формируем данные
-            logger.info(
-                f"Формируем сведения для отчета: {self.ui.tableWidget_3.item(0, 0).text()}"
-            )
-            logger.info(f"Имя ПК: {system.pc_name}")
+            # logger.info(
+            #     f"Формируем сведения для отчета: {self.ui.tableWidget_3.item(0, 0).text()}"
+            # )
+            # logger.info(f"Имя ПК: {system.pc_name}")
             if system.pc_name == self.ui.tableWidget_4.item(0, 0).text():
                 values: list[str] = [
                     self.ui.tableWidget_4.item(0, 1).text(),
@@ -3329,7 +3222,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.ui.tableWidget_4.item(1, 4).text(),
                     self.ui.tableWidget_4.item(1, 5).text(),
                 ]
-            logger.debug(f"Сведения для отчета кассира: {values}")
+            # logger.debug(f"Сведения для отчета кассира: {values}")
             otchet.otchet_kassira(values, dt1, dt2, system.user)
             os.startfile(path)
 

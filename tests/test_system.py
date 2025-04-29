@@ -183,15 +183,15 @@ def test_get_price_with_enough_records(
     system.get_price()
 
     expected_prices = {
-        "ticket_child_1": 100,
-        "ticket_child_2": 200,
-        "ticket_child_3": 300,
-        "ticket_child_week_1": 400,
-        "ticket_child_week_2": 500,
-        "ticket_child_week_3": 600,
-        "ticket_adult_1": 700,
-        "ticket_adult_2": 800,
-        "ticket_adult_3": 900,
+        "ticket_child_1": 100 ^ 42,
+        "ticket_child_2": 200 ^ 42,
+        "ticket_child_3": 300 ^ 42,
+        "ticket_child_week_1": 400 ^ 42,
+        "ticket_child_week_2": 500 ^ 42,
+        "ticket_child_week_3": 600 ^ 42,
+        "ticket_adult_1": 700 ^ 42,
+        "ticket_adult_2": 800 ^ 42,
+        "ticket_adult_3": 900 ^ 42,
     }
 
     check_prices(system, expected_prices)
@@ -209,6 +209,10 @@ def test_get_price_with_insufficient_records(
     system.get_price()
 
     updated_prices = default_expected_prices.copy()
+    updated_prices["ticket_child_1"] = 100 ^ 42  # 78
+    updated_prices["ticket_child_2"] = 200 ^ 42  # 234
+    updated_prices["ticket_child_3"] = 300 ^ 42  # 334
+
     updated_prices["ticket_child_week_1"] = 300
     updated_prices["ticket_child_week_2"] = 600
     updated_prices["ticket_child_week_3"] = 900

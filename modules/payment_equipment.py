@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from subprocess import TimeoutExpired
 
 from modules import windows
@@ -211,7 +212,6 @@ def check_terminal_file(word: str):
     try:
         with open(pinpad_file, encoding="IBM866") as file:
             text = file.read()
-        logger.debug(f"Содержимое файла терминала: {text}")
         if word in text:
             logger.info("Проверка файла успешно завершена")
             return True
@@ -476,27 +476,8 @@ def terminal_return(amount):
     logger.info("Запуск функции terminal_return")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"1 {amount}00")
+    result = run_terminal_command(f"3 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
-    # if result is None:
-    #     logger.error("Ошибка при выполнении команды терминала")
-    #     handle_error(
-    #         "Нет ответа от терминала",
-    #         "Команда терминала не была выполнена. Проверьте устройство.",
-    #         "Код ошибки: отсутствует",
-    #     )
-    #     return 0
-    #
-    # logger.info(
-    #     f"Статус проведения операции по банковскому терминалу: {result.returncode}"
-    # )
-    #
-    # # Успешный результат
-    # if result.returncode == TERMINAL_SUCCESS_CODE:
-    #     return process_success_result()
-    #
-    # # Обработка ошибок
-    # return process_terminal_error(result.returncode)
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
         handle_error(
@@ -534,7 +515,7 @@ def terminal_canceling(amount):
     logger.info("Запуск функции terminal_canceling")
     logger.debug(f"В функцию была передана следующая сумма: {amount}")
     # Добавляем '00' для копеек
-    result = run_terminal_command(f"1 {amount}00")
+    result = run_terminal_command(f"8 {amount}00")
     logger.debug(f"Терминал вернул следующий код операции: {result}")
     if result is None:
         logger.error("Ошибка при выполнении команды терминала")
@@ -846,7 +827,6 @@ def print_pinpad_check(count: int = 2):
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
         try:
-            logger.debug("Функция печати нефискального документа")
             with fptr_connection(fptr):
                 fptr.beginNonfiscalDocument()
 
@@ -925,6 +905,72 @@ def get_info(hide: bool = False) -> int:
         logger.error(f"Неизвестная ошибка: {e}")
         windows.info_window(
             "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
+        )
+
+
+@logger_wraps()
+def get_last_document(day: int = 7) -> None:
+    """Запрос информации о последнем чеке в ФН и проверка даты.
+
+    Параметры:
+        day (int): Количество дней простоя кассового аппарата, после которого рекомендуется сделать обмен данными
+
+    Возвращаемое значение:
+        int или None:
+            - Возвращает номер модели ККТ.
+            - Возвращает None, в случае ошибки или если hide=False.
+    """
+    logger.info("Запуск функции get_last_document")
+    try:
+        last_check = get_last_document_datetime()
+        check_stale_document(last_check, day)
+    except (ConnectionError, AttributeError) as e:
+        logger.error(f"Ошибка при работе с ККТ: {e}")
+        windows.info_window(
+            "Ошибка", "Не удалось получить данные от ККТ.", "Проверьте подключение и настройки."
+        )
+    except Exception as e:
+        logger.exception(f"Неизвестная ошибка в get_last_document: {e}")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
+        )
+
+def get_last_document_datetime() -> datetime:
+    """ Получает дату и время последнего зарегистрированного чека из фискального накопителя.
+
+    Возвращаемое значение:
+        datetime: Дата и время последнего документа в фискальном накопителе.
+
+    Исключения:
+        Генерирует исключение в случае ошибки соединения или некорректной работы оборудования.
+    """
+    with fptr_connection(fptr):
+        fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_LAST_DOCUMENT)
+        fptr.fnQueryData()
+        last_document: datetime = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+        return last_document
+
+def check_stale_document(last_check: datetime, max_days: int = 7) -> None:
+    """
+    Проверяет, не превышает ли возраст последнего чека заданное количество дней.
+
+    Параметры:
+        last_check (datetime): Дата и время последнего зарегистрированного чека.
+        max_days (int): Максимально допустимое количество дней с момента последнего чека (по умолчанию 7).
+
+    Действие:
+        Если разница между текущей датой и датой последнего чека больше max_days,
+        отображается предупреждающее окно с рекомендацией провести сверку итогов.
+    """
+    current_date = datetime.now()
+    if (current_date - last_check) > timedelta(days=max_days):
+        info = f"Дата и время последнего чека в ФН: {last_check.strftime('%Y-%m-%d %H:%M:%S')}"
+        windows.info_window(
+            "Внимание",
+            "Дата последнего документа, записанного в фискальном накопителе, старше 7 дней.\n\n"
+            "Для корректного проведения платежей по банковскому терминалу "
+            "необходимо сделать сверку итогов (вкладка \"Касса\" -> \"Сверка итогов\").\n",
+            info
         )
 
 
@@ -1097,7 +1143,6 @@ def last_document():
                 IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_LAST_DOCUMENT
             )
             fptr.report()
-        logger.info("Печать последнего документа успешно выполнена")
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к ККТ: {ce}")
         windows.info_window(
@@ -1138,7 +1183,6 @@ def report_payment():
                 IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_OFD_EXCHANGE_STATUS
             )
             fptr.report()
-        logger.info("Отчет о состоянии расчетов успешно распечатан.")
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
@@ -1179,7 +1223,6 @@ def report_x():
         with fptr_connection(fptr):
             fptr.setParam(IFptr.LIBFPTR_PARAM_REPORT_TYPE, IFptr.LIBFPTR_RT_X)
             fptr.report()
-        logger.info("X-отчет успешно распечатан.")
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
         windows.info_window(
@@ -1255,14 +1298,12 @@ def deposit_of_money(amount):
             Функция не возвращает значений.
     """
     logger.info("Запуск функции cash_deposit")
-    logger.info(f"Внесено в кассу: {amount}")
     if amount <= 0:
         logger.error(
             f"Некорректная сумма для внесения: {amount}. Сумма должна быть положительной."
         )
         windows.info_window("Ошибка", "Сумма внесения должна быть положительной.")
         return
-    logger.info(f"Внесено в кассу: {amount}")
     try:
         with fptr_connection(fptr):
             fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
@@ -1302,14 +1343,12 @@ def payment(amount):
             Функция не возвращает значений.
     """
     logger.info("Запуск функции payment")
-    logger.info(f"Выплачено из кассы: {amount}")
     if amount <= 0:
         logger.error(
             f"Некорректная сумма для выплаты: {amount}. Сумма должна быть положительной."
         )
         windows.info_window("Ошибка", "Сумма выплаты должна быть положительной.", "")
         return
-    logger.info(f"Выплачено из кассы: {amount}")
     try:
         with fptr_connection(fptr):
             fptr.setParam(IFptr.LIBFPTR_PARAM_SUM, amount)
@@ -1413,7 +1452,6 @@ def operation_on_the_terminal(payment_type, type_operation, price):
     try:
         if payment_type == PAYMENT_ELECTRONIC:
             payment = 1
-            logger.debug("оплата банковской картой")
             if type_operation == 1:
                 logger.info("Запускаем оплату по банковскому терминалу")
                 # результат операции по терминалу
@@ -1446,7 +1484,6 @@ def operation_on_the_terminal(payment_type, type_operation, price):
                     return 0, payment
         # если offline оплата банковской картой
         elif payment_type == PAYMENT_OFFLINE:
-            logger.debug("Продажа новая. Начинаем оплату")
             payment = 3
             # результат операции по терминалу
             logger.info("Запускаем offline оплату по банковскому терминалу")
@@ -1761,7 +1798,7 @@ def smena_close(user):
                 windows.info_window(
                     "Сверка итогов по банковскому терминалу завершена неудачно.", "", ""
                 )
-                logger.warning(f"Состояние смены: {state}")
+                logger.info(f"Состояние смены: {state}")
         else:
             # Логирование успешного состояния
             logger.info("Смена уже закрыта.")
@@ -1790,7 +1827,6 @@ def continue_print():
     try:
         # Попытка продолжить печать
         fptr.continuePrint()
-        logger.info("Продолжение печати выполнено успешно.")
     except Exception as e:
         # Логирование ошибки
         logger.error(f"Ошибка при продолжении печати: {e}")
@@ -1812,7 +1848,6 @@ def print_text(text: str):
         None:
             Функция не возвращает значений, но может вызывать исключения в случае ошибок при печати.
     """
-    logger.info("Запуск функции print_text")
     try:
         # Устанавливаем параметры для печати строки
         fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, text)
