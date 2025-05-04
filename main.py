@@ -3000,10 +3000,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logger.debug(f"Обработано {len(sales)} продаж и {len(sales_return)} возвратов")
         logger.debug(f"Сформировано {len(data)} строк статистики")
         # Считаем билеты
-        type_tickets: list[int | str] = [0, 1, "м", "и", "-"]
+        type_tickets: list[int | str] = [0, 1, "м", "и", "-", "с"]
         time_arrival: list[int] = [1, 2, 3]
-        c, a, m_c, m_a, i_ = (
-            {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0} for _ in range(5)
+        c, a, m_c, m_a, i_, i_m = (
+            {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0} for _ in range(6)
         )
         for ticket in tickets:
             if ticket[2] == type_tickets[4]:  # обычный
@@ -3012,6 +3012,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 target = m_a if ticket[0] == type_tickets[0] else m_c
             elif ticket[2] == type_tickets[3]:  # инвалид
                 target = i_
+            elif ticket[2] == type_tickets[5]:  # сопровождающий
+                target = i_m
             else:
                 continue  # игнорируем другие типы
             target["sum"] += 1
@@ -3025,9 +3027,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         data = [
             ("взрослый", a),
             ("детский", c),
-            ("мног-й взр.", m_a),
-            ("мног-й дет.", m_c),
+            ("многодетный взр.", m_a),
+            ("многодетный дет.", m_c),
             ("инвалид", i_),
+            ("сопровождающий", i_m),
         ]
         # Устанавливаем количество строк в таблице и очищаем её
         self.ui.tableWidget_3.setRowCount(len(data))
@@ -3069,6 +3072,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 "Мног-й дет., 2 ч.",
                 "Мног-й дет., 3 ч.",
                 "Инвалид, 3 ч.",
+                "Сопровождающий , 3 ч.",
             ]
             table: list[str] = [
                 self.ui.tableWidget_3.item(0, 2).text(),  # взр 1
@@ -3084,6 +3088,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.ui.tableWidget_3.item(3, 3).text(),  # мн дет 2
                 self.ui.tableWidget_3.item(3, 4).text(),  # мн дет 3
                 self.ui.tableWidget_3.item(4, 1).text(),  # инв
+                self.ui.tableWidget_3.item(5, 1).text(),  # сопровождающий
             ]
             # Удаляем предыдущий файл
             os.system("TASKKILL /F /IM SumatraPDF.exe")
@@ -3114,6 +3119,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             child_counts = table[3:6]
             many_adult_counts = table[6:9]
             many_child_counts = table[9:12]
+            disabled_counts = table[12]
+            maintainer_counts = table[13]
 
             sum_adult = calculate_total(adult_prices, adult_counts)
             sum_child = calculate_total(child_prices, child_counts)
@@ -3124,6 +3131,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             kol_child = sum(int(count) for count in child_counts)
             kol_many_adult = sum(int(count) for count in many_adult_counts)
             kol_many_child = sum(int(count) for count in many_child_counts)
+            kol_disabled = int(disabled_counts) if disabled_counts else 0
+            kol_maintainer = int(maintainer_counts) if maintainer_counts else 0
 
             # Формируем данные
             data: list[list[str] | list[str | int] | list[str | int]] = [
@@ -3194,16 +3203,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     kol_many_child,
                     sum_many_child,
                 ],
-                ["17", type_ticket[12], "-", table[12], "-"],
+                # Инвалиды
+                ["17", type_ticket[12], "-", disabled_counts, "-"],
+                # Сопровождающие
+                ["18", type_ticket[13], "-", maintainer_counts, "-"],
                 [
                     "",
                     "Итого билетов",
                     "",
-                    kol_adult + kol_child + kol_many_adult + kol_many_child,
-                    sum_adult + sum_child + sum_many_adult + sum_many_child,
-                ],
+                    kol_adult + kol_child + kol_many_adult + kol_many_child + kol_disabled + kol_maintainer,
+                    sum_adult + sum_child + sum_many_adult + sum_many_child + kol_disabled + kol_maintainer,
+                    ],
             ]
-            # logger.debug(f"Сведения для отчета администратора: {data}")
             otchet.otchet_administratora(dt1, dt2, data)
             os.startfile(path)
 
@@ -3234,7 +3245,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # logger.info(
             #     f"Формируем сведения для отчета: {self.ui.tableWidget_3.item(0, 0).text()}"
             # )
-            # logger.info(f"Имя ПК: {system.pc_name}")
             if system.pc_name == self.ui.tableWidget_4.item(0, 0).text():
                 values: list[str] = [
                     self.ui.tableWidget_4.item(0, 1).text(),
