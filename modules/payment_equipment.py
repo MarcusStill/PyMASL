@@ -4,12 +4,13 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from subprocess import TimeoutExpired
+from typing import Optional
 
 from modules import windows
 from modules.config import Config
 from modules.libfptr10 import IFptr
 from modules.logger import logger, logger_wraps
-from typing import Optional
+
 config = Config()
 
 # Получаем параметр available
