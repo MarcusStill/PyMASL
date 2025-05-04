@@ -3042,6 +3042,34 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.ui.tableWidget_3.setItem(row, 3, QTableWidgetItem(f"{values['t_2']}"))
             self.ui.tableWidget_3.setItem(row, 4, QTableWidgetItem(f"{values['t_3']}"))
 
+    def get_ticket_counts(self) -> list[str]:
+        """
+        Функция считывает значения из таблицы с билетами.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам интерфейса (GUI).
+
+        Возвращаемое значение:
+            list[str]: Список строковых значений, считанных из определённых ячеек таблицы self.ui.tableWidget_3.
+        """
+        return [
+            self.ui.tableWidget_3.item(0, 2).text(),
+            self.ui.tableWidget_3.item(0, 3).text(),
+            self.ui.tableWidget_3.item(0, 4).text(),
+            self.ui.tableWidget_3.item(1, 2).text(),
+            self.ui.tableWidget_3.item(1, 3).text(),
+            self.ui.tableWidget_3.item(1, 4).text(),
+            self.ui.tableWidget_3.item(2, 2).text(),
+            self.ui.tableWidget_3.item(2, 3).text(),
+            self.ui.tableWidget_3.item(2, 4).text(),
+            self.ui.tableWidget_3.item(3, 2).text(),
+            self.ui.tableWidget_3.item(3, 3).text(),
+            self.ui.tableWidget_3.item(3, 4).text(),
+            self.ui.tableWidget_3.item(4, 1).text(),
+            self.ui.tableWidget_3.item(5, 1).text(),
+        ]
+
     def main_otchet_administratora(self) -> None:
         """
         Функция формирует отчет администратора.
@@ -3058,163 +3086,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         path = os.path.realpath(path)
         row: int = self.ui.tableWidget_3.rowCount()
         if row >= 1:
-            type_ticket: list[str] = [
-                "Взрослый, 1 ч.",
-                "Взрослый, 2 ч.",
-                "Взрослый, 3 ч.",
-                "Детский, 1 ч.",
-                "Детский, 2 ч.",
-                "Детский, 3 ч.",
-                "Мног-й взр., 1 ч.",
-                "Мног-й взр., 2 ч.",
-                "Мног-й взр., 3 ч.",
-                "Мног-й дет., 1 ч.",
-                "Мног-й дет., 2 ч.",
-                "Мног-й дет., 3 ч.",
-                "Инвалид, 3 ч.",
-                "Сопровождающий , 3 ч.",
-            ]
-            table: list[str] = [
-                self.ui.tableWidget_3.item(0, 2).text(),  # взр 1
-                self.ui.tableWidget_3.item(0, 3).text(),  # взр 2
-                self.ui.tableWidget_3.item(0, 4).text(),  # взр 3
-                self.ui.tableWidget_3.item(1, 2).text(),  # дет 1
-                self.ui.tableWidget_3.item(1, 3).text(),  # дет 2
-                self.ui.tableWidget_3.item(1, 4).text(),  # дет 3
-                self.ui.tableWidget_3.item(2, 2).text(),  # мн взр 1
-                self.ui.tableWidget_3.item(2, 3).text(),  # мн взр 2
-                self.ui.tableWidget_3.item(2, 4).text(),  # мн взр 3
-                self.ui.tableWidget_3.item(3, 2).text(),  # мн дет 1
-                self.ui.tableWidget_3.item(3, 3).text(),  # мн дет 2
-                self.ui.tableWidget_3.item(3, 4).text(),  # мн дет 3
-                self.ui.tableWidget_3.item(4, 1).text(),  # инв
-                self.ui.tableWidget_3.item(5, 1).text(),  # сопровождающий
-            ]
             # Удаляем предыдущий файл
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             if os.path.exists(path):
                 os.remove(path)
             dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
             dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
-
-            # Промежуточные расчеты
-            def calculate_total(prices, counts):
-                logger.info("Запуск функции calculate_total")
-                return sum(price * int(count) for price, count in zip(prices, counts))
-
-            adult_prices = [
-                system.price["ticket_adult_1"],
-                system.price["ticket_adult_2"],
-                system.price["ticket_adult_3"],
-            ]
-            child_prices = [
-                system.price["ticket_child_1"],
-                system.price["ticket_child_2"],
-                system.price["ticket_child_3"],
-            ]
-            many_adult_prices = [round(price / 2) for price in adult_prices]
-            many_child_prices = [round(price / 2) for price in child_prices]
-
-            adult_counts = table[:3]
-            child_counts = table[3:6]
-            many_adult_counts = table[6:9]
-            many_child_counts = table[9:12]
-            disabled_counts = table[12]
-            maintainer_counts = table[13]
-
-            sum_adult = calculate_total(adult_prices, adult_counts)
-            sum_child = calculate_total(child_prices, child_counts)
-            sum_many_adult = calculate_total(many_adult_prices, many_adult_counts)
-            sum_many_child = calculate_total(many_child_prices, many_child_counts)
-
-            kol_adult = sum(int(count) for count in adult_counts)
-            kol_child = sum(int(count) for count in child_counts)
-            kol_many_adult = sum(int(count) for count in many_adult_counts)
-            kol_many_child = sum(int(count) for count in many_child_counts)
-            kol_disabled = int(disabled_counts) if disabled_counts else 0
-            kol_maintainer = int(maintainer_counts) if maintainer_counts else 0
-
-            # Формируем данные
-            data: list[list[str] | list[str | int] | list[str | int]] = [
-                [
-                    "№ п/п",
-                    "Тип\nбилета",
-                    "Цена, руб.",
-                    "Количество, шт.",
-                    "Стоимость, руб.",
-                ],
-                # Взрослые
-                *[
-                    [
-                        str(i + 1),
-                        type_ticket[i],
-                        adult_prices[i],
-                        adult_counts[i],
-                        adult_prices[i] * int(adult_counts[i]),
-                    ]
-                    for i in range(3)
-                ],
-                ["4", "Всего взрослых билетов", "", kol_adult, sum_adult],
-                # Дети
-                *[
-                    [
-                        str(i + 5),
-                        type_ticket[i + 3],
-                        child_prices[i],
-                        child_counts[i],
-                        child_prices[i] * int(child_counts[i]),
-                    ]
-                    for i in range(3)
-                ],
-                ["8", "Всего детских билетов", "", kol_child, sum_child],
-                # Многодетные взрослые
-                *[
-                    [
-                        str(i + 9),
-                        type_ticket[i + 6],
-                        many_adult_prices[i],
-                        many_adult_counts[i],
-                        many_adult_prices[i] * int(many_adult_counts[i]),
-                    ]
-                    for i in range(3)
-                ],
-                [
-                    "12",
-                    "Всего многодетных взрослых билетов",
-                    "",
-                    kol_many_adult,
-                    sum_many_adult,
-                ],
-                # Многодетные детские
-                *[
-                    [
-                        str(i + 13),
-                        type_ticket[i + 9],
-                        many_child_prices[i],
-                        many_child_counts[i],
-                        many_child_prices[i] * int(many_child_counts[i]),
-                    ]
-                    for i in range(3)
-                ],
-                [
-                    "16",
-                    "Всего многодетных детских билетов",
-                    "",
-                    kol_many_child,
-                    sum_many_child,
-                ],
-                # Инвалиды
-                ["17", type_ticket[12], "-", disabled_counts, "-"],
-                # Сопровождающие
-                ["18", type_ticket[13], "-", maintainer_counts, "-"],
-                [
-                    "",
-                    "Итого билетов",
-                    "",
-                    kol_adult + kol_child + kol_many_adult + kol_many_child + kol_disabled + kol_maintainer,
-                    sum_adult + sum_child + sum_many_adult + sum_many_child + kol_disabled + kol_maintainer,
-                    ],
-            ]
+            table_values = self.get_ticket_counts()
+            data = otchet.calculate_ticket_statistics(table_values, system)
             otchet.otchet_administratora(dt1, dt2, data)
             os.startfile(path)
 
@@ -3242,9 +3121,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
             dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
             # Формируем данные
-            # logger.info(
-            #     f"Формируем сведения для отчета: {self.ui.tableWidget_3.item(0, 0).text()}"
-            # )
             if system.pc_name == self.ui.tableWidget_4.item(0, 0).text():
                 values: list[str] = [
                     self.ui.tableWidget_4.item(0, 1).text(),
@@ -3259,7 +3135,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.ui.tableWidget_4.item(1, 4).text(),
                     self.ui.tableWidget_4.item(1, 5).text(),
                 ]
-            # logger.debug(f"Сведения для отчета кассира: {values}")
             otchet.otchet_kassira(values, dt1, dt2, system.user)
             os.startfile(path)
 
