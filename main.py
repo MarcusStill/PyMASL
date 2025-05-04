@@ -1249,7 +1249,7 @@ class SaleForm(QDialog):
         logger.info("Запуск функции apply_extended_many_children_discount")
         system.count_number_of_visitors["many_child"] = 0
         self.ui.checkBox_2.setEnabled(False)
-        self.ui.checkBox_2.setChecked(False)
+        self.ui.checkBox_2.setChecked(True)
         self.ui.comboBox_2.setCurrentIndex(10)
         self.ui.comboBox.setEnabled(True)
 

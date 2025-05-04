@@ -148,7 +148,6 @@ def otchet_administratora(date_1, date_2, values):
     logger.info("Запуск функции otchet_administratora")
     path = "./otchet.pdf"
     dt1, dt2, data = date_1, date_2, values
-    logger.debug("values %s" % data)
     c = canvas.Canvas(path, pagesize=A4)
     c.setLineWidth(0.3)
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
@@ -380,5 +379,4 @@ def calculate_ticket_statistics(table: list[str], system) -> list[list]:
          kol_adult + kol_child + kol_many_adult + kol_many_child + kol_disabled + kol_maintainer,
          sum_adult + sum_child + sum_many_adult + sum_many_child + kol_disabled + kol_maintainer],
     ]
-
     return data
