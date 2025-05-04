@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QWidget,
 )
-from sqlalchemy import and_, select, update, desc, or_
+from sqlalchemy import and_, select, update, desc
 from sqlalchemy.orm import Session
 
 from db.models import Client
@@ -1059,6 +1059,7 @@ class SaleForm(QDialog):
         # Устанавливаем цену в таблицу и пересчитываем
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{price}"))
         system.sale_discount = int(self.ui.comboBox_2.currentText())
+        logger.debug(system.sale_discount)
         new_price, category, discount_status = calculate_discounted_price(
             price, type_ticket
         )
@@ -1243,9 +1244,9 @@ class SaleForm(QDialog):
         """
         logger.info("Продление билетов многодетным")
         system.count_number_of_visitors["many_child"] = 0
-        self.ui.checkBox_2.setEnabled(True)
-        self.ui.checkBox_2.setChecked(True)
-        self.ui.comboBox_2.setCurrentIndex(0)
+        self.ui.checkBox_2.setEnabled(False)
+        self.ui.checkBox_2.setChecked(False)
+        self.ui.comboBox_2.setCurrentIndex(10)
         self.ui.comboBox.setEnabled(True)
 
     def apply_full_many_children_discount(self) -> None:
@@ -1259,6 +1260,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции apply_full_many_children_discount")
         logger.info("Сегодня день многодетных")
         system.count_number_of_visitors["many_child"] = 1
         # Устанавливаем продолжительность посещения 2 часа
@@ -1268,10 +1270,8 @@ class SaleForm(QDialog):
         self.ui.checkBox_2.setEnabled(False)
         self.ui.comboBox_2.setCurrentIndex(15)
         self.ui.comboBox_2.setEnabled(False)
+        self.ui.checkBox_2.setChecked(True)
         system.sale_dict["detail"][4] = 100
-        if system.count_number_of_visitors["many_child"] == 1:
-            logger.debug("Изменяем цену посещения для взрослого")
-            system.price["ticket_adult_2"] = 0
         # Отключаем кнопку возврата
         self.ui.pushButton_6.setEnabled(False)
 
@@ -1286,6 +1286,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции apply_half_many_children_discount")
         logger.info("Многодетным скидка 50%")
         system.count_number_of_visitors["many_child"] = 2
         # Устанавливаем скидку
