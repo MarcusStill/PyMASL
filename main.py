@@ -112,7 +112,8 @@ class AuthForm(QDialog):
             auth.close()
             return True
         else:
-            windows.info_window("Пользователь не найден", "Проверьте правильность ввода логина и пароля.")
+            windows.info_window("Пользователь не найден", "Проверьте правильность ввода логина и пароля.",
+                                "Убедитесь, что используете правильный логин и пароль для входа в систему.")
             return False
 
     def check_kkt_connection(self):
@@ -572,13 +573,6 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
         """
         logger.info("Запуск функции changing_color_of_calendar")
-        # Получаем строковое представление даты
-        get_date: str = str(self.ui.dateEdit.date())
-        date_slice: str = get_date[21 : (len(get_date) - 1)]
-        # logger.debug(date_slice)
-        # get_date: str = date_slice.replace(", ", "-") TODO: надо ли
-
-        # Поскольку check_day не требует аргументов, вызываем его без параметра
         if system.check_day() == 1:
             self.ui.dateEdit.setStyleSheet("background-color: red;")
         else:
