@@ -1126,6 +1126,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             int: Цена взрослого билета.
         """
+        logger.info("Запуск функции calculate_adult")
         price = calculate_adult_price()
         self.bind_adult_to_sale(row)
         # Если checkbox активен - взрослый в оплату не добавляется
@@ -1145,6 +1146,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             int: Цена детского билета.
         """
+        logger.info("Запуск функции calculate_child")
         self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
         price = calculate_child_price()
         update_child_count()
@@ -1164,6 +1166,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции bind_adult_to_sale")
         if system.count_number_of_visitors["id_adult"] == 0:
             system.count_number_of_visitors["id_adult"] += 1
             system.sale_dict["detail"][5] = self.ui.tableWidget_2.item(row, 5).text()
@@ -1196,6 +1199,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции handle_many_children_discount")
         self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).setCheckState(
             Qt.Checked
         )
@@ -1217,7 +1221,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
-        logger.info("Применение скидки для инвалида")
+        logger.info("Запуск функции handle_invalid_discount")
         system.count_number_of_visitors["invalid"] = 1
         system.sale_dict["detail"][4] = 100
         # Изменяем продолжительность времени посещения
@@ -1242,7 +1246,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
-        logger.info("Продление билетов многодетным")
+        logger.info("Запуск функции apply_extended_many_children_discount")
         system.count_number_of_visitors["many_child"] = 0
         self.ui.checkBox_2.setEnabled(False)
         self.ui.checkBox_2.setChecked(False)
@@ -1922,7 +1926,7 @@ class SaleForm(QDialog):
         """
         Функция для печати сохраненных билетов.
         """
-        logger.info("Запуск функции print_saved_tickets.")
+        logger.info("Запуск функции print_saved_tickets")
         self.sale_generate_saved_tickets()
         try:
             logger.info("Завершение процесса SumatraPDF, если он открыт.")
@@ -1938,7 +1942,7 @@ class SaleForm(QDialog):
         """
         Функция для открытия созданного PDF файла с билетами.
         """
-        logger.info("Запуск функции open_saved_tickets.")
+        logger.info("Запуск функции open_saved_tickets")
         # Исправленный вызов метода
         self.sale_generate_saved_tickets()
         try:
@@ -2800,6 +2804,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции main_open_client")
         client: ClientForm = ClientForm()
         client.show()
         client.exec()
@@ -3069,6 +3074,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             # Промежуточные расчеты
             def calculate_total(prices, counts):
+                logger.info("Запуск функции calculate_total")
                 return sum(price * int(count) for price, count in zip(prices, counts))
 
             adult_prices = [
