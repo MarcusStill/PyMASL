@@ -12,10 +12,22 @@ from modules.logger import logger, logger_wraps
 
 config = Config()
 
+# Получаем параметр available
 try:
-    fptr = IFptr("")
+    kkt_available = config.get("available") == 'on'
+except (KeyError, ValueError):
+    kkt_available = False
+    logger.info("Параметр 'available' не найден в конфигурации, ККТ считается отключенным")
+
+# Инициализация драйвера ККТ
+try:
+    fptr = IFptr("") if kkt_available else None
+    if not kkt_available:
+        logger.info("ККТ отключен в конфигурации (available ≠ on)")
 except Exception as e:
     logger.warning(f"Не установлен драйвер ККТ: {str(e)}")
+    kkt_available = False
+    fptr = None
 
 
 # Константы для работы с кодами терминала
@@ -129,6 +141,11 @@ def fptr_connection(device):
     Возвращаемое значение:
         object: Возвращает объект `device`, переданный в функцию. Этот объект доступен внутри блока `with`.
     """
+    if not kkt_available or device is None:
+        logger.debug("ККТ не доступен, пропускаем подключение")
+        yield None
+        return
+
     device.open()
     try:
         yield device  # передаем fptr внутрь контекста
@@ -860,6 +877,18 @@ def print_pinpad_check(count: int = 2):
 
         count -= 1
 
+def is_kkt_available() -> bool:
+    """Проверяет, доступен ли ККТ согласно конфигурации.
+
+    Возвращает:
+        bool: True если ККТ доступен (available=on), False в противном случае
+    """
+    try:
+        if hasattr(config, 'KKT') and hasattr(config.KKT, 'available'):
+            return str(config.KKT.available).lower() == 'on'
+        return False
+    except Exception:
+        return False
 
 @logger_wraps()
 def get_info(hide: bool = False) -> int:
@@ -870,10 +899,14 @@ def get_info(hide: bool = False) -> int:
 
     Возвращаемое значение:
         int или None:
-            - Возвращает номер модели ККТ.
-            - Возвращает None, в случае ошибки или если hide=False.
+            - Возвращает номер модели ККТ, если hide=True и ККТ доступен.
+            - Возвращает None, если ККТ недоступен, произошла ошибка или hide=False.
     """
     logger.info("Запуск функции get_info")
+    # Проверяем доступность ККТ из конфигурации
+    if not is_kkt_available():
+        logger.info("Операция пропущена - ККТ отключен в конфигурации")
+        return None
     try:
         with fptr_connection(fptr):
             fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
@@ -916,11 +949,13 @@ def get_last_document(day: int = 7) -> None:
         day (int): Количество дней простоя кассового аппарата, после которого рекомендуется сделать обмен данными
 
     Возвращаемое значение:
-        int или None:
-            - Возвращает номер модели ККТ.
-            - Возвращает None, в случае ошибки или если hide=False.
+        None: Функция не возвращает значений, только показывает сообщения об ошибках
     """
     logger.info("Запуск функции get_last_document")
+    # Проверяем доступность ККТ из конфигурации
+    if not is_kkt_available():
+        logger.info("Операция пропущена - ККТ отключен в конфигурации")
+        return
     try:
         last_check = get_last_document_datetime()
         check_stale_document(last_check, day)

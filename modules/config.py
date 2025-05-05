@@ -59,6 +59,12 @@ class Config:
             [TERMINAL]
             pinpad_path (str): Путь к ПО платежного терминала
 
+            [PRINT]
+            ticket (str): Флаг печати билетов (on/off)
+
+            [KKT]
+            available (str): Флаг наличия ККТ (on/off)
+
         Возвращает:
             dict: Словарь с загруженными параметрами конфигурации, где:
                 - ключи соответствуют именам параметров
@@ -88,6 +94,8 @@ class Config:
                 "ticket_coordinates_file": "OTHER",
                 "kol": "PC",
                 "pinpad_path": "TERMINAL",
+                "available": "KKT",
+                "ticket": "PRINT",
             }
 
             config_data = {}
@@ -114,12 +122,6 @@ class Config:
                     )
                 config_data[key] = config.get(section, key)
 
-            # Проверяем наличие файла `ticket_coordinates_file`
-            coordinates_file = config_data.get("ticket_coordinates_file")
-            if not coordinates_file or not os.path.isfile(coordinates_file):
-                raise FileNotFoundError(
-                    f"Файл конфигурации для координат '{coordinates_file}' не найден."
-                )
 
             return config_data
         except (NoSectionError, NoOptionError) as e:
