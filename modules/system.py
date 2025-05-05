@@ -40,6 +40,8 @@ class System:
         # Информация о РМ
         self.kol_pc = int(self.config.get("kol"))
         self.pcs = self.config.pcs  # список рабочих станций
+        self.ticket_print = self.config.get("ticket")
+        self.kkt_available = self.config.get("available")
 
         load_dotenv()  # Загружаем переменные окружения из .env файла
         pswrd = os.getenv("DB_PASSWORD")

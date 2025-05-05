@@ -1922,13 +1922,33 @@ class SaleForm(QDialog):
         # Формируем новый файл с билетами
         otchet.generate_saved_tickets(client_in_sale)
 
+    def is_printing_enabled(self) -> bool:
+        """Функция проверяет, разрешена ли печать билетов.
+
+        Возвращает:
+            bool: True только если:
+                  - параметр 'ticket' существует
+                  - и равен 'on' (регистронезависимо)
+                  Во всех остальных случаях возвращает False.
+        """
+        # Проверяем наличие атрибута и что он не None
+        if not hasattr(system, 'ticket_print') or system.ticket_print is None:
+            return False
+
+        # Приводим к строке и сравниваем с 'on'
+        return str(system.ticket_print).strip().lower() == "on"
+
     def print_saved_tickets(self):
         """
         Функция для печати сохраненных билетов.
+        Печатает только если в конфигурации [PRINT] ticket = on.
         """
         logger.info("Запуск функции print_saved_tickets")
-        self.sale_generate_saved_tickets()
+        if not self.is_printing_enabled():
+            logger.info("Печать билетов отключена (параметр 'ticket' не равен 'on' или отсутствует)")
+            return
         try:
+            self.sale_generate_saved_tickets()
             logger.info("Завершение процесса SumatraPDF, если он открыт.")
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             print_cmd_path = Path(__file__).parent / "scripts" / "print.cmd"
