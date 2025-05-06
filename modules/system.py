@@ -132,6 +132,8 @@ class System:
             "invalid": 0,
             "talent": 0,
         }
+        # Накапливаем статистику по проданным билетам
+        self.ticket_price_summary = {}
 
     @staticmethod
     def decode_password(encoded_password: str) -> str:

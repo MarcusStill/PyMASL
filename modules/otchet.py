@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape, letter
 from reportlab.lib.units import mm, inch
@@ -143,11 +145,123 @@ def generate_saved_tickets(values):
     c.save()
 
 
+def generate_ticket_report_table(ticket_summary: dict) -> list[list]:
+    """
+    Формирует таблицу отчета по билетам, включая агрегированные строки, используя данные из ticket_summary.
+    Отсутствующие категории заполняются нулями.
+
+    Параметры:
+        ticket_summary: dict
+            Словарь с данными о типах билетов, где ключами являются названия типов билетов,
+            а значениями - словари с ценами, количеством и суммой для каждого билета.
+
+    Возвращаемое значение:
+        list[list]:
+            Список строк, представляющих таблицу отчета. Каждая строка содержит информацию о типе билета,
+            его цене, количестве и сумме. Также в таблице присутствуют агрегированные строки для каждого
+            типа билета (взрослые, детские, многодетные и т.д.).
+
+    Примечания:
+        - В таблице присутствуют следующие типы билетов: взрослый, детский, многодетный, инвалид и сопровождающий.
+        - В случае отсутствия данных для какого-либо типа билета, в таблицу добавляется строка с нулями.
+        - В конце таблицы добавляются строки с агрегацией по количеству и сумме для разных типов билетов.
+    """
+    logger.info("Запуск функции generate_ticket_report_table")
+    type_ticket = [
+        "Взрослый, 1 ч.", "Взрослый, 2 ч.", "Взрослый, 3 ч.",
+        "Детский, 1 ч.", "Детский, 2 ч.", "Детский, 3 ч.",
+        "Многодетный взрослый, 1 ч.", "Многодетный взрослый, 2 ч.", "Многодетный взрослый, 3 ч.",
+        "Многодетный детский, 1 ч.", "Многодетный детский, 2 ч.", "Многодетный детский, 3 ч.",
+        "Инвалид, 3 ч.", "Сопровождающий, 3 ч.",
+    ]
+    data = [["№\n п/п", "Тип\nбилета", "Цена,\n руб.", "Количество,\n шт.", "Стоимость,\n руб."]]
+    # Счётчики для агрегатов
+    total = {
+        "adult": {"count": 0, "sum": 0},
+        "child": {"count": 0, "sum": 0},
+        "many_adult": {"count": 0, "sum": 0},
+        "many_child": {"count": 0, "sum": 0},
+        "disabled": {"count": 0},
+        "maintainer": {"count": 0},
+    }
+    row_num = 1
+    for i, ticket_type in enumerate(type_ticket):
+        prices = ticket_summary.get(ticket_type, {})
+        if prices:
+            for price, details in prices.items():
+                count = details["count"]
+                total_price = details["total_price"]
+                data.append([str(row_num), ticket_type, price, count, total_price])
+                row_num += 1
+                if "Взрослый" in ticket_type and "Многодетный" not in ticket_type:
+                    total["adult"]["count"] += count
+                    total["adult"]["sum"] += total_price
+                elif "Детский" in ticket_type and "Многодетный" not in ticket_type:
+                    total["child"]["count"] += count
+                    total["child"]["sum"] += total_price
+                elif "Многодетный взрослый" in ticket_type:
+                    total["many_adult"]["count"] += count
+                    total["many_adult"]["sum"] += total_price
+                elif "Многодетный детский" in ticket_type:
+                    total["many_child"]["count"] += count
+                    total["many_child"]["sum"] += total_price
+                elif "Инвалид" in ticket_type:
+                    total["disabled"]["count"] += count
+                elif "Сопровождающий" in ticket_type:
+                    total["maintainer"]["count"] += count
+        else:
+            # Пустая категория
+            data.append([str(row_num), ticket_type, "-", 0, 0])
+            row_num += 1
+
+    # Агрегированные строки
+    data += [
+        ["", "Всего взрослых билетов", "", total["adult"]["count"], total["adult"]["sum"]],
+        ["", "Всего детских билетов", "", total["child"]["count"], total["child"]["sum"]],
+        ["", "Всего многодетных взрослых билетов", "", total["many_adult"]["count"], total["many_adult"]["sum"]],
+        ["", "Всего многодетных детских билетов", "", total["many_child"]["count"], total["many_child"]["sum"]],
+        ["", "Инвалид, 3 ч.", "", total["disabled"]["count"], "0"],
+        ["", "Сопровождающий, 3 ч.", "", total["maintainer"]["count"], "0"],
+        ["", "Итого билетов", "",
+         total["adult"]["count"] + total["child"]["count"] +
+         total["many_adult"]["count"] + total["many_child"]["count"] +
+         total["disabled"]["count"] + total["maintainer"]["count"],
+         total["adult"]["sum"] + total["child"]["sum"] +
+         total["many_adult"]["sum"] + total["many_child"]["sum"]],
+    ]
+
+    return data
+
 def otchet_administratora(date_1, date_2, values):
-    """Формирование отчета администратора"""
+    """
+    Функция формирует отчет администратора в формате PDF.
+
+    Параметры:
+        date_1: str
+            Дата начала отчетного периода в формате "yyyy-MM-dd HH:mm:ss".
+
+        date_2: str
+            Дата конца отчетного периода в формате "yyyy-MM-dd HH:mm:ss".
+
+        values: list[str]
+            Список значений для таблицы отчета, включающий типы билетов, цены, количество и суммы.
+
+    Возвращаемое значение:
+        None: Функция не возвращает значений, генерирует отчет в формате PDF по указанным данным.
+
+    Примечания:
+        - Функция преобразует строки дат в объект `datetime`, затем форматирует их в формат "dd-MM-yyyy".
+        - В отчете содержатся данные о билете, их стоимости, количестве, а также информация об администраторах.
+        - Формируется PDF-документ с таблицей, содержащей информацию о продаже билетов в заданный период.
+    """
     logger.info("Запуск функции otchet_administratora")
     path = "./otchet.pdf"
-    dt1, dt2, data = date_1, date_2, values
+    # Преобразуем строку к дате
+    date_1 = datetime.strptime(date_1, "%Y-%m-%d %H:%M:%S")
+    date_2 = datetime.strptime(date_2, "%Y-%m-%d %H:%M:%S")
+    dt1 = date_1.strftime("%d-%m-%Y")
+    dt2 = date_2.strftime("%d-%m-%Y")
+    data = generate_ticket_report_table(values)
     c = canvas.Canvas(path, pagesize=A4)
     c.setLineWidth(0.3)
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
@@ -155,79 +269,60 @@ def otchet_administratora(date_1, date_2, values):
     c.drawString(30, 800, "Организация")
     c.drawString(30, 785, 'АО "Мастерславль-Белгород"')
     c.drawString(450, 800, "Приложение №2")
-    c.drawString(255, 685, "Отчет администратора")
-    c.drawString(255, 670, "по оказанным услугам")
+    c.drawString(255, 730, "Отчет администратора")
+    c.drawString(255, 715, "по оказанным услугам")
     if dt1 == dt2:
-        c.drawString(255, 655, f"за {dt1}")
+        c.drawString(255, 700, f"за {dt1}")
     else:
-        c.drawString(255, 655, f"за {dt1} - {dt2}")
-    # рисуем линию
+        c.drawString(255, 700, f"за {dt1} - {dt2}")
+    # Линия под датой
     c.setLineWidth(1)
-    c.line(275, 652, 430, 652)
-    # ФИО персонала
-    # c.drawString(255, 623, f"{System.user[0]} {System.user[1]}")
-    c.setLineWidth(1)
-    c.line(100, 621, 500, 621)
+    c.line(275, 697, 350, 697)
+    # Линия под ФИО
+    c.line(100, 666, 500, 666)
     c.setFont("DejaVuSerif", 8)
-    c.drawString(255, 610, "ФИО Администратора")
-    # Ширины столбцов
+    c.drawString(255, 655, "ФИО Администратора")
+    # Настройка ширины таблицы
     custom_widths = [
-        10 * mm,  # 1-й столбец (№ п/п)
-        135 * mm,  # 2-й столбец (Тип билета), остаток ширины
-        15 * mm,  # 3-й столбец (Цена, руб.)
-        25 * mm,  # 4-й столбец (Количество, шт.)
-        25 * mm,  # 5-й столбец (Стоимость, руб.)
+        10 * mm,  # № п/п
+        135 * mm,  # Тип билета
+        15 * mm,  # Цена
+        25 * mm,  # Кол-во
+        25 * mm,  # Сумма
     ]
-    # Рассчитаем x-координату для размещения таблицы
-    page_width = 210 * mm  # Ширина листа A4
-    left_margin = 20 * mm  # Отступ слева
-    right_margin = 10 * mm  # Отступ справа
-    table_width = sum(custom_widths)  # Общая ширина таблицы
-    # Позиция таблицы с учётом отступа слева и справа
-    left_position = left_margin
-    right_position = page_width - right_margin  # Правый отступ
-    # Если общая ширина таблицы превышает доступную ширину с учетом отступов, подгоняем её
-    if table_width > (right_position - left_position):
-        # Подгоняем 2-й столбец для оставшейся ширины
-        remaining_width = right_position - left_position - (sum(custom_widths) - custom_widths[1])
+    page_width = 210 * mm
+    left_margin = 20 * mm
+    right_margin = 10 * mm
+    table_width = sum(custom_widths)
+    if table_width > (page_width - left_margin - right_margin):
+        # Корректировка ширины второго столбца
+        remaining_width = page_width - left_margin - right_margin - (sum(custom_widths) - custom_widths[1])
         custom_widths[1] = remaining_width
-    # Теперь создаём таблицу с заданными ширинами
-    t = Table(data, colWidths=custom_widths, rowHeights=len(data) * [0.3 * inch])
+    t = Table(data, colWidths=custom_widths, rowHeights=[0.3 * inch] * len(data))
     t.setStyle(
-        TableStyle(
-            [
-                ("FONT", (0, 0), (9, 19), "DejaVuSerif", 8),
-                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.black),
-                ("BOX", (0, 0), (-1, -1), 0.25, colors.black),
-            ]
-        )
+        TableStyle([
+            ("FONT", (0, 0), (-1, -1), "DejaVuSerif", 8),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.black),
+            ("BOX", (0, 0), (-1, -1), 0.25, colors.black),
+        ])
     )
-    # wrap the table to this width, height in case it spills
-    t.wrapOn(c, left_position, 180 * mm)
-    # draw it on our pdf at x,y
-    t.drawOn(c, left_position, 60 * mm)
-    # отчет сдал
+    t.wrapOn(c, left_margin, 180 * mm)
+    t.drawOn(c, left_margin, 60 * mm)
+    # Подписи
     c.drawString(30, 130, "Отчет сдал:")
     c.drawString(30, 110, "Кассир")
-    c.setLineWidth(1)
     c.line(150, 110, 240, 110)
     c.setFont("DejaVuSerif", 8)
     c.drawString(175, 98, "Подпись")
     c.line(300, 110, 390, 110)
-    c.setFont("DejaVuSerif", 8)
     c.drawString(325, 98, "Расшифровка")
-    # отчет принял
     c.drawString(30, 50, "Отчет принял:")
-    c.setLineWidth(1)
     c.line(150, 35, 240, 35)
-    c.setFont("DejaVuSerif", 8)
     c.drawString(175, 26, "Подпись")
     c.line(300, 35, 390, 35)
-    c.setFont("DejaVuSerif", 8)
     c.drawString(325, 26, "Расшифровка")
     c.showPage()
     c.save()
-
 
 def otchet_kassira(val, date1, date2, kassir):
     """Формирование отчета кассира"""
@@ -303,80 +398,198 @@ def otchet_kassira(val, date1, date2, kassir):
     c.showPage()
     c.save()
 
-def calculate_ticket_statistics(table: list[str], system) -> list[list]:
+def process_sales_and_returns(sales, sales_return):
     """
-    Выполняет расчеты по типам билетов и возвращает таблицу данных для отчета.
+    Обрабатывает продажи и возвраты, агрегируя информацию по каждому кассовому аппарату.
+    Функция вычисляет суммы по картам и наличным, а также учитывает возвраты по каждому типу:
+    полный, частичный и возврат за второй раз. Итоговая информация формируется по каждому аппарату
+    и общей сумме для всех.
+
+    Параметры:
+        sales: list[tuple]
+            Список кортежей, представляющих продажи. Каждый кортеж содержит имя кассового аппарата,
+            тип оплаты (1 - карта, 2 - наличные) и сумму продажи.
+
+        sales_return: list[tuple]
+            Список кортежей, представляющих возвраты. Каждый кортеж содержит имя кассового аппарата,
+            тип возврата (2 - обычный возврат, 4 - возврат второй раз, 6 - частичный возврат), тип оплаты
+            (1 - карта, 2 - наличные) и сумму возврата.
+
+    Возвращаемое значение:
+        list[tuple]:
+            Список кортежей с агрегированными данными по каждому кассовому аппарату. Каждый кортеж включает:
+            - имя кассового аппарата,
+            - сумму продаж по картам,
+            - сумму продаж по наличным,
+            - общую сумму продаж,
+            - сумму возвратов по картам,
+            - сумму возвратов по наличным,
+            - общую сумму возвратов.
+
+    Примечания:
+        - Функция учитывает несколько типов возвратов (полный, частичный, возврат за второй раз).
+        - Если кассовый аппарат отсутствует в данных о продажах или возвратах, он игнорируется.
+        - В конце добавляется строка с итоговой информацией по всем кассовым аппаратам.
     """
-    logger.info("Запуск функции calculate_ticket_statistics")
-    def calculate_total(prices, counts):
-        return sum(price * int(count) for price, count in zip(prices, counts))
+    logger.info("Запуск функции process_sales_and_returns")
+    pcs = {
+        name: {
+            "card": 0, "cash": 0,
+            "return": 0, "return_again": 0,
+            "return_partial": 0,
+            "return_card": 0, "return_cash": 0,
+        }
+        for name in system.pcs
+    }
 
-    type_ticket = [
-        "Взрослый, 1 ч.", "Взрослый, 2 ч.", "Взрослый, 3 ч.",
-        "Детский, 1 ч.", "Детский, 2 ч.", "Детский, 3 ч.",
-        "Многодетный взрослый, 1 ч.", "Многодетный взрослый, 2 ч.", "Многодетный взрослый, 3 ч.",
-        "Многодетный детский, 1 ч.", "Многодетный детский, 2 ч.", "Многодетный детский, 3 ч.",
-        "Инвалид, 3 ч.", "Сопровождающий, 3 ч.",
-    ]
+    type_rm = [1, 2]  # 1 - карта, 2 - наличные
+    RETURN_FIELDS = {2: "return", 4: "return_again", 6: "return_partial"}
 
-    adult_prices = [
-        system.price["ticket_adult_1"],
-        system.price["ticket_adult_2"],
-        system.price["ticket_adult_3"],
-    ]
-    child_prices = [
-        system.price["ticket_child_1"],
-        system.price["ticket_child_2"],
-        system.price["ticket_child_3"],
-    ]
-    many_adult_prices = [round(price / 2) for price in adult_prices]
-    many_child_prices = [round(price / 2) for price in child_prices]
+    for sale in sales:
+        pc_name = sale[0]
+        if pc_name not in pcs:
+            continue
+        if sale[1] == type_rm[0]:
+            pcs[pc_name]["card"] += sale[2]
+        else:
+            pcs[pc_name]["cash"] += sale[2]
 
-    adult_counts = table[:3]
-    child_counts = table[3:6]
-    many_adult_counts = table[6:9]
-    many_child_counts = table[9:12]
-    disabled_counts = table[12]
-    maintainer_counts = table[13]
+    for sale in sales_return:
+        pc_name = sale[0]
+        if pc_name in pcs:
+            return_type = sale[3]
+            if return_type in RETURN_FIELDS:
+                pcs[pc_name][RETURN_FIELDS[return_type]] += 1
+                if sale[1] == 1:
+                    pcs[pc_name]["return_card"] += sale[2]
+                else:
+                    pcs[pc_name]["return_cash"] += sale[2]
 
-    sum_adult = calculate_total(adult_prices, adult_counts)
-    sum_child = calculate_total(child_prices, child_counts)
-    sum_many_adult = calculate_total(many_adult_prices, many_adult_counts)
-    sum_many_child = calculate_total(many_child_prices, many_child_counts)
+    data = []
+    for name in system.pcs:
+        stats = pcs[name]
+        data.append((
+            name,
+            stats["card"],
+            stats["cash"],
+            None,
+            stats["return_card"],
+            stats["return_cash"],
+            stats["return_card"] + stats["return_cash"]
+        ))
 
-    kol_adult = sum(int(count) for count in adult_counts)
-    kol_child = sum(int(count) for count in child_counts)
-    kol_many_adult = sum(int(count) for count in many_adult_counts)
-    kol_many_child = sum(int(count) for count in many_child_counts)
-    kol_disabled = int(disabled_counts) if disabled_counts else 0
-    kol_maintainer = int(maintainer_counts) if maintainer_counts else 0
+    total_card = sum(pc["card"] for pc in pcs.values())
+    total_cash = sum(pc["cash"] for pc in pcs.values())
+    total_return = sum(pc["return_card"] + pc["return_cash"] for pc in pcs.values())
 
-    data = [
-        ["№\n п/п", "Тип\nбилета", "Цена,\n руб.", "Количество,\n шт.", "Стоимость,\n руб."],
-        *[
-            [str(i + 1), type_ticket[i], adult_prices[i], adult_counts[i], adult_prices[i] * int(adult_counts[i])]
-            for i in range(3)
-        ],
-        ["4", "Всего взрослых билетов", "", kol_adult, sum_adult],
-        *[
-            [str(i + 5), type_ticket[i + 3], child_prices[i], child_counts[i], child_prices[i] * int(child_counts[i])]
-            for i in range(3)
-        ],
-        ["8", "Всего детских билетов", "", kol_child, sum_child],
-        *[
-            [str(i + 9), type_ticket[i + 6], many_adult_prices[i], many_adult_counts[i], many_adult_prices[i] * int(many_adult_counts[i])]
-            for i in range(3)
-        ],
-        ["12", "Всего многодетных взрослых билетов", "", kol_many_adult, sum_many_adult],
-        *[
-            [str(i + 13), type_ticket[i + 9], many_child_prices[i], many_child_counts[i], many_child_prices[i] * int(many_child_counts[i])]
-            for i in range(3)
-        ],
-        ["16", "Всего многодетных детских билетов", "", kol_many_child, sum_many_child],
-        ["17", type_ticket[12], "-", disabled_counts, "-"],
-        ["18", type_ticket[13], "-", maintainer_counts, "-"],
-        ["", "Итого билетов", "",
-         kol_adult + kol_child + kol_many_adult + kol_many_child + kol_disabled + kol_maintainer,
-         sum_adult + sum_child + sum_many_adult + sum_many_child + kol_disabled + kol_maintainer],
-    ]
+    data.append((
+        "Итого",
+        total_card,
+        total_cash,
+        total_card + total_cash,
+        None,
+        None,
+        total_return
+    ))
     return data
+
+def process_ticket_stats(tickets: list[tuple]) -> list[tuple[str, dict[str, int]]]:
+    """
+    Обрабатывает информацию о билетах, суммируя количество и стоимость проданных билетов по категориям
+    и времени пребывания. Возвращает данные, которые могут быть использованы для отображения статистики
+    по типам билетов, а также сводку по ценам и количествам для каждой категории.
+
+    Параметры:
+        tickets: list[tuple]
+            Список кортежей, каждый из которых содержит информацию о типе билета, времени пребывания,
+            описании, цене и других данных о продаже.
+
+    Возвращаемое значение:
+        list[tuple]:
+            Список кортежей, каждый из которых представляет собой пару: название категории билета
+            и словарь с данными о количестве и стоимости билетов для каждой цены в данной категории.
+            Также сохраняется информация о количестве и распределении билетов по времени пребывания.
+
+    Примечания:
+        - Функция поддерживает несколько типов билетов (взрослый, детский, многодетный и т. д.).
+        - Каждая категория билетов имеет различные временные интервалы (1 ч., 2 ч., 3 ч.).
+        - Функция поддерживает несколько типов возвратов и их учет по категориям.
+    """
+    logger.info("Запуск функции process_ticket_stats")
+    a, c, m_c, m_a, i_, i_m = (
+        {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0} for _ in range(6)
+    )
+
+    TICKET_TYPE_MAP = {
+        (0, 1): "Взрослый, 1 ч.", (0, 2): "Взрослый, 2 ч.", (0, 3): "Взрослый, 3 ч.",
+        (1, 1): "Детский, 1 ч.", (1, 2): "Детский, 2 ч.", (1, 3): "Детский, 3 ч.",
+        (2, 1): "Многодетный взрослый, 1 ч.", (2, 2): "Многодетный взрослый, 2 ч.", (2, 3): "Многодетный взрослый, 3 ч.",
+        (3, 1): "Многодетный детский, 1 ч.", (3, 2): "Многодетный детский, 2 ч.", (3, 3): "Многодетный детский, 3 ч.",
+        (4, 3): "Инвалид, 3 ч.",
+        (5, 3): "Сопровождающий, 3 ч.",
+    }
+
+    # Здесь будут цены и кол-во проданных билетов по ним
+    ticket_price_summary: dict[str, dict[int, dict[str, int]]] = {}
+
+    for ticket_type, arrival_time, description, _, _, price in tickets:
+        # Определяем ключ категории для сводки
+        if description == "-":
+            key = (ticket_type, arrival_time)
+        elif description == "м":
+            key = (ticket_type + 2, arrival_time)
+        elif description == "и":
+            key = (4, 3)
+        elif description == "с":
+            key = (5, 3)
+        else:
+            continue
+
+        if key not in TICKET_TYPE_MAP:
+            continue
+
+        category_name = TICKET_TYPE_MAP[key]
+
+        # Инициализация вложенного словаря
+        if category_name not in ticket_price_summary:
+            ticket_price_summary[category_name] = {}
+        if price not in ticket_price_summary[category_name]:
+            ticket_price_summary[category_name][price] = {"count": 0, "total_price": 0}
+
+        ticket_price_summary[category_name][price]["count"] += 1
+        ticket_price_summary[category_name][price]["total_price"] += price
+
+        # Для таблицы (по категориям)
+        if description == "-":
+            target = a if ticket_type == 0 else c
+        elif description == "м":
+            target = m_a if ticket_type == 0 else m_c
+        elif description == "и":
+            target = i_
+        elif description == "с":
+            target = i_m
+        else:
+            continue
+
+        target["sum"] += 1
+        if arrival_time == 1:
+            target["t_1"] += 1
+        elif arrival_time == 2:
+            target["t_2"] += 1
+        elif arrival_time == 3:
+            target["t_3"] += 1
+
+    ticket_data = [
+        ("взрослый", a),
+        ("детский", c),
+        ("многодетный взр.", m_a),
+        ("многодетный дет.", m_c),
+        ("инвалид", i_),
+        ("сопровождающий", i_m),
+    ]
+    system.ticket_price_summary = ticket_price_summary
+    logger.debug('ticket_data')
+    logger.debug(ticket_data)
+    logger.debug('ticket_price_summary')
+    logger.debug(ticket_price_summary)
+    return ticket_data
