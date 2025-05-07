@@ -577,6 +577,7 @@ def process_sales_and_returns(
         None,
         total_return
     ))
+    system.sales_data_summary = data
     return data
 
 def process_ticket_stats(tickets: List[Tuple[int, int, str, object, object, int]]) -> List[Tuple[str, Dict[str, int]]]:
@@ -674,8 +675,4 @@ def process_ticket_stats(tickets: List[Tuple[int, int, str, object, object, int]
         ("сопровождающий", i_m),
     ]
     system.ticket_price_summary = ticket_price_summary
-    logger.debug('ticket_data')
-    logger.debug(ticket_data)
-    logger.debug('ticket_price_summary')
-    logger.debug(ticket_price_summary)
     return ticket_data
