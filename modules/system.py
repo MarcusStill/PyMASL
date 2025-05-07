@@ -40,6 +40,8 @@ class System:
         # Информация о РМ
         self.kol_pc = int(self.config.get("kol"))
         self.pcs = self.config.pcs  # список рабочих станций
+        self.ticket_print = self.config.get("ticket")
+        self.kkt_available = self.config.get("available")
 
         load_dotenv()  # Загружаем переменные окружения из .env файла
         pswrd = os.getenv("DB_PASSWORD")
@@ -130,6 +132,10 @@ class System:
             "invalid": 0,
             "talent": 0,
         }
+        # Накапливаем статистику по проданным билетам
+        self.ticket_price_summary = {}
+        # Накапливаем статистику по продажам и возвратам
+        self.sales_data_summary = {}
 
     @staticmethod
     def decode_password(encoded_password: str) -> str:

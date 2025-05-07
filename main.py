@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QWidget,
 )
-from sqlalchemy import and_, select, update, desc, or_
+from sqlalchemy import and_, select, update, desc
 from sqlalchemy.orm import Session
 
 from db.models import Client
@@ -1059,6 +1059,7 @@ class SaleForm(QDialog):
         # Устанавливаем цену в таблицу и пересчитываем
         self.ui.tableWidget_2.setItem(row, 3, QTableWidgetItem(f"{price}"))
         system.sale_discount = int(self.ui.comboBox_2.currentText())
+        logger.debug(system.sale_discount)
         new_price, category, discount_status = calculate_discounted_price(
             price, type_ticket
         )
@@ -1125,6 +1126,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             int: Цена взрослого билета.
         """
+        logger.info("Запуск функции calculate_adult")
         price = calculate_adult_price()
         self.bind_adult_to_sale(row)
         # Если checkbox активен - взрослый в оплату не добавляется
@@ -1144,6 +1146,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             int: Цена детского билета.
         """
+        logger.info("Запуск функции calculate_child")
         self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
         price = calculate_child_price()
         update_child_count()
@@ -1163,6 +1166,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции bind_adult_to_sale")
         if system.count_number_of_visitors["id_adult"] == 0:
             system.count_number_of_visitors["id_adult"] += 1
             system.sale_dict["detail"][5] = self.ui.tableWidget_2.item(row, 5).text()
@@ -1195,6 +1199,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции handle_many_children_discount")
         self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).setCheckState(
             Qt.Checked
         )
@@ -1216,7 +1221,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
-        logger.info("Применение скидки для инвалида")
+        logger.info("Запуск функции handle_invalid_discount")
         system.count_number_of_visitors["invalid"] = 1
         system.sale_dict["detail"][4] = 100
         # Изменяем продолжительность времени посещения
@@ -1241,11 +1246,11 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
-        logger.info("Продление билетов многодетным")
+        logger.info("Запуск функции apply_extended_many_children_discount")
         system.count_number_of_visitors["many_child"] = 0
-        self.ui.checkBox_2.setEnabled(True)
+        self.ui.checkBox_2.setEnabled(False)
         self.ui.checkBox_2.setChecked(True)
-        self.ui.comboBox_2.setCurrentIndex(0)
+        self.ui.comboBox_2.setCurrentIndex(10)
         self.ui.comboBox.setEnabled(True)
 
     def apply_full_many_children_discount(self) -> None:
@@ -1259,6 +1264,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции apply_full_many_children_discount")
         logger.info("Сегодня день многодетных")
         system.count_number_of_visitors["many_child"] = 1
         # Устанавливаем продолжительность посещения 2 часа
@@ -1268,10 +1274,8 @@ class SaleForm(QDialog):
         self.ui.checkBox_2.setEnabled(False)
         self.ui.comboBox_2.setCurrentIndex(15)
         self.ui.comboBox_2.setEnabled(False)
+        self.ui.checkBox_2.setChecked(True)
         system.sale_dict["detail"][4] = 100
-        if system.count_number_of_visitors["many_child"] == 1:
-            logger.debug("Изменяем цену посещения для взрослого")
-            system.price["ticket_adult_2"] = 0
         # Отключаем кнопку возврата
         self.ui.pushButton_6.setEnabled(False)
 
@@ -1286,6 +1290,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции apply_half_many_children_discount")
         logger.info("Многодетным скидка 50%")
         system.count_number_of_visitors["many_child"] = 2
         # Устанавливаем скидку
@@ -1917,13 +1922,33 @@ class SaleForm(QDialog):
         # Формируем новый файл с билетами
         otchet.generate_saved_tickets(client_in_sale)
 
+    def is_printing_enabled(self) -> bool:
+        """Функция проверяет, разрешена ли печать билетов.
+
+        Возвращает:
+            bool: True только если:
+                  - параметр 'ticket' существует
+                  - и равен 'on' (регистронезависимо)
+                  Во всех остальных случаях возвращает False.
+        """
+        # Проверяем наличие атрибута и что он не None
+        if not hasattr(system, 'ticket_print') or system.ticket_print is None:
+            return False
+
+        # Приводим к строке и сравниваем с 'on'
+        return str(system.ticket_print).strip().lower() == "on"
+
     def print_saved_tickets(self):
         """
         Функция для печати сохраненных билетов.
+        Печатает только если в конфигурации [PRINT] ticket = on.
         """
-        logger.info("Запуск функции print_saved_tickets.")
-        self.sale_generate_saved_tickets()
+        logger.info("Запуск функции print_saved_tickets")
+        if not self.is_printing_enabled():
+            logger.info("Печать билетов отключена (параметр 'ticket' не равен 'on' или отсутствует)")
+            return
         try:
+            self.sale_generate_saved_tickets()
             logger.info("Завершение процесса SumatraPDF, если он открыт.")
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             print_cmd_path = Path(__file__).parent / "scripts" / "print.cmd"
@@ -1937,7 +1962,7 @@ class SaleForm(QDialog):
         """
         Функция для открытия созданного PDF файла с билетами.
         """
-        logger.info("Запуск функции open_saved_tickets.")
+        logger.info("Запуск функции open_saved_tickets")
         # Исправленный вызов метода
         self.sale_generate_saved_tickets()
         try:
@@ -2799,6 +2824,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Возвращаемое значение:
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
+        logger.info("Запуск функции main_open_client")
         client: ClientForm = ClientForm()
         client.show()
         client.exec()
@@ -2861,24 +2887,73 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def main_get_statistic(self) -> None:
         """
-        Функция формирует сводную статистику о продажах и билетах.
+        Основная функция для получения статистики продаж, возвратов и билетов за заданный период.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI и взаимодействия с базой данных.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, но обновляет таблицы с данными о продажах и билетах.
+        """
+        logger.info("Запуск функции main_get_statistic")
+        # Получение дат
+        dt1, dt2 = self.get_date_range_from_ui()
+        # Получение данных из БД
+        sales, sales_return, tickets = self.fetch_stat_data(dt1, dt2)
+        # Преобразовываем Row к обычному tuple
+        sales = [tuple(row) for row in sales]
+        sales_return = [tuple(row) for row in sales_return]
+        sales_data = otchet.process_sales_and_returns(sales, sales_return)
+        # Обработка и отображение продаж и возвратов
+        self.fill_sales_table(sales_data)
+        # Обработка и отображение билетов
+        tickets = [tuple(row) for row in tickets]
+        tickets_data = otchet.process_ticket_stats(tickets)
+        self.fill_ticket_table(tickets_data)
+        logger.info(f"Обработано {len(sales)} продаж и {len(sales_return)} возвратов")
+
+    def get_date_range_from_ui(self) -> tuple[str, str]:
+        """
+        Получение диапазона дат из пользовательского интерфейса.
 
         Параметры:
             self: object
                 Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
 
         Возвращаемое значение:
-            None: Функция не возвращает значений, вставляет фамилию в поле формы.
+            tuple[str, str]: Кортеж, содержащий начальную и конечную дату в формате "yyyy-MM-dd HH:mm:ss".
+
+        Исключения:
+            ValueError: Выбрасывается, если начальная дата больше конечной.
         """
-        logger.info("Запуск функции main_get_statistic")
-        # Временной период
-        start_time: str = " 00:00:00"
-        end_time: str = " 23:59:59"
-        dt1: str = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
-        dt2: str = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
+        logger.info("Запуск функции get_date_range_from_ui")
+        start_time = " 00:00:00"
+        end_time = " 23:59:59"
+        dt1 = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
+        dt2 = self.ui.dateEdit.date().toString("yyyy-MM-dd") + end_time
         if dt1 > dt2:
             raise ValueError("Начальная дата не может быть больше конечной")
-        # Запросы к базе данных
+        return dt1, dt2
+
+    def fetch_stat_data(self, dt1: str, dt2: str):
+        """
+        Получение статистических данных о продажах и билетах из базы данных.
+
+        Параметры:
+            dt1 (str): Начальная дата в формате "yyyy-MM-dd HH:mm:ss", которая используется для фильтрации данных.
+            dt2 (str): Конечная дата в формате "yyyy-MM-dd HH:mm:ss", которая используется для фильтрации данных.
+
+        Возвращаемое значение:
+            tuple: Кортеж, содержащий три элемента:
+                - Список продаж (sales): Каждое из которых включает имя ПК, тип оплаты, цену и статус.
+                - Список возвратов (sales_return): Каждое из которых включает имя ПК, тип оплаты, цену и статус возврата.
+                - Список билетов (tickets): Каждое из которых включает тип билета, время прибытия, описание, статус и цену.
+
+        Описание:
+            Функция выполняет запросы к базе данных с использованием SQLAlchemy для получения данных о продажах, возвратах и билетах за указанный диапазон дат.
+        """
+        logger.info("Запуск функции fetch_stat_data")
         with Session(system.engine) as session:
             sales = session.execute(
                 select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status)
@@ -2893,7 +2968,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             ).all()
             tickets = session.execute(
                 select(
-                    Ticket.ticket_type, Ticket.arrival_time, Ticket.description, Sale.status, Sale.id
+                    Ticket.ticket_type, Ticket.arrival_time, Ticket.description, Sale.status, Sale.id, Ticket.price
                 ).where(
                     and_(
                         Sale.id == Ticket.id_sale,
@@ -2902,110 +2977,51 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         )
                 )
             ).all()
-        # Инициализация касс
-        pcs = {
-            name: {
-                "card": 0,
-                "cash": 0,
-                "return": 0,
-                "return_again": 0,
-                "return_partial": 0,
-                "return_card": 0,
-                "return_cash": 0,
-            }
-            for name in system.pcs
-        }
-        # Типы оплат
-        type_rm: list[int] = [1, 2]  # 1 - карта, 2 - наличные
-        # Обработка продаж
-        for sale in sales:
-            pc_name = sale[0]
-            # Проверка на None
-            if pc_name not in pcs:
-                continue
-            if sale[1] == type_rm[0]:  # карта
-                pcs[pc_name]["card"] += sale[2]
-            else:  # наличные
-                pcs[pc_name]["cash"] += sale[2]
-        # Словарь соответствий кодов возвратов
-        RETURN_FIELDS = {
-            2: "return",
-            4: "return_again",
-            6: "return_partial",
-        }
-        # Перед обработкой sales
-        if not sales and not sales_return:
-            logger.warning("Нет данных о продажах и возвратах за период")
-            return
-        # Обработка возвратов
-        for sale in sales_return:
-            pc_name = sale[0]
-            if pc_name in pcs:
-                return_type = sale[3]
-                if return_type in RETURN_FIELDS:
-                    pcs[pc_name][RETURN_FIELDS[return_type]] += 1
-                    if sale[1] == 1:  # карта
-                        pcs[pc_name]["return_card"] += sale[2]
-                    else:  # наличные
-                        pcs[pc_name]["return_cash"] += sale[2]
-        # Формирование таблицы продаж
-        data = []
-        for name in system.pcs:
-            stats = pcs[name]
-            data.append((
-                name,
-                stats["card"],
-                stats["cash"],
-                None,
-                stats["return_card"],
-                stats["return_cash"],
-                stats["return_card"] + stats["return_cash"]
-            ))
-        # Добавление строки "Итого"
-        total_card = sum(pc["card"] for pc in pcs.values())
-        total_cash = sum(pc["cash"] for pc in pcs.values())
-        data.append(("Итого", total_card, total_cash, total_card + total_cash, None, None, sum(pc["return_card"] + pc["return_cash"] for pc in pcs.values())))
-        # Заполняем таблицу продаж
+        return sales, sales_return, tickets
+
+
+    def fill_sales_table(self, data):
+        """
+        Заполнение таблицы продаж данными.
+
+        Параметры:
+            data (list): Список данных для отображения в таблице, где каждая строка представляется как список значений.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, а только заполняет таблицу в интерфейсе.
+
+        Описание:
+            Функция принимает данные и заполняет таблицу `tableWidget_4` в пользовательском интерфейсе. Каждая строка данных добавляется в таблицу, при этом все значения конвертируются в строки, если это необходимо. Пустые значения пропускаются.
+        """
+        logger.info("Запуск функции fill_sales_table")
         self.ui.tableWidget_4.setRowCount(len(data))
         for row, row_data in enumerate(data):
             for col, value in enumerate(row_data):
                 if value is not None:
                     self.ui.tableWidget_4.setItem(row, col, QTableWidgetItem(str(value)))
-        logger.debug(f"Обработано {len(sales)} продаж и {len(sales_return)} возвратов")
-        logger.debug(f"Сформировано {len(data)} строк статистики")
-        # Считаем билеты
-        type_tickets: list[int | str] = [0, 1, "м", "и", "-"]
-        time_arrival: list[int] = [1, 2, 3]
-        c, a, m_c, m_a, i_ = (
-            {"sum": 0, "t_1": 0, "t_2": 0, "t_3": 0} for _ in range(5)
-        )
-        for ticket in tickets:
-            if ticket[2] == type_tickets[4]:  # обычный
-                target = a if ticket[0] == type_tickets[0] else c
-            elif ticket[2] == type_tickets[2]:  # многодетный
-                target = m_a if ticket[0] == type_tickets[0] else m_c
-            elif ticket[2] == type_tickets[3]:  # инвалид
-                target = i_
-            else:
-                continue  # игнорируем другие типы
-            target["sum"] += 1
-            if ticket[1] == time_arrival[0]:
-                target["t_1"] += 1
-            elif ticket[1] == time_arrival[1]:
-                target["t_2"] += 1
-            elif ticket[1] == time_arrival[2]:
-                target["t_3"] += 1
-        # Заполняем таблицу билетов
-        data = [
-            ("взрослый", a),
-            ("детский", c),
-            ("мног-й взр.", m_a),
-            ("мног-й дет.", m_c),
-            ("инвалид", i_),
-        ]
-        # Устанавливаем количество строк в таблице и очищаем её
+
+
+
+    def fill_ticket_table(self, data):
+        """
+        Заполнение таблицы билетов данными.
+
+        Параметры:
+            data (list): Список данных для отображения в таблице, где каждая строка состоит из метки и словаря значений.
+                Пример структуры данных: [("взрослый", {"sum": 10, "t_1": 5, "t_2": 3, "t_3": 2}), ...]
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, а только заполняет таблицу в интерфейсе.
+
+        Описание:
+            Функция принимает данные о билетах и заполняет таблицу `tableWidget_3` в пользовательском интерфейсе.
+            Для каждого элемента в данных создается строка таблицы, где:
+            - Первая колонка отображает метку (например, тип билета),
+            - Вторая колонка отображает общее количество билетов (`sum`),
+            - Третья, четвертая и пятая колонки отображают количество билетов для различных временных интервалов (`t_1`, `t_2`, `t_3`).
+        """
+        logger.info("Запуск функции fill_ticket_table")
         self.ui.tableWidget_3.setRowCount(len(data))
-        # Заполняем таблицу
         for row, (label, values) in enumerate(data):
             self.ui.tableWidget_3.setItem(row, 0, QTableWidgetItem(label))
             self.ui.tableWidget_3.setItem(row, 1, QTableWidgetItem(f"{values['sum']}"))
@@ -3029,160 +3045,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         path = os.path.realpath(path)
         row: int = self.ui.tableWidget_3.rowCount()
         if row >= 1:
-            type_ticket: list[str] = [
-                "Взрослый, 1 ч.",
-                "Взрослый, 2 ч.",
-                "Взрослый, 3 ч.",
-                "Детский, 1 ч.",
-                "Детский, 2 ч.",
-                "Детский, 3 ч.",
-                "Мног-й взр., 1 ч.",
-                "Мног-й взр., 2 ч.",
-                "Мног-й взр., 3 ч.",
-                "Мног-й дет., 1 ч.",
-                "Мног-й дет., 2 ч.",
-                "Мног-й дет., 3 ч.",
-                "Инвалид, 3 ч.",
-            ]
-            table: list[str] = [
-                self.ui.tableWidget_3.item(0, 2).text(),  # взр 1
-                self.ui.tableWidget_3.item(0, 3).text(),  # взр 2
-                self.ui.tableWidget_3.item(0, 4).text(),  # взр 3
-                self.ui.tableWidget_3.item(1, 2).text(),  # дет 1
-                self.ui.tableWidget_3.item(1, 3).text(),  # дет 2
-                self.ui.tableWidget_3.item(1, 4).text(),  # дет 3
-                self.ui.tableWidget_3.item(2, 2).text(),  # мн взр 1
-                self.ui.tableWidget_3.item(2, 3).text(),  # мн взр 2
-                self.ui.tableWidget_3.item(2, 4).text(),  # мн взр 3
-                self.ui.tableWidget_3.item(3, 2).text(),  # мн дет 1
-                self.ui.tableWidget_3.item(3, 3).text(),  # мн дет 2
-                self.ui.tableWidget_3.item(3, 4).text(),  # мн дет 3
-                self.ui.tableWidget_3.item(4, 1).text(),  # инв
-            ]
             # Удаляем предыдущий файл
             os.system("TASKKILL /F /IM SumatraPDF.exe")
             if os.path.exists(path):
                 os.remove(path)
-            dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
-            dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
-
-            # Промежуточные расчеты
-            def calculate_total(prices, counts):
-                return sum(price * int(count) for price, count in zip(prices, counts))
-
-            adult_prices = [
-                system.price["ticket_adult_1"],
-                system.price["ticket_adult_2"],
-                system.price["ticket_adult_3"],
-            ]
-            child_prices = [
-                system.price["ticket_child_1"],
-                system.price["ticket_child_2"],
-                system.price["ticket_child_3"],
-            ]
-            many_adult_prices = [round(price / 2) for price in adult_prices]
-            many_child_prices = [round(price / 2) for price in child_prices]
-
-            adult_counts = table[:3]
-            child_counts = table[3:6]
-            many_adult_counts = table[6:9]
-            many_child_counts = table[9:12]
-
-            sum_adult = calculate_total(adult_prices, adult_counts)
-            sum_child = calculate_total(child_prices, child_counts)
-            sum_many_adult = calculate_total(many_adult_prices, many_adult_counts)
-            sum_many_child = calculate_total(many_child_prices, many_child_counts)
-
-            kol_adult = sum(int(count) for count in adult_counts)
-            kol_child = sum(int(count) for count in child_counts)
-            kol_many_adult = sum(int(count) for count in many_adult_counts)
-            kol_many_child = sum(int(count) for count in many_child_counts)
-
-            # Формируем данные
-            data: list[list[str] | list[str | int] | list[str | int]] = [
-                [
-                    "№ п/п",
-                    "Тип\nбилета",
-                    "Цена, руб.",
-                    "Количество, шт.",
-                    "Стоимость, руб.",
-                ],
-                # Взрослые
-                *[
-                    [
-                        str(i + 1),
-                        type_ticket[i],
-                        adult_prices[i],
-                        adult_counts[i],
-                        adult_prices[i] * int(adult_counts[i]),
-                    ]
-                    for i in range(3)
-                ],
-                ["4", "Всего взрослых билетов", "", kol_adult, sum_adult],
-                # Дети
-                *[
-                    [
-                        str(i + 5),
-                        type_ticket[i + 3],
-                        child_prices[i],
-                        child_counts[i],
-                        child_prices[i] * int(child_counts[i]),
-                    ]
-                    for i in range(3)
-                ],
-                ["8", "Всего детских билетов", "", kol_child, sum_child],
-                # Многодетные взрослые
-                *[
-                    [
-                        str(i + 9),
-                        type_ticket[i + 6],
-                        many_adult_prices[i],
-                        many_adult_counts[i],
-                        many_adult_prices[i] * int(many_adult_counts[i]),
-                    ]
-                    for i in range(3)
-                ],
-                [
-                    "12",
-                    "Всего многодетных взрослых билетов",
-                    "",
-                    kol_many_adult,
-                    sum_many_adult,
-                ],
-                # Многодетные детские
-                *[
-                    [
-                        str(i + 13),
-                        type_ticket[i + 9],
-                        many_child_prices[i],
-                        many_child_counts[i],
-                        many_child_prices[i] * int(many_child_counts[i]),
-                    ]
-                    for i in range(3)
-                ],
-                [
-                    "16",
-                    "Всего многодетных детских билетов",
-                    "",
-                    kol_many_child,
-                    sum_many_child,
-                ],
-                ["17", type_ticket[12], "-", table[12], "-"],
-                [
-                    "",
-                    "Итого билетов",
-                    "",
-                    kol_adult + kol_child + kol_many_adult + kol_many_child,
-                    sum_adult + sum_child + sum_many_adult + sum_many_child,
-                ],
-            ]
-            # logger.debug(f"Сведения для отчета администратора: {data}")
-            otchet.otchet_administratora(dt1, dt2, data)
+            dt1, dt2 = self.get_date_range_from_ui()
+            ticket_summary = system.ticket_price_summary
+            otchet.otchet_administratora(dt1, dt2, ticket_summary)
             os.startfile(path)
 
     def main_otchet_kassira(self) -> None:
         """
-        Функция формирует отчет кассира.
+        Функция формирует отчет кассира, используя данные из system.sales_data_summary
+        для конкретного рабочего места (по имени компьютера).
 
         Параметры:
             self: object
@@ -3195,36 +3070,46 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         path: str = "./otchet.pdf"
         path = os.path.realpath(path)
         # Удаляем предыдущий файл
-        row_tab_1: int = self.ui.tableWidget_3.rowCount()
-        row_tab_2: int = self.ui.tableWidget_4.rowCount()
-        if row_tab_1 >= 1 and row_tab_2 >= 1:
-            os.system("TASKKILL /F /IM SumatraPDF.exe")
-            if os.path.exists(path):
-                os.remove(path)
-            dt1: str = self.ui.dateEdit_2.date().toString("dd-MM-yyyy")
-            dt2: str = self.ui.dateEdit.date().toString("dd-MM-yyyy")
-            # Формируем данные
-            # logger.info(
-            #     f"Формируем сведения для отчета: {self.ui.tableWidget_3.item(0, 0).text()}"
-            # )
-            # logger.info(f"Имя ПК: {system.pc_name}")
-            if system.pc_name == self.ui.tableWidget_4.item(0, 0).text():
-                values: list[str] = [
-                    self.ui.tableWidget_4.item(0, 1).text(),
-                    self.ui.tableWidget_4.item(0, 2).text(),
-                    self.ui.tableWidget_4.item(0, 4).text(),
-                    self.ui.tableWidget_4.item(0, 5).text(),
-                ]
-            else:
-                values: list[str] = [
-                    self.ui.tableWidget_4.item(1, 1).text(),
-                    self.ui.tableWidget_4.item(1, 2).text(),
-                    self.ui.tableWidget_4.item(1, 4).text(),
-                    self.ui.tableWidget_4.item(1, 5).text(),
-                ]
-            # logger.debug(f"Сведения для отчета кассира: {values}")
-            otchet.otchet_kassira(values, dt1, dt2, system.user)
-            os.startfile(path)
+        if os.path.exists(path):
+            os.remove(path)
+        # Проверяем, есть ли данные о продажах в system.sales_data_summary
+        if not hasattr(system, 'sales_data_summary') or not system.sales_data_summary:
+            logger.error("Нет данных о продажах для отчета кассира")
+            return
+        # Получаем имя текущего компьютера
+        current_pc_name = system.pc_name
+        # Фильтруем данные по имени текущего ПК
+        filtered_sales_data = [
+            row for row in system.sales_data_summary if row[0] == current_pc_name
+        ]
+        # Если данных по текущему ПК нет, выводим ошибку
+        if not filtered_sales_data:
+            logger.error(f"Нет данных о продажах для ПК с именем {current_pc_name}")
+            return
+        # Извлекаем нужные данные из filtered_sales_data
+        total_sales_card = filtered_sales_data[0][1]  # Банковская карта
+        total_sales_cash = filtered_sales_data[0][2]  # Наличные
+        total_returns_card = filtered_sales_data[0][3]  # Возврат (банковская карта)
+        total_returns_cash = filtered_sales_data[0][4]  # Возврат (наличные)
+        # Формируем данные для отчета
+        values = [
+            str(total_sales_card),
+            str(total_sales_cash),
+            str(total_returns_card),
+            str(total_returns_cash)
+        ]
+
+        # Получаем даты для отчета
+        dt1, dt2 = self.get_date_range_from_ui()
+
+        # Получаем информацию о кассире
+        kassir = system.user  # Предполагаем, что данные о кассире хранятся в system.user
+
+        # Вызываем функцию для формирования отчета
+        otchet.otchet_kassira(values, dt1, dt2, kassir)
+
+        # Открываем файл отчета
+        os.startfile(path)
 
 
 class Payment:

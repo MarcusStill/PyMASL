@@ -5,10 +5,10 @@ from unittest.mock import patch, MagicMock, call
 
 import pytest
 
+import modules.payment_equipment
 from modules.config import Config
 from modules.payment_equipment import TERMINAL_SUCCESS_CODE
 from modules.payment_equipment import (
-    fptr_connection,
     run_terminal_command,
     check_terminal_file,
     terminal_oplata,
@@ -34,25 +34,27 @@ def mock_fptr():
 
 
 # Тестирование открытия и закрытия соединения
-def test_fptr_connection_opens_and_closes(mock_fptr):
-    # Тестируем, что при входе в контекст вызывается open, а при выходе - close
-    with fptr_connection(mock_fptr):
-        mock_fptr.open.assert_called_once()  # open должен быть вызван
-        mock_fptr.close.assert_not_called()  # close еще не должен быть вызван
+def test_fptr_connection_opens_and_closes(mock_fptr, monkeypatch):
+    # Подменяем kkt_available на True
+    monkeypatch.setattr(modules.payment_equipment, "kkt_available", True)
 
-    # После выхода из контекста close должен быть вызван
+    with modules.payment_equipment.fptr_connection(mock_fptr):
+        mock_fptr.open.assert_called_once()
+        mock_fptr.close.assert_not_called()
+
     mock_fptr.close.assert_called_once()
 
 
 # Тестирование с исключением в блоке контекста
-def test_fptr_connection_with_exception(mock_fptr):
-    # Тестируем, что при исключении в блоке контекста close все равно вызовется
+def test_fptr_connection_with_exception(mock_fptr, monkeypatch):
+    monkeypatch.setattr(modules.payment_equipment, "kkt_available", True)
+
     with pytest.raises(Exception):
-        with fptr_connection(mock_fptr):
+        with modules.payment_equipment.fptr_connection(mock_fptr):
             mock_fptr.open.assert_called_once()
             raise Exception("Test exception")
 
-    mock_fptr.close.assert_called_once()  # close должен быть вызван
+    mock_fptr.close.assert_called_once()
 
 
 #######################################
