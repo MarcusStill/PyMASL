@@ -134,6 +134,8 @@ class System:
         }
         # Накапливаем статистику по проданным билетам
         self.ticket_price_summary = {}
+        # Накапливаем статистику по продажам и возвратам
+        self.sales_data_summary = {}
 
     @staticmethod
     def decode_password(encoded_password: str) -> str:

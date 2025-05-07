@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Dict, List, Tuple, Union
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape, letter
@@ -16,7 +17,28 @@ system = System()
 config = Config()
 
 
-def generate_saved_tickets(values):
+def generate_saved_tickets(values: List[List[Any]]) -> None:
+    """
+    Функция генерирует PDF-файл с билетами на основе переданных данных о клиентах.
+
+    Параметры:
+        values (list): Список клиентов, для каждого из которых указываются данные в формате:
+            [
+                [Фамилия, Имя, ..., Цена, Признак "не идет", ..., Возраст, Продолжительность, Таланты, Дата/время],
+                ...
+            ]
+
+    Описание работы:
+        - Определяет тип билета (взрослый, детский, бесплатный) на основе возраста.
+        - Пропускает генерацию билета для бесплатных клиентов и тех, у кого признак "не идет" равен "н".
+        - Загружает координаты элементов билета из конфигурационного файла.
+        - Создает PDF-файл `ticket.pdf`, размещая на каждой странице информацию о клиенте:
+            ФИО, возраст, дата, продолжительность пребывания, тип билета, цена, таланты, QR-код и др.
+        - Использует шрифт DejaVuSerif и фоновые изображения (например, QR-код).
+
+    Возвращаемое значение:
+        None: Функция сохраняет PDF-файл и не возвращает значения.
+    """
     logger.info("Запуск функции generate_saved_tickets")
     client_in_sale = values
     type_ticket = None
@@ -28,16 +50,15 @@ def generate_saved_tickets(values):
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
     c = canvas.Canvas(path, pagesize=(landscape(letter)))
     for i in range(len(client_in_sale)):
-        age = int(client_in_sale[i][6])
+        age_str = client_in_sale[i][6]
+        age = int(age_str) if age_str.isdigit() else 0
         not_go = client_in_sale[i][4]
-
         if age < 5:
             type_ticket = "бесплатный"
         elif 5 <= age < 15:
             type_ticket = "детский"
         elif age >= 15:
             type_ticket = "взрослый"
-
         if type_ticket != "бесплатный" and not_go != "н":
             date_time = str(client_in_sale[i][9])
 
@@ -232,7 +253,7 @@ def generate_ticket_report_table(ticket_summary: dict) -> list[list]:
 
     return data
 
-def otchet_administratora(date_1, date_2, values):
+def otchet_administratora(date_1: str, date_2: str, values: Dict) -> None:
     """
     Функция формирует отчет администратора в формате PDF.
 
@@ -243,24 +264,15 @@ def otchet_administratora(date_1, date_2, values):
         date_2: str
             Дата конца отчетного периода в формате "yyyy-MM-dd HH:mm:ss".
 
-        values: list[str]
-            Список значений для таблицы отчета, включающий типы билетов, цены, количество и суммы.
+        values: dict
+            Словарь значений для таблицы отчета, включающий типы билетов, цены, количество и суммы.
 
     Возвращаемое значение:
         None: Функция не возвращает значений, генерирует отчет в формате PDF по указанным данным.
-
-    Примечания:
-        - Функция преобразует строки дат в объект `datetime`, затем форматирует их в формат "dd-MM-yyyy".
-        - В отчете содержатся данные о билете, их стоимости, количестве, а также информация об администраторах.
-        - Формируется PDF-документ с таблицей, содержащей информацию о продаже билетов в заданный период.
     """
     logger.info("Запуск функции otchet_administratora")
     path = "./otchet.pdf"
-    # Преобразуем строку к дате
-    date_1 = datetime.strptime(date_1, "%Y-%m-%d %H:%M:%S")
-    date_2 = datetime.strptime(date_2, "%Y-%m-%d %H:%M:%S")
-    dt1 = date_1.strftime("%d-%m-%Y")
-    dt2 = date_2.strftime("%d-%m-%Y")
+    dt1, dt2 = format_date_range(date_1, date_2)
     data = generate_ticket_report_table(values)
     c = canvas.Canvas(path, pagesize=A4)
     c.setLineWidth(0.3)
@@ -324,11 +336,76 @@ def otchet_administratora(date_1, date_2, values):
     c.showPage()
     c.save()
 
-def otchet_kassira(val, date1, date2, kassir):
-    """Формирование отчета кассира"""
+def safe_int(value: Any) -> int:
+    """
+    Преобразует значение в целое число, если это возможно. Если значение None, строка 'None',
+    или невозможно преобразовать (например, строка с текстом), возвращает 0.
+
+    Параметры:
+        value (Any): Входное значение, которое нужно попытаться преобразовать в целое число.
+
+    Возвращаемое значение:
+        int: Целое число, полученное в результате преобразования, либо 0 при ошибке.
+    """
+    if isinstance(value, (list, dict, set, tuple)):  # Проверка на неподобающие типы
+        return 0
+    try:
+        if value not in [None, 'None']:
+            return int(float(value))  # Преобразование строки с плавающей точкой в целое число
+        else:
+            return 0
+    except (ValueError, TypeError):  # Обработка ошибок для некорректных значений
+        return 0
+
+def format_date_range(date1_str: str, date2_str: str, input_format: str = "%Y-%m-%d %H:%M:%S", output_format: str = "%d-%m-%Y") -> Tuple[str, str]:
+    """
+    Преобразует строки с датами из одного формата в другой и возвращает кортеж из двух отформатированных строк.
+
+    Параметры:
+        date1_str (str): Первая дата в виде строки в формате input_format.
+        date2_str (str): Вторая дата в виде строки в формате input_format.
+        input_format (str, по умолчанию "%Y-%m-%d %H:%M:%S"): Формат, в котором переданы входные строки дат.
+        output_format (str, по умолчанию "%d-%m-%Y"): Формат, в который нужно преобразовать даты.
+
+    Возвращаемое значение:
+        Tuple[str, str]: Кортеж из двух строк, представляющих отформатированные даты.
+    """
+    date_1 = datetime.strptime(date1_str, input_format)
+    date_2 = datetime.strptime(date2_str, input_format)
+    dt1 = date_1.strftime(output_format)
+    dt2 = date_2.strftime(output_format)
+    return dt1, dt2
+
+def otchet_kassira(val: List[int], date1: str, date2: str, kassir: Any) -> None:
+    """
+    Формирует PDF-отчет кассира за указанный период с разбивкой по типам оплат и возвратов.
+
+    Функция создает PDF-файл `otchet.pdf`, в котором отображается следующая информация:
+    - Даты начала и окончания отчетного периода;
+    - Фамилия, имя и отчество кассира;
+    - Суммы продаж и возвратов по типам оплаты: банковская карта и наличные;
+    - Итоговые суммы;
+    - Место для подписей кассира и администратора.
+
+    Параметры:
+        val (List[int]): Список из 4 чисел:
+                         [сумма по карте, сумма наличными, возврат по карте, возврат наличными].
+        date1 (str): Начальная дата периода в формате "%Y-%m-%d %H:%M:%S".
+        date2 (str): Конечная дата периода в том же формате.
+        kassir (object): Объект кассира, содержащий атрибуты `last_name`, `first_name`, `middle_name`.
+
+    Возвращаемое значение:
+        None: Функция не возвращает значений. Результатом выполнения является сформированный PDF-файл.
+    """
     logger.info("Запуск функции otchet_kassira")
+    # Проверка на пустой список или недостаточное количество элементов
+    if not val or len(val) < 4:
+        logger.error("Некорректные данные для отчета: данные не переданы или их недостаточно.")
+        # Завершаем функцию, если данных недостаточно или они пустые
+        return
     path = "./otchet.pdf"
-    values, dt1, dt2, user = val, date1, date2, kassir
+    values, user = val, kassir
+    dt1, dt2 = format_date_range(date1, date2)
     c = canvas.Canvas(path, pagesize=A4)
     c.setLineWidth(0.3)
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
@@ -351,15 +428,18 @@ def otchet_kassira(val, date1, date2, kassir):
     c.line(100, 621, 500, 621)
     c.setFont("DejaVuSerif", 8)
     c.drawString(255, 610, "ФИО кассира")
+    # Преобразуем все значения в целые числа, если они корректные
+    values = [safe_int(v) for v in values]
+    # Формируем таблицу данных
     data = [
         ["№ п/п", "Тип продажи", "Сумма, руб."],
         ["1", "Банковская карта", values[0]],
         ["2", "Наличные", values[1]],
-        ["3", "Итого", int(values[0]) + int(values[1])],
+        ["3", "Итого", values[0] + values[1]],
         ["", "Тип возврата", ""],
         ["4", "Банковская карта", values[2]],
         ["5", "Наличные", values[3]],
-        ["6", "Итого", int(values[2]) + int(values[3])],
+        ["6", "Итого", values[2] + values[3]],
     ]
     t = Table(data, 4 * [1.2 * inch], 8 * [0.3 * inch])
     t.setStyle(
@@ -398,7 +478,10 @@ def otchet_kassira(val, date1, date2, kassir):
     c.showPage()
     c.save()
 
-def process_sales_and_returns(sales, sales_return):
+def process_sales_and_returns(
+    sales: List[Tuple[str, int, Union[int, float]]],
+    sales_return: List[Tuple[str, int, Union[int, float], int]]
+) -> List[Tuple[Union[str, None], Union[int, float, None], Union[int, float, None], Union[int, float, None], Union[int, float, None], Union[int, float, None], Union[int, float]]]:
     """
     Обрабатывает продажи и возвраты, агрегируя информацию по каждому кассовому аппарату.
     Функция вычисляет суммы по картам и наличным, а также учитывает возвраты по каждому типу:
@@ -455,6 +538,9 @@ def process_sales_and_returns(sales, sales_return):
             pcs[pc_name]["cash"] += sale[2]
 
     for sale in sales_return:
+        return_type = sale[3]
+        if return_type not in RETURN_FIELDS:
+            continue
         pc_name = sale[0]
         if pc_name in pcs:
             return_type = sale[3]
@@ -493,7 +579,7 @@ def process_sales_and_returns(sales, sales_return):
     ))
     return data
 
-def process_ticket_stats(tickets: list[tuple]) -> list[tuple[str, dict[str, int]]]:
+def process_ticket_stats(tickets: List[Tuple[int, int, str, object, object, int]]) -> List[Tuple[str, Dict[str, int]]]:
     """
     Обрабатывает информацию о билетах, суммируя количество и стоимость проданных билетов по категориям
     и времени пребывания. Возвращает данные, которые могут быть использованы для отображения статистики

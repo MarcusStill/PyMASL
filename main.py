@@ -2902,6 +2902,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Получение данных из БД
         sales, sales_return, tickets = self.fetch_stat_data(dt1, dt2)
         # Преобразовываем Row к обычному tuple
+        sales = [tuple(row) for row in sales]
+        sales_return = [tuple(row) for row in sales_return]
         sales_data = otchet.process_sales_and_returns(sales, sales_return)
         # Обработка и отображение продаж и возвратов
         self.fill_sales_table(sales_data)
@@ -2925,6 +2927,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Исключения:
             ValueError: Выбрасывается, если начальная дата больше конечной.
         """
+        logger.info("Запуск функции get_date_range_from_ui")
         start_time = " 00:00:00"
         end_time = " 23:59:59"
         dt1 = self.ui.dateEdit_2.date().toString("yyyy-MM-dd") + start_time
@@ -2950,6 +2953,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Описание:
             Функция выполняет запросы к базе данных с использованием SQLAlchemy для получения данных о продажах, возвратах и билетах за указанный диапазон дат.
         """
+        logger.info("Запуск функции fetch_stat_data")
         with Session(system.engine) as session:
             sales = session.execute(
                 select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status)
@@ -2989,6 +2993,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Описание:
             Функция принимает данные и заполняет таблицу `tableWidget_4` в пользовательском интерфейсе. Каждая строка данных добавляется в таблицу, при этом все значения конвертируются в строки, если это необходимо. Пустые значения пропускаются.
         """
+        logger.info("Запуск функции fill_sales_table")
         self.ui.tableWidget_4.setRowCount(len(data))
         for row, row_data in enumerate(data):
             for col, value in enumerate(row_data):
@@ -3015,6 +3020,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             - Вторая колонка отображает общее количество билетов (`sum`),
             - Третья, четвертая и пятая колонки отображают количество билетов для различных временных интервалов (`t_1`, `t_2`, `t_3`).
         """
+        logger.info("Запуск функции fill_ticket_table")
         self.ui.tableWidget_3.setRowCount(len(data))
         for row, (label, values) in enumerate(data):
             self.ui.tableWidget_3.setItem(row, 0, QTableWidgetItem(label))
@@ -3050,7 +3056,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def main_otchet_kassira(self) -> None:
         """
-        Функция формирует отчет кассира.
+        Функция формирует отчет кассира, используя данные из system.sales_data_summary
+        для конкретного рабочего места (по имени компьютера).
 
         Параметры:
             self: object
@@ -3063,30 +3070,46 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         path: str = "./otchet.pdf"
         path = os.path.realpath(path)
         # Удаляем предыдущий файл
-        row_tab_1: int = self.ui.tableWidget_3.rowCount()
-        row_tab_2: int = self.ui.tableWidget_4.rowCount()
-        if row_tab_1 >= 1 and row_tab_2 >= 1:
-            os.system("TASKKILL /F /IM SumatraPDF.exe")
-            if os.path.exists(path):
-                os.remove(path)
-            dt1, dt2 = self.get_date_range_from_ui()
-            # Формируем данные
-            if system.pc_name == self.ui.tableWidget_4.item(0, 0).text():
-                values: list[str] = [
-                    self.ui.tableWidget_4.item(0, 1).text(),
-                    self.ui.tableWidget_4.item(0, 2).text(),
-                    self.ui.tableWidget_4.item(0, 4).text(),
-                    self.ui.tableWidget_4.item(0, 5).text(),
-                ]
-            else:
-                values: list[str] = [
-                    self.ui.tableWidget_4.item(1, 1).text(),
-                    self.ui.tableWidget_4.item(1, 2).text(),
-                    self.ui.tableWidget_4.item(1, 4).text(),
-                    self.ui.tableWidget_4.item(1, 5).text(),
-                ]
-            otchet.otchet_kassira(values, dt1, dt2, system.user)
-            os.startfile(path)
+        if os.path.exists(path):
+            os.remove(path)
+        # Проверяем, есть ли данные о продажах в system.sales_data_summary
+        if not hasattr(system, 'sales_data_summary') or not system.sales_data_summary:
+            logger.error("Нет данных о продажах для отчета кассира")
+            return
+        # Получаем имя текущего компьютера
+        current_pc_name = system.pc_name
+        # Фильтруем данные по имени текущего ПК
+        filtered_sales_data = [
+            row for row in system.sales_data_summary if row[0] == current_pc_name
+        ]
+        # Если данных по текущему ПК нет, выводим ошибку
+        if not filtered_sales_data:
+            logger.error(f"Нет данных о продажах для ПК с именем {current_pc_name}")
+            return
+        # Извлекаем нужные данные из filtered_sales_data
+        total_sales_card = filtered_sales_data[0][1]  # Банковская карта
+        total_sales_cash = filtered_sales_data[0][2]  # Наличные
+        total_returns_card = filtered_sales_data[0][3]  # Возврат (банковская карта)
+        total_returns_cash = filtered_sales_data[0][4]  # Возврат (наличные)
+        # Формируем данные для отчета
+        values = [
+            str(total_sales_card),
+            str(total_sales_cash),
+            str(total_returns_card),
+            str(total_returns_cash)
+        ]
+
+        # Получаем даты для отчета
+        dt1, dt2 = self.get_date_range_from_ui()
+
+        # Получаем информацию о кассире
+        kassir = system.user  # Предполагаем, что данные о кассире хранятся в system.user
+
+        # Вызываем функцию для формирования отчета
+        otchet.otchet_kassira(values, dt1, dt2, kassir)
+
+        # Открываем файл отчета
+        os.startfile(path)
 
 
 class Payment:
