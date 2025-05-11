@@ -2723,7 +2723,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         start_time = " 00:00:00"
         end_time = " 23:59:59"
         self.ui.tableWidget_2.setRowCount(0)
-
+        # Инициализация переменных по умолчанию
+        filter_start = None
+        filter_end = None
         # Определяем диапазон дат в зависимости от выбора
         if self.ui.radioButton_7.isChecked():
             filter_start = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + start_time
