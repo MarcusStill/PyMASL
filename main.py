@@ -2723,24 +2723,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         start_time = " 00:00:00"
         end_time = " 23:59:59"
         self.ui.tableWidget_2.setRowCount(0)
-
+        # Инициализация переменных по умолчанию
+        filter_start = None
+        filter_end = None
         # Определяем диапазон дат в зависимости от выбора
         if self.ui.radioButton_7.isChecked():
             filter_start = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + start_time
             filter_end = self.ui.dateEdit_3.date().toString("yyyy-MM-dd") + end_time
         else:
-            # Определение периода для 1, 3 и 7 дней
+            # Определение периода для 1, 3 и 7 дней без учета времени
             if self.ui.radioButton.isChecked():
-                filter_start = dt.datetime.today().replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                )
+                filter_start = dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+                filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
             elif self.ui.radioButton_2.isChecked():
-                filter_start = dt.datetime.today() - timedelta(days=3)
+                filter_start = (dt.datetime.today() - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
+                filter_end = (dt.datetime.today() - timedelta(days=3)).replace(hour=23, minute=59, second=59, microsecond=999999)
             elif self.ui.radioButton_3.isChecked():
-                filter_start = dt.datetime.today() - timedelta(days=7)
-
-            filter_end = None  # Нет необходимости в end_time для 1, 3 и 7 дней
-
+                filter_start = (dt.datetime.today() - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
+                filter_end = (dt.datetime.today() - timedelta(days=7)).replace(hour=23, minute=59, second=59, microsecond=999999)
         # Определяем, какие статусы фильтровать
         sale_status_filter = [2, 3, 4, 5, 6, 8] if self.ui.checkBox.isChecked() else []
 
@@ -2757,11 +2757,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 Sale.payment_type,
                 Client.last_name,
             ).filter(Sale.id_client == Client.id)
-
-            if filter_end:  # Если фильтруем по конкретной дате
-                query = query.filter(
-                    Sale.datetime_return.between(filter_start, filter_end)
-                )
+            # Фильтруем по диапазону дат, игнорируя время
+            if filter_end:
+                query = query.filter(Sale.datetime.between(filter_start, filter_end))
             else:  # Фильтруем по дням (например, последние 1, 3 или 7 дней)
                 query = query.filter(Sale.datetime >= filter_start)
 
@@ -2804,11 +2802,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
                 # Обрабатываем тип оплаты
                 payment_dict = {1: "карта", 2: "наличные", 3: "карта offline"}
-                if sale[7] is not None:
-                    try:
-                        payment_type = payment_dict.get(int(sale[7]), "-")
-                    except (ValueError, TypeError):
-                        payment_type = "-"  # Если не удалось преобразовать или тип некорректен, вернем дефолтное значение "-"
+                if sale[7] is not None and isinstance(sale[7], int):
+                    payment_type = payment_dict.get(sale[7], "-")
                 else:
                     payment_type = "-"  # Если sale[7] равно None, сразу устанавливаем дефолтное значение
                 self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(payment_type))
