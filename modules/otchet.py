@@ -17,152 +17,91 @@ system = System()
 config = Config()
 
 
-def generate_saved_tickets(values: List[List[Any]]) -> None:
+def get_ticket_type(age: int) -> str:
     """
-    Функция генерирует PDF-файл с билетами на основе переданных данных о клиентах.
+    Определяет тип билета на основе возраста клиента.
 
     Параметры:
-        values (list): Список клиентов, для каждого из которых указываются данные в формате:
-            [
-                [Фамилия, Имя, ..., Цена, Признак "не идет", ..., Возраст, Продолжительность, Таланты, Дата/время],
-                ...
-            ]
-
-    Описание работы:
-        - Определяет тип билета (взрослый, детский, бесплатный) на основе возраста.
-        - Пропускает генерацию билета для бесплатных клиентов и тех, у кого признак "не идет" равен "н".
-        - Загружает координаты элементов билета из конфигурационного файла.
-        - Создает PDF-файл `ticket.pdf`, размещая на каждой странице информацию о клиенте:
-            ФИО, возраст, дата, продолжительность пребывания, тип билета, цена, таланты, QR-код и др.
-        - Использует шрифт DejaVuSerif и фоновые изображения (например, QR-код).
+        age (int): Возраст клиента.
 
     Возвращаемое значение:
-        None: Функция сохраняет PDF-файл и не возвращает значения.
+        str: Один из трех типов билетов:
+            - "бесплатный" — для детей младше 5 лет,
+            - "детский" — для детей от 5 до 14 лет включительно,
+            - "взрослый" — для всех от 15 лет и старше.
+    Исключение:
+        ValueError: Если возраст отрицателен.
+    """
+    if age < 0:
+        raise ValueError("Возраст не может быть отрицательным")
+    if age < 5:
+        return "бесплатный"
+    elif age < 15:
+        return "детский"
+    return "взрослый"
+
+def generate_saved_tickets(values: List[tuple]) -> None:
+    """
+    Генерирует PDF-файл с билетами для клиентов на основе переданных данных.
+
+    Параметры:
+        values (List[tuple]): Список кортежей с данными клиентов в следующем порядке:
+            (Фамилия, Имя, Признак билета, Цена, Категория (например, "н" — не идет), ID клиента,
+             Возраст, Продолжительность пребывания (в часах), Кол-во талантов, Дата/время посещения)
+
+    Описание работы:
+        - Загружает координаты размещения элементов билета из конфигурационного файла.
+        - Пропускает генерацию билета для клиентов с бесплатным типом билета и для категории "н" (не идет).
+        - Определяет тип билета на основе возраста (взрослый, детский, бесплатный).
+        - Создает PDF-файл `ticket.pdf`, в котором на каждой странице размещается билет с информацией:
+            ФИО, возраст, дата, длительность пребывания, тип билета, цена, таланты, QR-код и др.
+        - Использует шрифт DejaVuSerif, QR-изображение, фиксированные подписи и расположение элементов.
+
+    Возвращаемое значение:
+        None — функция сохраняет PDF-файл и не возвращает результат.
     """
     logger.info("Запуск функции generate_saved_tickets")
-    client_in_sale = values
-    type_ticket = None
     img_file = "files/qr-code.jpg"
     path = "./ticket.pdf"
-    coordinates = system.load_coordinates(
-        config
-    )  # Путь к файлу координат берется из Config
+    coordinates = system.load_coordinates(config)
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
     c = canvas.Canvas(path, pagesize=(landscape(letter)))
-    for i in range(len(client_in_sale)):
-        age_str = client_in_sale[i][6]
-        age = int(age_str) if age_str.isdigit() else 0
-        not_go = client_in_sale[i][4]
-        if age < 5:
-            type_ticket = "бесплатный"
-        elif 5 <= age < 15:
-            type_ticket = "детский"
-        elif age >= 15:
-            type_ticket = "взрослый"
-        if type_ticket != "бесплатный" and not_go != "н":
-            date_time = str(client_in_sale[i][9])
-
-            c.setFont("DejaVuSerif", 12)
-            # Имя
-            # x - расстояние мм от левого края страницы
-            # y - расстояние мм от нижнего края страницы
-            c.drawString(
-                coordinates["name"]["x"] * mm,
-                coordinates["name"]["y"] * mm,
-                str(client_in_sale[i][1])
-                .replace("'", "")
-                .replace("[", "")
-                .replace("]", ""),
-            )
-            # Фамилия
-            c.drawString(
-                coordinates["surname"]["x"] * mm,
-                coordinates["surname"]["y"] * mm,
-                str(client_in_sale[i][0])
-                .replace("'", "")
-                .replace("[", "")
-                .replace("]", ""),
-            )
-            # Возраст
-            c.drawString(
-                coordinates["age"]["x"] * mm,
-                coordinates["age"]["y"] * mm,
-                str(age).replace("'", "").replace("[", "").replace("]", ""),
-            )
-            # Продолжительность
-            duration_text = f"{client_in_sale[i][7]} ч. пребывания"
-            if client_in_sale[i][7] == 3:
-                duration_text += "-весь день"
-            c.drawString(
-                coordinates["duration"]["x"] * mm,
-                coordinates["duration"]["y"] * mm,
-                duration_text.replace("'", "").replace("[", "").replace("]", ""),
-            )
-            # Дата и время билета
-            c.drawString(
-                coordinates["date"]["x"] * mm,
-                coordinates["date"]["y"] * mm,
-                str(date_time[0:10]).replace("'", "").replace("[", "").replace("]", ""),
-            )
-            c.drawString(
-                coordinates["guest"]["x"] * mm, coordinates["guest"]["y"] * mm, "гость"
-            )
-            c.drawString(
-                coordinates["city"]["x"] * mm, coordinates["city"]["y"] * mm, "БЕЛГОРОД"
-            )
-            c.drawString(
-                coordinates["place"]["x"] * mm,
-                coordinates["place"]["y"] * mm,
-                "МАСТЕРСЛАВЛЬ",
-            )
-            # Цена
-            c.drawString(
-                coordinates["price"]["x"] * mm,
-                coordinates["price"]["y"] * mm,
-                f"{client_in_sale[i][3]} руб.".replace("'", "")
-                .replace("[", "")
-                .replace("]", ""),
-            )
-            # Тип билета
-            c.drawString(
-                coordinates["ticket_type"]["x"] * mm,
-                coordinates["ticket_type"]["y"] * mm,
-                str(type_ticket).replace("'", "").replace("[", "").replace("]", ""),
-            )
-            # Доп.отметки
-            c.drawString(
-                coordinates["notes"]["x"] * mm,
-                coordinates["notes"]["y"] * mm,
-                str(client_in_sale[i][4]),
-            )
-            # Таланты
-            c.setFont("DejaVuSerif", 24)
-            if type_ticket == "взрослый":
-                c.drawString(
-                    coordinates["talents"]["x"] * mm,
-                    coordinates["talents"]["y"] * mm,
-                    "0".replace("'", "").replace("[", "").replace("]", ""),
-                )
-            else:
-                c.drawString(
-                    coordinates["talents"]["x"] * mm,
-                    coordinates["talents"]["y"] * mm,
-                    str(client_in_sale[i][8])
-                    .replace("'", "")
-                    .replace("[", "")
-                    .replace("]", ""),
-                )
-            c.drawImage(
-                img_file,
-                coordinates["qr_code"]["x"],
-                coordinates["qr_code"]["y"],
-                height=80,
-                width=80,
-                preserveAspectRatio=True,
-                mask="auto",
-            )
-
-            c.showPage()
+    for client in values:
+        (last_name, name, ticket_flag, price, category, client_id, age, hours, talents, date_time) = client
+        ticket_type = get_ticket_type(age)
+        if ticket_type == "бесплатный" or category == "н":
+            continue  # Пропускаем бесплатных и "не идущих"
+        c.setFont("DejaVuSerif", 12)
+        # x - расстояние мм от левого края страницы
+        # y - расстояние мм от нижнего края страницы
+        c.drawString(coordinates["name"]["x"] * mm,coordinates["name"]["y"] * mm, name)
+        c.drawString(coordinates["surname"]["x"] * mm, coordinates["surname"]["y"] * mm, last_name)
+        c.drawString(coordinates["age"]["x"] * mm, coordinates["age"]["y"] * mm, str(age))
+        duration_text = f"{hours} ч. пребывания"
+        if hours == 3:
+            duration_text += "-весь день"
+        c.drawString(coordinates["duration"]["x"] * mm, coordinates["duration"]["y"] * mm, duration_text)
+        date_str = date_time.strftime("%Y-%m-%d")
+        c.drawString(coordinates["date"]["x"] * mm, coordinates["date"]["y"] * mm, date_str)
+        c.drawString(coordinates["guest"]["x"] * mm, coordinates["guest"]["y"] * mm, "гость")
+        c.drawString(coordinates["city"]["x"] * mm, coordinates["city"]["y"] * mm, "БЕЛГОРОД")
+        c.drawString(coordinates["place"]["x"] * mm, coordinates["place"]["y"] * mm, "МАСТЕРСЛАВЛЬ")
+        c.drawString(coordinates["price"]["x"] * mm, coordinates["price"]["y"] * mm, f"{price} руб.")
+        c.drawString(coordinates["ticket_type"]["x"] * mm, coordinates["ticket_type"]["y"] * mm, ticket_type)
+        c.drawString(coordinates["notes"]["x"] * mm, coordinates["notes"]["y"] * mm, category)
+        c.setFont("DejaVuSerif", 24)
+        talents_str = "0" if ticket_type == "взрослый" else str(talents)
+        c.drawString(coordinates["talents"]["x"] * mm, coordinates["talents"]["y"] * mm, talents_str)
+        c.drawImage(
+            img_file,
+            coordinates["qr_code"]["x"],
+            coordinates["qr_code"]["y"],
+            height=80,
+            width=80,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+        c.showPage()
     c.save()
 
 

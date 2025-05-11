@@ -1,23 +1,28 @@
+import datetime
 import os
 import tempfile
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 import reportlab.pdfgen.canvas as rl_canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from unittest.mock import MagicMock
-from unittest.mock import patch
-from modules.otchet import generate_saved_tickets, generate_ticket_report_table, otchet_administratora, safe_int, format_date_range, otchet_kassira, process_sales_and_returns, process_ticket_stats
+
 from modules import system
+from modules.otchet import generate_saved_tickets, generate_ticket_report_table, otchet_administratora, safe_int, \
+    format_date_range, otchet_kassira, process_sales_and_returns, process_ticket_stats, get_ticket_type
 from modules.system import System
+
 
 # Тестируем generate_saved_tickets
 @pytest.fixture
 def sample_clients():
     return [
-        ['Иванов', 'Иван', '', '300', '', '', '', '', '', '', '', '', '', '', '', '2024-01-01', '', '', '', '', '', 'Москва', '', '2'],
-        ['Петров', 'Петр', '', '0', 'н', '', '', '', '', '', '', '', '', '', '2024-01-01', '', '', '', '', '', 'СПб', '', '2'],
-        ['Сидоров', 'Сидор', '', '500', '', '', '', '', '', '', '', '', '', '', '2024-01-01', '', '', '', '', '', 'Казань', '', '1'],
+        ('Молчанова', 'Аделия', 1, 450, 'м', 584, 9, 3, 50, datetime.datetime(2025, 5, 4, 10, 14, 7)),
+        ('Бесплатов', 'Андрей', 1, 0, 'м', 111, 3, 2, 30, datetime.datetime(2025, 5, 4, 12, 0, 0)),
+        ('Неидущий', 'Николай', 0, 500, 'н', 222, 20, 3, 0, datetime.datetime(2025, 5, 4, 15, 0, 0)),
+        ('Сидорова', 'Мария', 0, 600, '', 333, 25, 1, 0, datetime.datetime(2025, 5, 4, 16, 0, 0)),
     ]
 
 @pytest.fixture
@@ -25,29 +30,35 @@ def mock_coordinates():
     return {
         'surname': {'x': 10, 'y': 10},
         'name': {'x': 20, 'y': 10},
-        'date': {'x': 50, 'y': 10},
-        'amount': {'x': 60, 'y': 10},
+        'age': {'x': 30, 'y': 10},
         'duration': {'x': 40, 'y': 10},
-        'city': {'x': 70, 'y': 10},
-        'age': {'x': 30, 'y': 10}
+        'date': {'x': 50, 'y': 10},
+        'price': {'x': 60, 'y': 10},
+        'guest': {'x': 70, 'y': 10},
+        'city': {'x': 80, 'y': 10},
+        'place': {'x': 90, 'y': 10},
+        'ticket_type': {'x': 100, 'y': 10},
+        'notes': {'x': 110, 'y': 10},
+        'talents': {'x': 120, 'y': 10},
+        'qr_code': {'x': 130, 'y': 10},
     }
 
 @pytest.mark.parametrize("font_path", ["files/DejaVuSerif.ttf"])
 def test_generate_saved_tickets_creates_pdf(monkeypatch, sample_clients, mock_coordinates, font_path):
     # Подмена метода System.load_coordinates
     monkeypatch.setattr("modules.system.System.load_coordinates", lambda self, config=None: mock_coordinates)
-
-    # Регистрация шрифта перед использованием
-    pdfmetrics.registerFont(TTFont("DejaVuSerif", font_path))
-
     # Удалим PDF перед тестом, если существует
     pdf_path = "./ticket.pdf"
     if os.path.exists(pdf_path):
         os.remove(pdf_path)
-
+    # Регистрация шрифта
+    pdfmetrics.registerFont(TTFont("DejaVuSerif", font_path))
+    # Запуск функции
     generate_saved_tickets(sample_clients)
-
+    # Проверка
     assert os.path.exists(pdf_path), "Файл ticket.pdf не был создан"
+    # Дополнительно можно проверить, что файл не пустой
+    assert os.path.getsize(pdf_path) > 0, "Файл ticket.pdf пустой"
 
 #######################################
 # Тестируем generate_ticket_report_table
@@ -585,3 +596,26 @@ def test_different_prices_same_category(setup_system_ticket_stats):
     assert price_summary["Взрослый, 1 ч."][100]["total_price"] == 200
     assert price_summary["Взрослый, 1 ч."][150]["count"] == 1
     assert price_summary["Взрослый, 1 ч."][150]["total_price"] == 150
+
+#######################################
+# Тестируем generate_ticket_report_table
+@pytest.mark.parametrize("age, expected_ticket_type", [
+    (4, "бесплатный"),  # Для возраста < 5
+    (5, "детский"),     # Для возраста 5
+    (14, "детский"),    # Для возраста 14
+    (15, "взрослый"),   # Для возраста 15
+    (99, "взрослый")    # Для возраста 99
+])
+def test_get_ticket_type(age, expected_ticket_type):
+    assert get_ticket_type(age) == expected_ticket_type, f"Expected {expected_ticket_type} for age {age}"
+
+# Тест для пограничных значений
+def test_get_ticket_type_boundary_values():
+    # Проверяем именно 5 и 15 лет
+    assert get_ticket_type(5) == "детский", "Expected 'детский' for age 5"
+    assert get_ticket_type(15) == "взрослый", "Expected 'взрослый' for age 15"
+
+# Проверка на отрицательные возраст
+def test_get_ticket_type_negative_age():
+    with pytest.raises(ValueError):
+        get_ticket_type(-1)  # Ожидается ошибка, так как возраст не может быть отрицательным
