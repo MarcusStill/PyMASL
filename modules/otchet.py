@@ -17,12 +17,12 @@ system = System()
 config = Config()
 
 
-def get_ticket_type(age: int) -> str:
+def get_ticket_type(age:str) -> str:
     """
     Определяет тип билета на основе возраста клиента.
 
     Параметры:
-        age (int): Возраст клиента.
+        age (str): Возраст клиента.
 
     Возвращаемое значение:
         str: Один из трех типов билетов:
@@ -32,13 +32,18 @@ def get_ticket_type(age: int) -> str:
     Исключение:
         ValueError: Если возраст отрицателен.
     """
+    try:
+        age = int(age)
+    except ValueError:
+        raise ValueError(f"Невозможно преобразовать возраст в число: {age}")
     if age < 0:
         raise ValueError("Возраст не может быть отрицательным")
-    if age < 5:
+    elif age < 5:
         return "бесплатный"
-    elif age < 15:
+    elif 5 <= age < 15:
         return "детский"
-    return "взрослый"
+    else:
+        return "взрослый"
 
 def generate_saved_tickets(values: List[tuple]) -> None:
     """
@@ -81,8 +86,7 @@ def generate_saved_tickets(values: List[tuple]) -> None:
         if hours == 3:
             duration_text += "-весь день"
         c.drawString(coordinates["duration"]["x"] * mm, coordinates["duration"]["y"] * mm, duration_text)
-        date_str = date_time.strftime("%Y-%m-%d")
-        c.drawString(coordinates["date"]["x"] * mm, coordinates["date"]["y"] * mm, date_str)
+        c.drawString(coordinates["date"]["x"] * mm, coordinates["date"]["y"] * mm, date_time.strftime('%d.%m.%Y'))
         c.drawString(coordinates["guest"]["x"] * mm, coordinates["guest"]["y"] * mm, "гость")
         c.drawString(coordinates["city"]["x"] * mm, coordinates["city"]["y"] * mm, "БЕЛГОРОД")
         c.drawString(coordinates["place"]["x"] * mm, coordinates["place"]["y"] * mm, "МАСТЕРСЛАВЛЬ")
