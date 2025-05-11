@@ -86,6 +86,8 @@ def generate_saved_tickets(values: List[tuple]) -> None:
         if hours == 3:
             duration_text += "-весь день"
         c.drawString(coordinates["duration"]["x"] * mm, coordinates["duration"]["y"] * mm, duration_text)
+        if isinstance(date_time, str):
+            date_time = datetime.strptime(date_time, "%Y-%m-%d")
         c.drawString(coordinates["date"]["x"] * mm, coordinates["date"]["y"] * mm, date_time.strftime('%d.%m.%Y'))
         c.drawString(coordinates["guest"]["x"] * mm, coordinates["guest"]["y"] * mm, "гость")
         c.drawString(coordinates["city"]["x"] * mm, coordinates["city"]["y"] * mm, "БЕЛГОРОД")
