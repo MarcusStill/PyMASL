@@ -2720,10 +2720,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
             elif self.ui.radioButton_2.isChecked():
                 filter_start = (dt.datetime.today() - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
-                filter_end = (dt.datetime.today() - timedelta(days=3)).replace(hour=23, minute=59, second=59, microsecond=999999)
+                filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
             elif self.ui.radioButton_3.isChecked():
                 filter_start = (dt.datetime.today() - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
-                filter_end = (dt.datetime.today() - timedelta(days=7)).replace(hour=23, minute=59, second=59, microsecond=999999)
+                filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
         # Определяем, какие статусы фильтровать
         sale_status_filter = [2, 3, 4, 5, 6, 8] if self.ui.checkBox.isChecked() else []
 
