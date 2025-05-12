@@ -2097,32 +2097,15 @@ class SlipForm(QDialog):
                 Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
 
         Возвращаемое значение:
-            None: Функция не возвращает значений, вставляет фамилию в поле формы.
+            None: Функция не возвращает значений, отображает данные слип-чека в форме.
         """
         logger.info("Запуск функции get_slip")
-        with Session(system.engine) as session:
-            query = select(Sale.bank_pay).where(Sale.id == system.sale_id)
-            load_slip = session.execute(query).scalars().one()
-        words = load_slip.split()
-        try:
-            rub_position = words.index("(Руб):") or words.index("Руб:")
-            rrn_position = words.index("RRN:")
-            pay_position = (
-                words.index("ОплатаТ:")
-                or words.index("Оплата:")
-                or words.index("Оплата")
-                or words.index("Оплата QRТ:")
-                or words.index("Оплата QRТ")
-            )
-        except Exception as e:
-            rub_position = 0
-            rrn_position = 0
-            pay_position = 0
-            logger.warning(f"Ошибка при чтении слип-чека из БД: {e}")
+        card_tail, merchant_id, rrn_value, load_slip = system.get_slip_data(system.sale_id)
+
         slip: SlipForm = SlipForm()
-        slip.ui.label_5.setText(words[rub_position - 1][:-5])
-        slip.ui.label_6.setText(words[pay_position + 2])
-        slip.ui.lineEdit.setText(words[rrn_position + 1])
+        slip.ui.label_5.setText(card_tail)
+        slip.ui.label_6.setText(merchant_id)
+        slip.ui.lineEdit.setText(rrn_value)
         slip.ui.textEdit.setText(load_slip)
         slip.show()
         slip.exec_()

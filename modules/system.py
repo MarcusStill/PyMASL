@@ -3,6 +3,7 @@ import calendar
 import datetime as dt
 import json
 import os
+import re
 import socket
 from datetime import date
 
@@ -11,7 +12,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from db.models import Holiday, Workday, Price, User
+from db.models import Holiday, Workday, Price, User, Sale
 from modules.config import Config
 from modules.logger import logger, logger_wraps
 
@@ -385,3 +386,41 @@ class System:
         except Exception as e:
             logger.error(f"Неизвестная ошибка при загрузке конфигурации: {e}")
             raise
+
+    def get_slip_data(self, sale_id: int) -> tuple[str, str, str, str]:
+        """
+        Функция запрашивает банковский слип-чек в БД и извлекает из него данные:
+        последние 4 цифры карты, merchant ID, RRN и полный текст чека.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к подключению к БД.
+            sale_id: int
+                Идентификатор продажи, по которому запрашивается слип-чек.
+
+        Возвращаемое значение:
+            tuple[str, str, str, str]: Кортеж, содержащий последние 4 цифры карты, merchant ID,
+            RRN и полный текст чека.
+        """
+        logger.info("Запуск функции get_slip")
+        with Session(self.engine) as session:
+            query = select(Sale.bank_pay).where(Sale.id == sale_id)
+            load_slip = session.execute(query).scalars().one()
+        try:
+            qr_match = re.search(r'Номер QR:\s+(\d+)', load_slip)
+            if qr_match:
+                last_digits = re.search(r'Карта:\s+\*+\s*(\d{4})', load_slip)
+                card_tail = last_digits.group(1) if last_digits else ''
+            else:
+                last_digits = re.search(r'Карта:\(?E\d*\)?\s+\*+\s*(\d{4})', load_slip)
+                card_tail = last_digits.group(1) if last_digits else ''
+            merchant = re.search(r'М:(\d+)', load_slip)
+            merchant_id = merchant.group(1) if merchant else ''
+            rrn = re.search(r'RRN:\s+(\d+)', load_slip)
+            rrn_value = rrn.group(1) if rrn else ''
+        except Exception as e:
+            logger.warning(f"Ошибка при разборе чека: {e}")
+            card_tail = ''
+            merchant_id = ''
+            rrn_value = ''
+        return  card_tail, merchant_id, rrn_value, load_slip
