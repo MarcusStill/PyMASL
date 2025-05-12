@@ -9,7 +9,7 @@ from modules import windows
 from modules.config import Config
 from modules.libfptr10 import IFptr
 from modules.logger import logger, logger_wraps
-
+from typing import Optional
 config = Config()
 
 # Получаем параметр available
@@ -21,8 +21,10 @@ except (KeyError, ValueError):
 
 # Инициализация драйвера ККТ
 try:
-    fptr = IFptr("") if kkt_available else None
-    if not kkt_available:
+    if kkt_available:
+        fptr = IFptr("")
+    else:
+        fptr = None
         logger.info("ККТ отключен в конфигурации (available ≠ on)")
 except Exception as e:
     logger.warning(f"Не установлен драйвер ККТ: {str(e)}")
@@ -877,69 +879,72 @@ def print_pinpad_check(count: int = 2):
 
         count -= 1
 
-def is_kkt_available() -> bool:
-    """Проверяет, доступен ли ККТ согласно конфигурации.
-
-    Возвращает:
-        bool: True если ККТ доступен (available=on), False в противном случае
+def get_info(hide: bool = False) -> Optional[int]:
     """
-    try:
-        if hasattr(config, 'KKT') and hasattr(config.KKT, 'available'):
-            return str(config.KKT.available).lower() == 'on'
-        return False
-    except Exception:
-        return False
-
-@logger_wraps()
-def get_info(hide: bool = False) -> int:
-    """Запрос информации о ККТ.
+    Запрос информации о ККТ.
+    Запрашивает информацию о кассовом аппарате (модель, наименование и версия ПО).
+    Если параметр `hide` равен `False`, отображает полученную информацию в окне приложения.
+    Возвращает номер модели ККТ или `None`, если не удалось получить информацию.
 
     Параметры:
-        hide (bool): Если True, не показывать окно с информацией о ККТ
+        hide: bool (по умолчанию False)
+            Если `True`, информация о ККТ не отображается в окне, а только возвращается как результат выполнения.
+            Если `False`, информация будет показана в интерфейсе.
 
     Возвращаемое значение:
-        int или None:
-            - Возвращает номер модели ККТ, если hide=True и ККТ доступен.
-            - Возвращает None, если ККТ недоступен, произошла ошибка или hide=False.
+        Optional[int]: Возвращает номер модели ККТ (если информация получена), или `None`, если не удалось получить данные.
     """
-    logger.info("Запуск функции get_info")
-    # Проверяем доступность ККТ из конфигурации
-    if not is_kkt_available():
-        logger.info("Операция пропущена - ККТ отключен в конфигурации")
+    if not kkt_available or fptr is None:
+        logger.warning("ККТ отключен или не инициализирован.")
         return None
     try:
-        with fptr_connection(fptr):
-            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
-            fptr.queryData()
-            model = fptr.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
-            model_name = fptr.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME)
-            firmware_version = fptr.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION)
-        info = (
-            f"Номер модели ККТ: {model}.\nНаименование ККТ: {model_name}.\n"
-            f"Версия ПО ККТ: {firmware_version}"
-        )
+        with fptr_connection(fptr) as f:
+            if not f:
+                logger.warning("Не удалось подключиться к ККТ.")
+                return None
+            f.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
+            f.queryData()
+            model = f.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
+            model_name = f.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME)
+            firmware_version = f.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION)
+
         if not hide:
+            info = f"Номер модели ККТ: {model}.\nНаименование ККТ: {model_name}.\nВерсия ПО ККТ: {firmware_version}"
             windows.info_window("Смотрите подробную информацию.", "", info)
-            return None
         return model
-    except ConnectionError as ce:
-        logger.error(f"Ошибка подключения к ККТ: {ce}")
-        windows.info_window(
-            "Ошибка", "Не удалось подключиться к ККТ.", "Проверьте подключение."
-        )
-    except AttributeError as ae:
-        logger.error(f"Ошибка при получении данных о ККТ: {ae}")
-        windows.info_window(
-            "Ошибка",
-            "Не удалось получить данные о ККТ.",
-            "Проверьте настройки устройства.",
-        )
+    except (ConnectionError, AttributeError) as e:
+        logger.error(f"Ошибка при получении данных о ККТ: {e}")
+        windows.info_window("Ошибка", "Не удалось получить данные о ККТ.", "Проверьте настройки устройства.")
+        return None
     except Exception as e:
         logger.error(f"Неизвестная ошибка: {e}")
-        windows.info_window(
-            "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
-        )
+        windows.info_window("Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова.")
+        return None
 
+def is_kkt_connected() -> bool:
+    """
+    Проверка физического подключения ККТ.
+    Проверяет, подключен ли кассовый аппарат и доступен ли для взаимодействия.
+    Возвращает `True`, если ККТ подключен, и `False`, если нет.
+
+    Параметры:
+        None
+
+    Возвращаемое значение:
+        bool: Возвращает `True`, если кассовый аппарат подключен и доступен для работы, иначе `False`.
+    """
+    if not kkt_available or fptr is None:
+        return False
+    try:
+        with fptr_connection(fptr) as f:
+            if f:
+                f.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
+                f.queryData()
+                return True
+        return False
+    except Exception as e:
+        logger.error(f"Ошибка при проверке подключения ККТ: {e}")
+        return False
 
 @logger_wraps()
 def get_last_document(day: int = 7) -> None:
@@ -953,8 +958,7 @@ def get_last_document(day: int = 7) -> None:
     """
     logger.info("Запуск функции get_last_document")
     # Проверяем доступность ККТ из конфигурации
-    if not is_kkt_available():
-        logger.info("Операция пропущена - ККТ отключен в конфигурации")
+    if not kkt_available:
         return
     try:
         last_check = get_last_document_datetime()
@@ -979,11 +983,13 @@ def get_last_document_datetime() -> datetime:
     Исключения:
         Генерирует исключение в случае ошибки соединения или некорректной работы оборудования.
     """
+    logger.info("Запуск функции get_last_document_datetime")
     with fptr_connection(fptr):
         fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_LAST_DOCUMENT)
         fptr.fnQueryData()
-        last_document: datetime = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-        return last_document
+        last_check_datetime: datetime = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+
+        return last_check_datetime
 
 def check_stale_document(last_check: datetime, max_days: int = 7) -> None:
     """
@@ -997,16 +1003,19 @@ def check_stale_document(last_check: datetime, max_days: int = 7) -> None:
         Если разница между текущей датой и датой последнего чека больше max_days,
         отображается предупреждающее окно с рекомендацией провести сверку итогов.
     """
+    logger.info("Запуск функции check_stale_document")
     current_date = datetime.now()
-    if (current_date - last_check) > timedelta(days=max_days):
-        info = f"Дата и время последнего чека в ФН: {last_check.strftime('%Y-%m-%d %H:%M:%S')}"
-        windows.info_window(
-            "Внимание",
-            "Дата последнего документа, записанного в фискальном накопителе, старше 7 дней.\n\n"
-            "Для корректного проведения платежей по банковскому терминалу "
-            "необходимо сделать сверку итогов (вкладка \"Касса\" -> \"Сверка итогов\").\n",
-            info
-        )
+    if (current_date - last_check) <= timedelta(days=max_days):
+        # Ранний выход, если чек не старый
+        return
+    info = f"Дата и время последнего чека в ФН: {last_check.strftime('%Y-%m-%d %H:%M:%S')}"
+    windows.info_window(
+        "Внимание",
+        "Дата последнего документа, записанного в фискальном накопителе, старше 7 дней.\n\n"
+        "Для корректного проведения платежей по банковскому терминалу "
+        "необходимо сделать сверку итогов (вкладка \"Касса\" -> \"Сверка итогов\").\n",
+        info
+    )
 
 
 @logger_wraps()

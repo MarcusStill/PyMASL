@@ -72,45 +72,128 @@ class AuthForm(QDialog):
     def starting_the_main_form(self) -> None:
         """
         Функция запускает предпродажные проверки и устанавливает системные параметры.
+        Выполняет проверку авторизации пользователя, подключение к ККТ, а затем отображает главное окно приложения.
 
         Параметры:
             self: object
-                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к атрибутам и методам GUI.
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
 
         Возвращаемое значение:
-            None: Функция не возвращает значений, но открывает главную форму приложения или показывает окно с ошибкой авторизации.
+            None: Функция не возвращает значений, а выполняет ряд операций, включая проверку входных данных и отображение главного окна.
         """
         logger.info("Запуск функции starting_the_main_form")
         login: str = self.ui.lineEdit.text()
         password: str = self.ui.lineEdit_2.text()
-        # Запуск предпродажных проверок
+
+        if not self.perform_login_checks(login, password):
+            return
+        # Проверка состояния ККТ
+        self.check_kkt_connection()
+        self.show_main_window()
+
+    @staticmethod
+    def perform_login_checks(login: str, password: str) -> bool:
+        """
+        Проверка авторизации пользователя.
+        Проверяет введенные логин и пароль, и если они корректны, закрывает окно авторизации.
+        В случае ошибки показывает окно с информацией о неверных данных.
+
+        Параметры:
+            login: str
+                Логин пользователя, введенный в поле входа.
+
+            password: str
+                Пароль пользователя, введенный в поле входа.
+
+        Возвращаемое значение:
+            bool: Возвращает `True`, если авторизация прошла успешно, и `False`, если произошла ошибка.
+        """
         if perform_pre_sale_checks(login, password) == 1:
             auth.close()
-            kkt_model = pq.get_info(hide=True)
-            if kkt_model == 0:
+            return True
+        else:
+            windows.info_window("Пользователь не найден", "Проверьте правильность ввода логина и пароля.")
+            return False
+
+    def check_kkt_connection(self):
+        """
+        Проверка подключения и состояния ККТ.
+        Проверяет физическое подключение кассового аппарата и его работоспособность. Если ККТ не подключен,
+        выводит предупреждающее сообщение и продолжает работу без фискальных операций.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, а лишь выполняет проверку подключения и выводит сообщения при необходимости.
+        """
+        try:
+            if pq.is_kkt_connected():
+                self.perform_kkt_checks()
+            elif pq.kkt_available:
+                try:
+                    if pq.get_info(hide=True) is not None:
+                        # Если получили информацию, значит ККТ подключен
+                        self.perform_kkt_checks()
+                        return
+                except (ConnectionError, TimeoutError) as e:
+                    logger.error(f"Ошибка при получении информации о ККТ: {e}")
+                except Exception as e:  # Общий блок для других исключений
+                    logger.error(f"Неизвестная ошибка при получении информации о ККТ: {e}")
+
+                # Показать предупреждение, если ККТ не подключен
                 windows.info_window(
                     "Внимание",
-                    "Соединение с кассовым аппаратом не установлено!",
-                    "Попробуйте устранить ошибку и после этого запросить информацию с ККТ:"
-                    "Вкладка `Операции с ККТ` -> `Информация о ККТ` или `Дата и время ККТ`.",
+                    "Кассовый аппарат не подключен",
+                    "Программа продолжит работу без фискальных операций."
                 )
-            pq.get_last_document()
-            window = MainWindow()
-            window.showMaximized()
-            # Установка заголовка окна
-            user_full_name = f"{system.user.last_name} {system.user.first_name}"
-            window.setWindowTitle(
-                f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
-            )
-            # Отображение формы продаж
-            window.main_button_all_sales()
-            window.exec_()
-        else:
-            windows.info_window(
-                "Пользователь не найден",
-                "Проверьте правильность ввода логина и пароля.",
-                "",
-            )
+        except (ConnectionError, TimeoutError) as e:
+            logger.error(f"Ошибка при проверке подключения к ККТ: {e}")
+        except Exception as e:  # Общий блок для других исключений
+            logger.error(f"Неизвестная ошибка при проверке ККТ: {e}")
+
+    @staticmethod
+    def perform_kkt_checks():
+        """
+        Проверка информации с ККТ и последнего чека.
+        Запрашивает информацию о текущем состоянии ККТ и проверяет дату последнего чека.
+        Если дата последнего чека превышает максимально допустимый период, выводится предупреждающее сообщение.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, а только выполняет проверку состояния ККТ.
+        """
+        if pq.get_info(hide=True) is not None:
+            last_check = pq.get_last_document_datetime()
+            pq.check_stale_document(last_check, max_days=7)
+
+    @staticmethod
+    def show_main_window():
+        """
+        Отображение главного окна приложения.
+        Создает и отображает главное окно приложения, устанавливая заголовок окна и показывая основные элементы интерфейса.
+        Также выводится информация о пользователе, версии программы и базе данных.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, а лишь выполняет отображение главного окна.
+        """
+        window = MainWindow()
+        window.showMaximized()
+        user_full_name = f"{system.user.last_name} {system.user.first_name}"
+        window.setWindowTitle(
+            f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
+        )
+        window.main_button_all_sales()
+        window.exec_()
+
 
 
 class ClientForm(QDialog):
