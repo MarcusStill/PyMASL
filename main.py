@@ -1587,7 +1587,8 @@ class SaleForm(QDialog):
             None: Функция ничего не возвращает, но закрывает окно прогресса и отображает сообщение об ошибке.
         """
         # Закрытие окна прогресса перед отображением ошибки
-        self.progress_window.close()
+        if hasattr(self, 'progress_window') and self.progress_window:
+            self.progress_window.close()
 
         # Создание окна с ошибкой
         msg_box = QMessageBox(self)
@@ -1619,7 +1620,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Эта функция ничего не возвращает, но закрывает окно прогресса и логирует завершение транзакции.
         """
-        if self.progress_window:
+        if hasattr(self, 'progress_window') and self.progress_window:
             self.progress_window.close()
         logger.info("Завершение транзакции")
 

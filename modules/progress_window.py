@@ -1,6 +1,6 @@
+from PySide6.QtCore import QPropertyAnimation, QEasingCurve
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog
-from PySide6.QtWidgets import QMessageBox as MB
 
 from design.logic.progress_dialog import Ui_ProgressDialog
 from modules.logger import logger
@@ -17,10 +17,15 @@ class ProgressWindow(QDialog):
         # Отображение поверх остальных окон
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
+        # Настройка анимации
+        self.animation = QPropertyAnimation(self.ui.progressBar, b"value")
+        # Плавное замедление в конце
+        self.animation.setEasingCurve(QEasingCurve.OutQuad)
+        # 0.5 секунды на анимацию
+        self.animation.setDuration(500)
+
         # Стилизация окна и прогрессбара
         self.setWindowTitle("Выполнение операции")
-
-
 
         self.setStyleSheet("""
             QDialog {
@@ -75,7 +80,39 @@ class ProgressWindow(QDialog):
             None: Эта функция не возвращает значения, но обновляет элементы пользовательского интерфейса (метка и прогресс-бар).
         """
         logger.debug(f"Progress update: {step_text} - {progress_percent}%")
-        # Обновляем текст
         self.ui.label_status.setText(step_text)
-        # Обновляем прогресс
-        self.ui.progressBar.setValue(progress_percent)
+
+        # Останавливаем текущую анимацию, если она идет
+        if self.animation.state() == QPropertyAnimation.Running:
+            self.animation.stop()
+
+        # Устанавливаем параметры анимации
+        self.animation.setStartValue(self.ui.progressBar.value())
+        self.animation.setEndValue(progress_percent)
+
+        # Запускаем анимацию
+        self.animation.start()
+
+        # Динамически меняем длительность анимации в зависимости от расстояния
+        distance = abs(progress_percent - self.ui.progressBar.value())
+        self.animation.setDuration(min(800, distance * 10))  # Макс 800ms
+
+        # Меняем стиль при ошибке (красный)
+        if "ошибка" in step_text.lower():
+            self.animation.finished.connect(self.set_error_style)
+        else:
+            self.set_normal_style()
+
+    def set_error_style(self):
+        self.ui.progressBar.setStyleSheet("""
+                QProgressBar::chunk {
+                    background-color: #f44336;
+                }
+            """)
+
+    def set_normal_style(self):
+        self.ui.progressBar.setStyleSheet("""
+                QProgressBar::chunk {
+                    background-color: #4caf50;
+                }
+            """)

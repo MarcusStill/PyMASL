@@ -1,8 +1,6 @@
 import datetime as dt
-import time
 
-from PySide6.QtCore import QElapsedTimer
-from PySide6.QtCore import QObject, Signal, QMetaObject, Qt
+from PySide6.QtCore import QElapsedTimer, QObject, Signal, QMetaObject, Qt, QTimer, QEventLoop
 from sqlalchemy import update
 
 from db.models import Sale
@@ -10,6 +8,9 @@ from modules.logger import logger
 
 
 class TransactionWorker(QObject):
+    # Константа для задержки
+    DEFAULT_DELAY_MS = 15
+
     progress_updated = Signal(str, int)
     finished = Signal()
     save_sale_signal = Signal()
@@ -31,22 +32,47 @@ class TransactionWorker(QObject):
         elapsed = timer.elapsed()
         logger.debug(f"[TIMER] {step_name} — {elapsed} ms")
 
+    def delayed_progress_update(self, step_text: str, progress_percent: int, delay_ms: int = DEFAULT_DELAY_MS):
+        """
+        Обновляет прогресс с гарантированной задержкой перед следующим шагом.
+        :param step_text: Текст для отображения
+        :param progress_percent: Процент выполнения (0-100)
+        :param delay_ms: Минимальная задержка в миллисекундах перед продолжением
+        """
+        if delay_ms < 0:
+            delay_ms = 0
+        if delay_ms > 0:
+            # Создаем локальный таймер для обеспечения задержки
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+
+            # Соединяем сигнал таймера с продолжением выполнения
+            timer.timeout.connect(lambda: None)  # Просто как маркер завершения задержки
+
+            # Отправляем сигнал прогресса немедленно
+            self.progress_updated.emit(step_text, progress_percent)
+
+            # Запускаем таймер задержки
+            timer.start(delay_ms)
+
+            # Блокируем выполнение до срабатывания таймера (не блокируя главный цикл Qt)
+            loop = QEventLoop()
+            timer.timeout.connect(loop.quit)
+            loop.exec()
+
     def run(self):
         timer = QElapsedTimer()
         timer.start()
         try:
-            self.progress_updated.emit("Анализ продажи...", 5)
-
+            self.delayed_progress_update("Анализ продажи...", 5)
             # Сохраняем новую продажу
             if self.system.sale_id is None:
-                self.progress_updated.emit("Сохраняем продажу...", 10)
-                time.sleep(0.25) # for view
+                self.delayed_progress_update("Сохраняем продажу...", 10)
                 self.save_sale_signal.emit()
                 self.log_step(timer, "save_sale finished")
             # Особая продажа — только билеты
             if self.system.sale_special == 1:
-                self.progress_updated.emit("Печатаем билеты (особая продажа)...", 100)
-                time.sleep(0.25) # for view
+                self.delayed_progress_update("Печатаем билеты (особая продажа)...", 90)
                 QMetaObject.invokeMethod(
                     self.main_window,
                     "print_saved_tickets",
@@ -57,10 +83,8 @@ class TransactionWorker(QObject):
                 return
 
             # Если оплата банковской картой
-            # bank, payment = None, None
-            if self.payment_type in (101, 100):
-                self.progress_updated.emit("Ожидаем оплату на терминале...", 25)
-                time.sleep(0.25) # for view
+            if self.payment_type in (101, 200):
+                self.delayed_progress_update("Ожидаем оплату на терминале...", 25)
                 try:
                     amount = self.system.sale_dict["detail"][7]
                     bank, payment = self.pq.universal_terminal_operation(self.payment_type, amount, self.progress_updated)
@@ -71,11 +95,12 @@ class TransactionWorker(QObject):
                         "Не удалось выполнить операцию на терминале.",
                         str(e),
                     )
-                    self.progress_updated.emit("Ошибка оплаты", 100)
+                    self.delayed_progress_update("Ошибка оплаты", 100, 1)
                     self.log_step(timer, "error_signal finished")
-                    time.sleep(0.25) # for view
-                    self.close_window_signal.emit()  # Закрытие окна прогресса в случае ошибки
-                    self.finished.emit()  # Завершаем поток
+                    # Закрытие окна прогресса в случае ошибки
+                    self.close_window_signal.emit()
+                    # Завершаем поток
+                    self.finished.emit()
                     return
                 if bank == 0:
                     self.error_signal.emit(
@@ -83,15 +108,15 @@ class TransactionWorker(QObject):
                         "Операция оплаты не удалась. Повторите попытку.",
                         "",
                     )
-                    self.progress_updated.emit("Ошибка оплаты", 100)
+                    self.delayed_progress_update("Ошибка оплаты", 100, 1)
                     self.log_step(timer, "payment error finished")
-                    time.sleep(0.25) # for view
-                    self.close_window_signal.emit()  # Закрытие окна прогресса в случае ошибки
-                    self.finished.emit()  # Завершаем поток
+                    # Закрытие окна прогресса в случае ошибки
+                    self.close_window_signal.emit()
+                    # Завершаем поток
+                    self.finished.emit()
                     return
                 if bank == 1:
-                    self.progress_updated.emit("Сохраняем банковский чек...", 35)
-                    time.sleep(0.25) # for view
+                    self.delayed_progress_update("Сохраняем банковский чек...", 35)
                     if payment == 3:
                         check = "offline"
                     else:
@@ -106,16 +131,14 @@ class TransactionWorker(QObject):
                         session.commit()
                     self.log_step(timer, "save in db finished")
                     if self.print_check == 1 and payment == 1:
-                        self.progress_updated.emit("Печатаем слип-чек...", 40)
-                        time.sleep(0.25) # for view
+                        self.delayed_progress_update("Печатаем слип-чек...", 40)
                         self.pq.print_slip_check()
                         self.log_step(timer, "pq.print_slip_check finished")
             else:
                 payment = 2
                 bank = None
 
-            self.progress_updated.emit("Печатаем кассовый чек...", 60)
-            time.sleep(0.25) # for view
+            self.delayed_progress_update("Печатаем кассовый чек...", 60)
             state_check = self.pq.check_open(
                 self.system.sale_dict,
                 self.payment_type,
@@ -128,12 +151,10 @@ class TransactionWorker(QObject):
             )
             self.log_step(timer, "pq.check_open finished")
             if state_check == 1:
-                self.progress_updated.emit("Оплата прошла успешно.", 70)
-                time.sleep(0.25) # for view
+                self.delayed_progress_update("Оплата прошла успешно.", 70)
                 if self.print_check == 0:
                     self.info_signal.emit("Оплата прошла успешно.", "Чек не печатаем.", "")
-                self.progress_updated.emit("Сохраняем данные в БД...", 80)
-                time.sleep(0.25) # for view
+                self.delayed_progress_update("Сохраняем данные в БД...", 80)
                 with self.Session(self.system.engine) as session:
                     session.execute(
                         update(Sale)
@@ -148,7 +169,7 @@ class TransactionWorker(QObject):
                     )
                     session.commit()
                 self.log_step(timer, "save check in db finished")
-            self.progress_updated.emit("Печатаем билеты...", 90)
+            self.delayed_progress_update("Печатаем билеты...", 90)
             QMetaObject.invokeMethod(
                 self.main_window,
                 "print_saved_tickets",
@@ -156,15 +177,13 @@ class TransactionWorker(QObject):
             )
             self.log_step(timer, "print_saved_tickets finished")
             self.system.sale_status = 0
-            self.progress_updated.emit("Завершено.", 100)
-            time.sleep(0.25) # for view
+            self.delayed_progress_update("Завершено.", 100, 1)
+            self.log_step(timer, "all steps finished")
             self.close_window_signal.emit()
-
 
         except Exception as e:
             self.error_signal.emit("Ошибка", str(e), True)
-            self.progress_updated.emit("Ошибка во время выполнения", 100)
-            time.sleep(0.25) # for view
+            self.delayed_progress_update("Ошибка во время выполнения", 100, 1)
 
         finally:
             self.system.sale_status = 0
