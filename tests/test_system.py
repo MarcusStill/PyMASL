@@ -246,3 +246,229 @@ def test_get_price_with_empty_result(mock_session, system, default_expected_pric
 
     # Проверяем, что все ключи прайс-листа были корректно обновлены
     check_prices(system, updated_prices)
+
+#######################################
+# Тестируем get_slip_data
+
+# Фикстуры для тестов get_slip_data
+@pytest.fixture
+def mock_session():
+    """Фикстура для мокирования сессии базы данных."""
+    with patch("modules.system.Session") as mock:
+        yield mock
+
+@pytest.fixture
+def slip_processor():
+    """Фикстура для создания тестируемого объекта."""
+    from modules.system import System
+    return System()
+
+@pytest.fixture
+def invalid_slip():
+    return "Invalid slip format without any required data"
+
+# Вспомогательная фикстура для мокирования запроса
+@pytest.fixture
+def mock_db_query(mock_session):
+    def _mock_db_query(return_value):
+        # Мокируем поведение сессии так, чтобы .execute().scalars().one() возвращали строку слипа
+        mock_query = MagicMock()
+        mock_scalars = MagicMock()
+        mock_scalars.one.return_value = return_value  # Передаем строку слипа напрямую
+
+        # Строим цепочку вызовов: execute().scalars().one()
+        mock_session.return_value.__enter__.return_value.execute.return_value = mock_query
+        mock_query.scalars.return_value = mock_scalars
+
+        return mock_session
+    return _mock_db_query
+
+# Фикстуры с примерами слипов
+@pytest.fixture
+def mastercard_slip():
+    return """
+            Umbrella Corporation            
+
+ПАО БАНК                  Оплата
+Т: 12345678           М:000000000001
+MASTERCARD            A0000000000000
+Карта:(E1)          ************1234
+Сумма (Руб):                  1.00
+Комиссия за операцию - 0 Руб.
+              ОДОБРЕНО
+К/А: 123456      RRN:   000000000001
+    Подпись клиента не требуется    
+0123456789012345678901234567890123456
+===================================="""
+
+@pytest.fixture
+def visa_slip():
+    return """
+            Umbrella Corporation            
+
+ПАО БАНК                  Оплата
+Т: 12345678           М:000000000001
+VISA                  A0000000000000
+Карта:(E1)          ************1234
+Сумма (Руб):                  1.00
+Комиссия за операцию - 0 Руб.
+              ОДОБРЕНО
+К/А: 123456      RRN:   000000000001
+    Подпись клиента не требуется    
+0123456789012345678901234567890123456
+===================================="""
+
+@pytest.fixture
+def mir_slip():
+    return """
+            Umbrella Corporation            
+
+ПАО БАНК                  Оплата
+Т: 12345678           М:000000000001
+MIR                   A0000000000000
+Карта:(E4)       ***************1234
+Сумма (Руб):                 1.00
+Комиссия за операцию - 0 Руб.
+              ОДОБРЕНО
+К/А: 123456      RRN:   000000000001
+  Проверено на устройстве клиента   
+0123456789012345678901234567890123456
+===================================="""
+
+@pytest.fixture
+def qr_slip():
+    return """
+            Umbrella Corporation            
+
+ПАО БАНК               Оплата QR
+Т: 12345678           М:000000000001
+Терминал QR:                00000001
+Номер QR:                 0000000001
+Банк плательщика:           БАНК
+Заказ:
+    352dba227a944a44b1ffa19eaf37f379
+Карта:              ************1234
+Сумма (Руб):                 1.00
+              ОДОБРЕНО
+К/А: 123456      RRN:   000000000001
+  Проверено на устройстве клиента   
+0123456789012345678901234567890123456
+===================================="""
+
+@pytest.fixture
+def mir_pay_slip():
+    return """
+            Umbrella Corporation            
+
+ПАО БАНК                  Оплата
+Т: 12345678           М:000000000001
+MIR PAY               A0000000000000
+Карта:(E4)       ***************1234
+Сумма (Руб):                 1.00
+Комиссия за операцию - 0 Руб.
+              ОДОБРЕНО
+К/А: 123456      RRN:   000000000001
+  Проверено на устройстве клиента   
+0123456789012345678901234567890123456
+===================================="""
+
+@pytest.fixture
+def mir_classic_slip():
+    return """
+            Umbrella Corporation            
+
+ПАО БАНК                  Оплата
+Т: 12345678           М:000000000001
+MIR Classic CRD       A0000000000000
+Карта:(E)           ************1234
+Сумма (Руб):                  1.00
+Комиссия за операцию - 0 Руб.
+              ОДОБРЕНО
+К/А: 123456      RRN:   000000000001
+    Подпись клиента не требуется    
+0123456789012345678901234567890123456"""
+
+# Тесты для каждого типа слипа
+def test_mastercard_slip(slip_processor, mock_db_query, mastercard_slip):
+    # Мокируем возврат строки слипа напрямую
+    mock_db_query(mastercard_slip.strip())  # передаем строку напрямую
+
+    # Получаем результат
+    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
+
+    # Проверяем, что данные корректны
+    assert card_tail == "1234", f"Ожидалось '1234', но получено '{card_tail}'"
+    assert merchant_id == "000000000001", f"Ожидалось '000000000001', но получено '{merchant_id}'"
+    assert rrn_value == "000000000001", f"Ожидалось '000000000001', но получено '{rrn_value}'"
+    assert full_slip == mastercard_slip.strip(), f"Ожидался полный слип, но получено '{full_slip}'"
+
+def test_visa_slip(slip_processor, mock_db_query, visa_slip):
+    # Мокируем возврат строки слипа напрямую
+    mock_db_query(visa_slip.strip())  # передаем строку напрямую
+
+    # Получаем результат
+    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
+
+    # Проверяем, что данные корректны
+    assert card_tail == "1234", f"Ожидалось '1234', но получено '{card_tail}'"
+    assert merchant_id == "000000000001", f"Ожидалось '000000000001', но получено '{merchant_id}'"
+    assert rrn_value == "000000000001", f"Ожидалось '000000000001', но получено '{rrn_value}'"
+    assert full_slip == visa_slip.strip(), f"Ожидался полный слип, но получено '{full_slip}'"
+
+def test_mir_slip(slip_processor, mock_db_query, mir_slip):
+    mock_db_query(mir_slip.strip())
+    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
+
+    assert card_tail == "1234"
+    assert merchant_id == "000000000001"
+    assert rrn_value == "000000000001"
+    assert full_slip == mir_slip.strip()
+
+def test_qr_slip(slip_processor, mock_db_query, qr_slip):
+    mock_db_query(qr_slip.strip())
+    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
+
+    assert card_tail == "1234"
+    assert merchant_id == "000000000001"
+    assert rrn_value == "000000000001"
+    assert full_slip == qr_slip.strip()
+
+def test_mir_pay_slip(slip_processor, mock_db_query, mir_pay_slip):
+    mock_db_query(mir_pay_slip.strip())
+    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
+
+    assert card_tail == "1234"
+    assert merchant_id == "000000000001"
+    assert rrn_value == "000000000001"
+    assert full_slip == mir_pay_slip.strip()
+
+def test_mir_classic_slip(slip_processor, mock_db_query, mir_classic_slip):
+    mock_db_query(mir_classic_slip.strip())
+    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
+
+    assert card_tail == "1234"
+    assert merchant_id == "000000000001"
+    assert rrn_value == "000000000001"
+    assert full_slip == mir_classic_slip.strip()
+
+def test_invalid_slip(slip_processor, invalid_slip, mock_db_query):
+    # Мокируем возврат невалидного слипа
+    mock_db_query(invalid_slip.strip())  # фикстура передана как параметр
+
+    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
+
+    assert card_tail == ""
+    assert merchant_id == ""
+    assert rrn_value == ""
+    assert full_slip == invalid_slip.strip()
+
+def test_empty_slip(slip_processor, mock_db_query):
+    # Мокируем возврат пустого слипа
+    mock_db_query("")  # фикстура передана как параметр
+
+    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
+
+    assert card_tail == ""
+    assert merchant_id == ""
+    assert rrn_value == ""
+    assert full_slip == ""

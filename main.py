@@ -72,45 +72,129 @@ class AuthForm(QDialog):
     def starting_the_main_form(self) -> None:
         """
         Функция запускает предпродажные проверки и устанавливает системные параметры.
+        Выполняет проверку авторизации пользователя, подключение к ККТ, а затем отображает главное окно приложения.
 
         Параметры:
             self: object
-                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к атрибутам и методам GUI.
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
 
         Возвращаемое значение:
-            None: Функция не возвращает значений, но открывает главную форму приложения или показывает окно с ошибкой авторизации.
+            None: Функция не возвращает значений, а выполняет ряд операций, включая проверку входных данных и отображение главного окна.
         """
         logger.info("Запуск функции starting_the_main_form")
         login: str = self.ui.lineEdit.text()
         password: str = self.ui.lineEdit_2.text()
-        # Запуск предпродажных проверок
+
+        if not self.perform_login_checks(login, password):
+            return
+        # Проверка состояния ККТ
+        self.check_kkt_connection()
+        self.show_main_window()
+
+    @staticmethod
+    def perform_login_checks(login: str, password: str) -> bool:
+        """
+        Проверка авторизации пользователя.
+        Проверяет введенные логин и пароль, и если они корректны, закрывает окно авторизации.
+        В случае ошибки показывает окно с информацией о неверных данных.
+
+        Параметры:
+            login: str
+                Логин пользователя, введенный в поле входа.
+
+            password: str
+                Пароль пользователя, введенный в поле входа.
+
+        Возвращаемое значение:
+            bool: Возвращает `True`, если авторизация прошла успешно, и `False`, если произошла ошибка.
+        """
         if perform_pre_sale_checks(login, password) == 1:
             auth.close()
-            kkt_model = pq.get_info(hide=True)
-            if kkt_model == 0:
+            return True
+        else:
+            windows.info_window("Пользователь не найден", "Проверьте правильность ввода логина и пароля.",
+                                "Убедитесь, что используете правильный логин и пароль для входа в систему.")
+            return False
+
+    def check_kkt_connection(self):
+        """
+        Проверка подключения и состояния ККТ.
+        Проверяет физическое подключение кассового аппарата и его работоспособность. Если ККТ не подключен,
+        выводит предупреждающее сообщение и продолжает работу без фискальных операций.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, а лишь выполняет проверку подключения и выводит сообщения при необходимости.
+        """
+        try:
+            if pq.is_kkt_connected():
+                self.perform_kkt_checks()
+            elif pq.kkt_available:
+                try:
+                    if pq.get_info(hide=True) is not None:
+                        # Если получили информацию, значит ККТ подключен
+                        self.perform_kkt_checks()
+                        return
+                except (ConnectionError, TimeoutError) as e:
+                    logger.error(f"Ошибка при получении информации о ККТ: {e}")
+                except Exception as e:  # Общий блок для других исключений
+                    logger.error(f"Неизвестная ошибка при получении информации о ККТ: {e}")
+
+                # Показать предупреждение, если ККТ не подключен
                 windows.info_window(
                     "Внимание",
-                    "Соединение с кассовым аппаратом не установлено!",
-                    "Попробуйте устранить ошибку и после этого запросить информацию с ККТ:"
-                    "Вкладка `Операции с ККТ` -> `Информация о ККТ` или `Дата и время ККТ`.",
+                    "Кассовый аппарат не подключен",
+                    "Программа продолжит работу без фискальных операций."
                 )
-            pq.get_last_document()
-            window = MainWindow()
-            window.showMaximized()
-            # Установка заголовка окна
-            user_full_name = f"{system.user.last_name} {system.user.first_name}"
-            window.setWindowTitle(
-                f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
-            )
-            # Отображение формы продаж
-            window.main_button_all_sales()
-            window.exec_()
-        else:
-            windows.info_window(
-                "Пользователь не найден",
-                "Проверьте правильность ввода логина и пароля.",
-                "",
-            )
+        except (ConnectionError, TimeoutError) as e:
+            logger.error(f"Ошибка при проверке подключения к ККТ: {e}")
+        except Exception as e:  # Общий блок для других исключений
+            logger.error(f"Неизвестная ошибка при проверке ККТ: {e}")
+
+    @staticmethod
+    def perform_kkt_checks():
+        """
+        Проверка информации с ККТ и последнего чека.
+        Запрашивает информацию о текущем состоянии ККТ и проверяет дату последнего чека.
+        Если дата последнего чека превышает максимально допустимый период, выводится предупреждающее сообщение.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, а только выполняет проверку состояния ККТ.
+        """
+        if pq.get_info(hide=True) is not None:
+            last_check = pq.get_last_document_datetime()
+            pq.check_stale_document(last_check, max_days=7)
+
+    @staticmethod
+    def show_main_window():
+        """
+        Отображение главного окна приложения.
+        Создает и отображает главное окно приложения, устанавливая заголовок окна и показывая основные элементы интерфейса.
+        Также выводится информация о пользователе, версии программы и базе данных.
+
+        Параметры:
+            self: object
+                Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
+
+        Возвращаемое значение:
+            None: Функция не возвращает значений, а лишь выполняет отображение главного окна.
+        """
+        window = MainWindow()
+        window.showMaximized()
+        user_full_name = f"{system.user.last_name} {system.user.first_name}"
+        window.setWindowTitle(
+            f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
+        )
+        window.main_button_all_sales()
+        window.exec_()
+
 
 
 class ClientForm(QDialog):
@@ -489,13 +573,6 @@ class SaleForm(QDialog):
             None: Функция не возвращает значений, сохраняет или обновляет запись о клиенте в базе данных.
         """
         logger.info("Запуск функции changing_color_of_calendar")
-        # Получаем строковое представление даты
-        get_date: str = str(self.ui.dateEdit.date())
-        date_slice: str = get_date[21 : (len(get_date) - 1)]
-        # logger.debug(date_slice)
-        # get_date: str = date_slice.replace(", ", "-") TODO: надо ли
-
-        # Поскольку check_day не требует аргументов, вызываем его без параметра
         if system.check_day() == 1:
             self.ui.dateEdit.setStyleSheet("background-color: red;")
         else:
@@ -2097,32 +2174,15 @@ class SlipForm(QDialog):
                 Ссылка на экземпляр текущего объекта класса, необходимая для доступа к элементам GUI.
 
         Возвращаемое значение:
-            None: Функция не возвращает значений, вставляет фамилию в поле формы.
+            None: Функция не возвращает значений, отображает данные слип-чека в форме.
         """
         logger.info("Запуск функции get_slip")
-        with Session(system.engine) as session:
-            query = select(Sale.bank_pay).where(Sale.id == system.sale_id)
-            load_slip = session.execute(query).scalars().one()
-        words = load_slip.split()
-        try:
-            rub_position = words.index("(Руб):") or words.index("Руб:")
-            rrn_position = words.index("RRN:")
-            pay_position = (
-                words.index("ОплатаТ:")
-                or words.index("Оплата:")
-                or words.index("Оплата")
-                or words.index("Оплата QRТ:")
-                or words.index("Оплата QRТ")
-            )
-        except Exception as e:
-            rub_position = 0
-            rrn_position = 0
-            pay_position = 0
-            logger.warning(f"Ошибка при чтении слип-чека из БД: {e}")
+        card_tail, merchant_id, rrn_value, load_slip = system.get_slip_data(system.sale_id)
+
         slip: SlipForm = SlipForm()
-        slip.ui.label_5.setText(words[rub_position - 1][:-5])
-        slip.ui.label_6.setText(words[pay_position + 2])
-        slip.ui.lineEdit.setText(words[rrn_position + 1])
+        slip.ui.label_5.setText(card_tail)
+        slip.ui.label_6.setText(merchant_id)
+        slip.ui.lineEdit.setText(rrn_value)
         slip.ui.textEdit.setText(load_slip)
         slip.show()
         slip.exec_()
@@ -2737,10 +2797,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
             elif self.ui.radioButton_2.isChecked():
                 filter_start = (dt.datetime.today() - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
-                filter_end = (dt.datetime.today() - timedelta(days=3)).replace(hour=23, minute=59, second=59, microsecond=999999)
+                filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
             elif self.ui.radioButton_3.isChecked():
                 filter_start = (dt.datetime.today() - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
-                filter_end = (dt.datetime.today() - timedelta(days=7)).replace(hour=23, minute=59, second=59, microsecond=999999)
+                filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
         # Определяем, какие статусы фильтровать
         sale_status_filter = [2, 3, 4, 5, 6, 8] if self.ui.checkBox.isChecked() else []
 
