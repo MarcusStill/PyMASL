@@ -3,7 +3,6 @@ import subprocess
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from subprocess import TimeoutExpired
 from typing import Optional
 
 from modules import windows
@@ -156,17 +155,18 @@ def fptr_connection(device):
         device.close()
 
 
-def run_terminal_command(command_params: str, timeout: int = 90):
-    """Запуск команды на терминале и возврат результата.
+def run_terminal_command(command_params: str, timeout: int = 120):
+    """
+    Выполняет команду на терминале и возвращает результат выполнения.
 
     Параметры:
-        command_params (str): Параметры команды, которую нужно выполнить.
-        timeout (int): Таймаут в секундах перед выводом диалогового окна.
+        command_params (str): Параметры команды, которую необходимо выполнить.
+        timeout (int): Таймаут в секундах, по истечении которого команда будет принудительно завершена.
 
     Возвращаемое значение:
         subprocess.CompletedProcess или None:
-            - Возвращает объект subprocess.CompletedProcess, если команда выполнена успешно.
-            - Возвращает None, если произошла ошибка.
+            - Возвращает объект `subprocess.CompletedProcess`, если команда выполнена успешно.
+            - Возвращает `None`, если произошла ошибка выполнения команды.
     """
     logger.info("Запуск функции run_terminal_command")
     pinpad_path: str = config.get("pinpad_path")  # Путь к директории
@@ -174,40 +174,31 @@ def run_terminal_command(command_params: str, timeout: int = 90):
     # Полный путь до исполняемого файла
     pinpad_run_path = os.path.join(pinpad_path, pinpad_file)
     pinpad_run: str = f"{pinpad_run_path} {command_params}"
+
+    if not os.path.isfile(pinpad_run_path):
+        logger.error(f"Файл не найден: {pinpad_run_path}")
+        raise FileNotFoundError(f"Файл не найден: {pinpad_run_path}")
+
     logger.info(f"Запуск команды: {pinpad_run}")
     try:
         process = subprocess.Popen(
-            pinpad_run, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            pinpad_run, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            shell=True  # Важно для строки команды
         )
         try:
-            process.wait(timeout=timeout)
-        except TimeoutExpired:
-            user_choice = windows.info_dialog_window(
-                "Внимание",
-                f"Процесс {pinpad_file} выполняется слишком долго. Завершить его?",
-            )
-            if user_choice == 1:
-                logger.warning(
-                    f"Процесс {process.pid} превысил таймаут {timeout} секунд. Завершение по пользовательскому запросу."
-                )
-                process.terminate()
-                try:
-                    process.wait(timeout=5)  # Ожидаем завершения после terminate()
-                except TimeoutExpired:
-                    logger.warning(
-                        f"Процесс {process.pid} не завершился после terminate(). Используется kill()."
-                    )
-                    process.kill()
-                    process.wait()  # Ожидаем завершения после kill()
-            else:
-                logger.info(
-                    f"Процесс {process.pid} продолжает выполнение по выбору пользователя."
-                )
-                process.wait()  # Ожидаем завершения без таймаута
-        stdout, stderr = process.communicate()
-        code = process.returncode
+            stdout, stderr = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Процесс превысил таймаут {timeout} секунд. Завершается автоматически.")
+            process.terminate()
+            try:
+                stdout, stderr = process.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                logger.warning("Процесс не завершился после terminate(). Используется kill().")
+                process.kill()
+                stdout, stderr = process.communicate()
+
         return subprocess.CompletedProcess(
-            args=pinpad_run, returncode=code, stdout=stdout, stderr=stderr
+            args=pinpad_run, returncode=process.returncode, stdout=stdout, stderr=stderr
         )
     except subprocess.SubprocessError as e:
         logger.error(f"Ошибка выполнения команды: {e}")
@@ -444,118 +435,132 @@ def process_terminal_error(returncode):
 
 
 @logger_wraps()
-def terminal_oplata(amount):
-    """Операуия оплаты по банковскому терминалу.
+def terminal_oplata(amount: float) -> int:
+    """
+    Выполняет операцию оплаты через терминал.
 
     Параметры:
-        amount (float):
-            Сумма, которую необходимо оплатить.
+        amount (float): Сумма операции в рублях.
 
     Возвращаемое значение:
-        int:
-            - Возвращает 1, если операция успешно завершена.
-            - Возвращает 0, если произошла ошибка или операция была отменена.
+        int: 1 — успех, 0 — ошибка.
     """
-    logger.info("Запуск функции terminal_oplata")
-    # Преобразуем сумму в целое число для корректного форматирования
-    result = run_terminal_command(f"1 {amount}00")
-    if result is None:
-        logger.error("Ошибка при выполнении команды терминала")
-        handle_error(
-            "Нет ответа от терминала",
-            "Команда терминала не была выполнена. Проверьте устройство.",
-            "Код ошибки: отсутствует",
-        )
-        return 0
-
-    logger.info(
-        f"Статус проведения операции по банковскому терминалу: {result.returncode}"
-    )
-
-    # Успешный результат
-    if result.returncode == TERMINAL_SUCCESS_CODE:
-        return process_success_result()
-
-    # Обработка ошибок
-    return process_terminal_error(result.returncode)
+    return process_terminal_transaction("1", amount, "Оплата")
 
 
 @logger_wraps()
-def terminal_return(amount):
-    """Операуия возврата по банковскому терминалу
+def terminal_return(amount: float) -> int:
+    """
+    Выполняет операцию возврата через терминал.
 
     Параметры:
-        amount (float):
-            Сумма, которую необходимо вернуть.
+        amount (float): Сумма возврата в рублях.
 
     Возвращаемое значение:
-        int:
-            - Возвращает 1, если возврат успешно завершен.
-            - Возвращает 0, если произошла ошибка или файл не найден.
+        int: 1 — успех, 0 — ошибка.
     """
-    logger.info("Запуск функции terminal_return")
-    logger.debug(f"В функцию была передана следующая сумма: {amount}")
-    # Добавляем '00' для копеек
-    result = run_terminal_command(f"3 {amount}00")
-    logger.debug(f"Терминал вернул следующий код операции: {result}")
-    if result is None:
-        logger.error("Ошибка при выполнении команды терминала")
-        handle_error(
-            "Нет ответа от терминала",
-            "Команда терминала не была выполнена. Проверьте устройство.",
-            "Код ошибки: отсутствует",
-        )
-        return 0
-
-    logger.info(
-        f"Статус проведения операции по банковскому терминалу: {result.returncode}"
-    )
-
-    # Успешный результат
-    if result.returncode == TERMINAL_SUCCESS_CODE:
-        return process_success_result()
-
-    # Обработка ошибок
-    return process_terminal_error(result.returncode)
+    return process_terminal_transaction("3", amount, "Возврат")
 
 
 @logger_wraps()
-def terminal_canceling(amount):
-    """Операуия отмены по банковскому терминалу.
+def terminal_canceling(amount: float) -> int:
+    """
+    Выполняет операцию отмены через терминал.
 
     Параметры:
-        amount (float):
-            Сумма, которую необходимо отменить.
+        amount (float): Сумма операции отмены в рублях.
 
     Возвращаемое значение:
-        int:
-            - Возвращает 1, если отмена успешно завершена.
-            - Возвращает 0, если произошла ошибка или файл не найден.
+        int: 1 — успех, 0 — ошибка.
     """
-    logger.info("Запуск функции terminal_canceling")
-    logger.debug(f"В функцию была передана следующая сумма: {amount}")
-    # Добавляем '00' для копеек
-    result = run_terminal_command(f"8 {amount}00")
-    logger.debug(f"Терминал вернул следующий код операции: {result}")
+    return process_terminal_transaction("8", amount, "Отмена")
+
+@logger_wraps()
+def process_terminal_transaction(command_code: str, amount: float, operation_name: str) -> int:
+    """
+    Обрабатывает операцию на банковском терминале.
+
+    Параметры:
+        command_code (str): Код команды терминала (например, "1" — оплата, "3" — возврат, "8" — отмена).
+        amount (float): Сумма операции в рублях.
+        operation_name (str): Название операции для логирования.
+
+    Возвращаемое значение:
+        int: 1 — успех, 0 — ошибка.
+    """
+    logger.info(f"Запуск операции: {operation_name}")
+    logger.debug(f"Переданная сумма: {amount}")
+
+    # Преобразуем сумму в формат копеек (например, 150.00 → "15000")
+    command = f"{command_code} {int(amount * 100)}"
+    result = run_terminal_command(command)
+
     if result is None:
-        logger.error("Ошибка при выполнении команды терминала")
+        logger.error(f"Ошибка при выполнении команды терминала: {command}")
         handle_error(
-            "Нет ответа от терминала",
-            "Команда терминала не была выполнена. Проверьте устройство.",
+            f"Нет ответа от терминала",
+            f"{operation_name} не была выполнена. Проверьте устройство.",
             "Код ошибки: отсутствует",
         )
         return 0
 
-    logger.info(
-        f"Статус проведения операции по банковскому терминалу: {result.returncode}"
-    )
+    logger.info(f"Код возврата от терминала ({operation_name}): {result.returncode}")
 
-    # Успешный результат
     if result.returncode == TERMINAL_SUCCESS_CODE:
         return process_success_result()
 
-    # Обработка ошибок
+    # Логируем stderr, если есть
+    if result.stderr:
+        try:
+            err_output = result.stderr.decode("cp1251", errors="ignore").strip()
+        except Exception:
+            err_output = str(result.stderr)
+        logger.error(f"Терминал вернул ошибку: {err_output}")
+
     return process_terminal_error(result.returncode)
+
+
+def universal_terminal_operation(payment_type: int, amount: float, progress_signal) -> tuple[int, int]:
+    """
+    Универсальный обработчик терминальных операций для оплаты или возврата.
+
+    Параметры:
+        payment_type (int): Тип оплаты (например, 1 — карта, 3 — оффлайн).
+        amount (float): Сумма операции в рублях.
+        progress_signal: Сигнал для обновления статуса прогресса.
+
+    Возвращаемое значение:
+        tuple:
+            - bank (int): Результат операции по терминалу (1 — успех, 0 — ошибка).
+            - payment_code (int): Код оплаты (1 — карта, 3 — оффлайн).
+    """
+    try:
+        if payment_type == PAYMENT_ELECTRONIC:
+            logger.info("Запускаем оплату по банковскому терминалу")
+            progress_signal.emit("Запускаем оплату по банковскому терминалу...", 10)
+            bank = process_terminal_transaction("1", amount, "Оплата")
+            if bank == 1:
+                progress_signal.emit("Оплата успешна.", 20)
+                return 1, 1  # 1 — success, 1 — card
+            elif bank == 0:
+                progress_signal.emit("Ошибка оплаты.", 100)
+                return 0, 1  # 0 — error, 1 — card
+        elif payment_type == PAYMENT_OFFLINE:
+            logger.info("Запускаем offline оплату по банковскому терминалу")
+            progress_signal.emit("Запускаем offline оплату по банковскому терминалу...", 10)
+            return 1, 3  # 1 — success, 3 — offline
+
+        # Явный return, если ни одно из условий не выполнено
+        progress_signal.emit("Неподдерживаемый тип оплаты", 100)
+        return 0, 0
+    except ValueError as ve:
+        logger.error(f"Ошибка: {ve}")
+        progress_signal.emit(f"Ошибка: {str(ve)}", 100)
+        return 0, 0
+    except Exception as exp:
+        logger.error(f"Неизвестная ошибка при проведении операции: {exp}")
+        progress_signal.emit(f"Неизвестная ошибка при проведении операции: {str(exp)}", 100)
+        return 0, 0
 
 
 @logger_wraps()
@@ -1704,17 +1709,17 @@ def process_payment(device, payment_type, bank, sale_dict, price):
     return True
 
 
-def handle_document_errors(device, retry_count, max_retries):
+def handle_document_errors(device, retry_count, max_retries, on_error=None):
     """Функция пытается закрыть документ, повторяя попытки в случае ошибки до достижения максимального числа попыток.
 
     Параметры:
         device (object): Объект устройства для работы с чеками.
         retry_count (int): Текущее количество попыток.
         max_retries (int): Максимальное количество попыток закрытия документа.
+        on_error (callable, optional): Функция для обработки ошибок, вызываемая при достижении максимального числа попыток.
 
     Возвращаемое значение:
         bool: Возвращает `True`, если документ был успешно закрыт, или `False`, если после всех попыток документ не закрылся.
-
     """
     logger.info("Запуск функции handle_document_errors")
     while retry_count < max_retries:
@@ -1728,14 +1733,15 @@ def handle_document_errors(device, retry_count, max_retries):
         )
         time.sleep(1)
     logger.error(f"Документ не закрылся после {max_retries} попыток. Отмена чека.")
-    windows.info_window(
-        f"Документ не закрылся после {max_retries} попыток.", "Отмена чека.", ""
-    )
+
+    if on_error:
+        on_error("Ошибка ККМ", "Документ не закрылся после 5 попыток. Отмена чека.")
+
     device.cancelReceipt()
     return False
 
 
-def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank):
+def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank, on_error=None):
     """
     Проведение операции оплаты.
 
@@ -1771,7 +1777,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         if not process_payment(device, payment_type, bank, sale_dict, price):
             return 0
         # Проверка состояния документа
-        if not handle_document_errors(device, retry_count, max_retries):
+        if not handle_document_errors(device, retry_count, max_retries, on_error):
             return 0
         # Продолжение печати, если чек не печатается
         if print_check == 0:
