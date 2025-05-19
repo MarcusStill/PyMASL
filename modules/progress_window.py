@@ -11,11 +11,16 @@ class ProgressWindow(QDialog):
         super().__init__(parent)
         # Блокируем только родительское окно
         self.setModal(True)
+        # Установка размеров окна (ширина, высота)
+        self.setMinimumSize(370, 145)
+        self.resize(370, 145)
 
         self.ui = Ui_ProgressDialog()
         self.ui.setupUi(self)
         # Отображение поверх остальных окон
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        # Убриаем рамку окна:
+        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
         # Настройка анимации
         self.animation = QPropertyAnimation(self.ui.progressBar, b"value")
@@ -25,7 +30,7 @@ class ProgressWindow(QDialog):
         self.animation.setDuration(500)
 
         # Стилизация окна и прогрессбара
-        self.setWindowTitle("Выполнение операции")
+        self.setWindowTitle("Оформление продажи")
 
         self.setStyleSheet("""
             QDialog {
