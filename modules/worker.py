@@ -87,7 +87,7 @@ class TransactionWorker(QObject):
                 self.delayed_progress_update("Ожидаем оплату на терминале...", 25)
                 try:
                     amount = self.system.sale_dict["detail"][7]
-                    bank, payment = self.pq.universal_terminal_operation(self.payment_type, amount, self.progress_updated)
+                    bank, payment = self.pq.universal_terminal_operation(self.payment_type, amount, self.progress_updated, error_callback=self.handle_terminal_error)
                     self.log_step(timer, "pq.universal_terminal_operation finished")
                 except Exception as e:
                     self.error_signal.emit(
@@ -116,7 +116,7 @@ class TransactionWorker(QObject):
                     self.finished.emit()
                     return
                 if bank == 1:
-                    self.delayed_progress_update("Сохраняем банковский чек...", 35)
+                    self.delayed_progress_update("Сохраняем банковский чек...", 45)
                     if payment == 3:
                         check = "offline"
                     else:
@@ -131,7 +131,7 @@ class TransactionWorker(QObject):
                         session.commit()
                     self.log_step(timer, "save in db finished")
                     if self.print_check == 1 and payment == 1:
-                        self.delayed_progress_update("Печатаем слип-чек...", 40)
+                        self.delayed_progress_update("Печатаем слип-чек...", 50)
                         self.pq.print_slip_check()
                         self.log_step(timer, "pq.print_slip_check finished")
             else:
@@ -182,12 +182,22 @@ class TransactionWorker(QObject):
             self.close_window_signal.emit()
 
         except Exception as e:
-            self.error_signal.emit("Ошибка", str(e), True)
+            self.error_signal.emit("Ошибка", "Не удалось выполнить операцию на терминале.", str(e))
             self.delayed_progress_update("Ошибка во время выполнения", 100, 1)
-
+            self.log_step(timer, "error_signal finished")
+            self.close_window_signal.emit()
+            self.finished.emit()
+            return
         finally:
             self.system.sale_status = 0
             # Завершаем поток
             self.finished.emit()
             # Закрытие окна после всех операций
             self.close_window_signal.emit()
+
+    # Создаем callback для обработки ошибок терминала
+    def handle_terminal_error(self, title: str, message: str, code: int) -> None:
+        self.error_signal.emit(title, message, str(code))
+        self.delayed_progress_update("Ошибка оплаты", 100, 1)
+        self.close_window_signal.emit()
+        self.finished.emit()

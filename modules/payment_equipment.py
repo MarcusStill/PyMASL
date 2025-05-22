@@ -57,7 +57,7 @@ TERMINAL_CARD_BLOCKED: set[int] = {
 TERMINAL_CARD_LIMIT: set[int] = {4113, 4114}
 TERMINAL_INVALID_CURRENCY_CODE: int = 4336
 TERMINAL_NO_ADDRESS_TO_CONTACT: int = 4139
-TERMINAL_ERROR_PIN_CODE: set[int] = {4117, 4137, 403, 405, 708, 709}
+TERMINAL_ERROR_PIN_CODE: set[int] = {4117, 4137, 403, 405, 708, 709, 4455}
 TERMINAL_LIMIT_OPERATION: set[int] = {4150, 4113, 4114}
 TERMINAL_BIOMETRIC_ERROR: set[int] = {
     4160,
@@ -261,27 +261,25 @@ def process_success_result():
 
 
 @logger_wraps()
-def handle_error(code, title, message):
-    """Обработка ошибок, связанных с работой терминала.
-
-    Функция регистрирует предупреждающее сообщение в журнале и отображает
-    окно с информацией об ошибке.
+def handle_error(code, title, message, error_callback=None):
+    """Универсальная обработка ошибок терминала.
 
     Параметры:
-        code (int):
-            Код ошибки, возвращённый терминалом.
-        title (str):
-            Заголовок окна сообщения.
-        message (str):
-            Описание ошибки, отображаемое в окне сообщения.
+        code (int): Код ошибки
+        title (str): Заголовок ошибки
+        message (str): Текст ошибки
+        error_callback (callable): Функция для обработки ошибки (title, message, code)
     """
-    logger.info("Запуск функции handle_error")
     logger.warning(f"{title}: {message} (Код: {code})")
-    windows.info_window(title, message, f"Команда завершена с кодом: {code}")
+
+    if error_callback:
+        error_callback(title, message, code)
+    else:
+        windows.info_window(title, message, f"Код ошибки: {code}")
 
 
 @logger_wraps()
-def process_terminal_error(returncode):
+def process_terminal_error(returncode, error_callback=None):
     """Обработка ошибок терминала на основе возвращенного кода.
 
     Функция анализирует код возврата от терминала, выполняет соответствующую
@@ -290,6 +288,8 @@ def process_terminal_error(returncode):
     Параметры:
         returncode (int):
             Код возврата, полученный от терминала.
+        error_callback (callable):
+            Функция для обработки ошибки (title: str, message: str, code: int)
 
     Возвращаемое значение:
         int:
@@ -324,6 +324,7 @@ def process_terminal_error(returncode):
             returncode,
             "Карта клиента заблокирована",
             f"Карта клиента заблокирована. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_CARD_LIMIT:
@@ -331,6 +332,7 @@ def process_terminal_error(returncode):
             returncode,
             "Превышен лимит операций",
             "Превышен лимит операций. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_BIOMETRIC_ERROR:
@@ -338,6 +340,7 @@ def process_terminal_error(returncode):
             returncode,
             "Ошибка в работе с биометрическими данными",
             f"Ошибка в работе с биометрическими данными. Обратитесь в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_ERROR_PIN_CODE:
@@ -345,6 +348,7 @@ def process_terminal_error(returncode):
             returncode,
             "Ошибка при вводе ПИН-кода",
             "ПИН-код не был введен, либо введен неверно, либо вводимый ПИН-код заблокирован. Попробуйте повторить операцию оплаты.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_NO_CONNECTION_BANK:
@@ -352,6 +356,7 @@ def process_terminal_error(returncode):
             returncode,
             "Нет связи с банком",
             f"Попробуйте повторить операцию через пару минут. При повторении ошибки необходимо обратиться в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_NEED_CASH_COLLECTION:
@@ -359,6 +364,7 @@ def process_terminal_error(returncode):
             returncode,
             "Необходимо произвести инкассацию",
             f"Необходимо произвести инкассацию. Обратитесь в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_LIMIT_OPERATION:
@@ -366,6 +372,7 @@ def process_terminal_error(returncode):
             returncode,
             "Превышен лимит операций",
             f"Превышен лимит операций. Обратитесь в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_DATA_EXCHANGE:
@@ -373,6 +380,7 @@ def process_terminal_error(returncode):
             returncode,
             "Требуется сделать сверку итогов",
             "Требуется сделать сверку итогов и повторить операцию.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_KLK:
@@ -380,6 +388,7 @@ def process_terminal_error(returncode):
             returncode,
             "Ошибка в работе терминала",
             f"Необходимо обратиться в службу поддержки банка. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_CARD_ERROR:
@@ -387,6 +396,7 @@ def process_terminal_error(returncode):
             returncode,
             "Операцию невозможно выполнить для этой карты",
             f"Необходимо повторить попытку. Если проблема сохраняется – использовать другую карту. Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_SERVER_ROUTINE_MAINTENANCE:
@@ -394,6 +404,7 @@ def process_terminal_error(returncode):
             returncode,
             "Сервера Сбербанка недоступны",
             f"Сервера Сбербанка находятся на обслуживании/ремонте/регламентных работах. Попробуйте повторить операцию позже. Если проблема сохраняется - обратитесь в службу поддержки. Телефон тех.поддержки {TERMINAL_SUPPORT}.Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_NO_MONEY:
@@ -401,6 +412,7 @@ def process_terminal_error(returncode):
             returncode,
             "Недостаточно средств на карте",
             f"Недостаточно средств на карте. Попробуйте произвести оплату другой картой.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_COMMAND_ERROR:
@@ -408,6 +420,7 @@ def process_terminal_error(returncode):
             returncode,
             "Нет нужного варианта связи для операции",
             f"Нет нужного варианта связи для операции. Обратитесь в службу поддержки ПО. Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     if returncode in TERMINAL_PIN_PAD_ERROR:
@@ -415,6 +428,7 @@ def process_terminal_error(returncode):
             returncode,
             "Проблема в работе ПИН-пада.",
             f"Необходимо обратиться в службу поддержки банка. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+            error_callback
         )
         return 0
     # Общие ошибки
@@ -430,6 +444,7 @@ def process_terminal_error(returncode):
         returncode,
         "Ошибка терминала",
         f"Возвращен неизвестный код ошибки. Обратитесь в службу поддержки. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+        error_callback
     )
     return 0
 
@@ -476,7 +491,7 @@ def terminal_canceling(amount: float) -> int:
     return process_terminal_transaction("8", amount, "Отмена")
 
 @logger_wraps()
-def process_terminal_transaction(command_code: str, amount: float, operation_name: str) -> int:
+def process_terminal_transaction(command_code: str, amount: float, operation_name: str, error_callback=None) -> int:
     """
     Обрабатывает операцию на банковском терминале.
 
@@ -501,6 +516,7 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
             f"Нет ответа от терминала",
             f"{operation_name} не была выполнена. Проверьте устройство.",
             "Код ошибки: отсутствует",
+            error_callback=error_callback
         )
         return 0
 
@@ -508,6 +524,10 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
 
     if result.returncode == TERMINAL_SUCCESS_CODE:
         return process_success_result()
+
+    if result.returncode != TERMINAL_SUCCESS_CODE:
+        process_terminal_error(result.returncode, error_callback)
+        return 0
 
     # Логируем stderr, если есть
     if result.stderr:
@@ -520,7 +540,7 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
     return process_terminal_error(result.returncode)
 
 
-def universal_terminal_operation(payment_type: int, amount: float, progress_signal) -> tuple[int, int]:
+def universal_terminal_operation(payment_type: int, amount: float, progress_signal, error_callback=None) -> tuple[int, int]:
     """
     Универсальный обработчик терминальных операций для оплаты или возврата.
 
@@ -537,17 +557,17 @@ def universal_terminal_operation(payment_type: int, amount: float, progress_sign
     try:
         if payment_type == PAYMENT_ELECTRONIC:
             logger.info("Запускаем оплату по банковскому терминалу")
-            progress_signal.emit("Запускаем оплату по банковскому терминалу...", 10)
-            bank = process_terminal_transaction("1", amount, "Оплата")
+            progress_signal.emit("Запускаем оплату по банковскому терминалу...", 35)
+            bank = process_terminal_transaction("1", amount, "Оплата", error_callback)
             if bank == 1:
-                progress_signal.emit("Оплата успешна.", 20)
-                return 1, 1  # 1 — success, 1 — card
+                progress_signal.emit("Оплата успешна.", 45)
+                return (bank, 1)  # bank, 1 — card
             elif bank == 0:
                 progress_signal.emit("Ошибка оплаты.", 100)
                 return 0, 1  # 0 — error, 1 — card
         elif payment_type == PAYMENT_OFFLINE:
             logger.info("Запускаем offline оплату по банковскому терминалу")
-            progress_signal.emit("Запускаем offline оплату по банковскому терминалу...", 10)
+            progress_signal.emit("Запускаем offline оплату по банковскому терминалу...", 35)
             return 1, 3  # 1 — success, 3 — offline
 
         # Явный return, если ни одно из условий не выполнено
