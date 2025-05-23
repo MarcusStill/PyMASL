@@ -42,8 +42,6 @@ class BaseWorker(QObject):
             # Создаем локальный таймер для обеспечения задержки
             timer = QTimer(self)
             timer.setSingleShot(True)
-            # Соединяем сигнал таймера с продолжением выполнения
-            timer.timeout.connect(lambda: None)
             # Отправляем сигнал прогресса немедленно
             self.progress_updated.emit(step_text, progress_percent)
             # Запускаем таймер задержки
@@ -93,9 +91,9 @@ class PaymentHandler:
         self.amount = amount
 
     @with_timer
-    def process_bank_payment(self, timer: QElapsedTimer, progress_percent: int):
+    def process_bank_payment(self, timer: QElapsedTimer):
         """Основной метод обработки банковского платежа"""
-        self.worker.delayed_progress_update("Ожидаем оплату на терминале...", progress_percent)
+        self.worker.delayed_progress_update("Ожидаем оплату на терминале...", 25)
         try:
             # Пытаемся выполнить операцию на терминале
             bank, payment = self.pq.universal_terminal_operation(
@@ -233,7 +231,7 @@ class TransactionWorker(BaseWorker):
         bank_data = None
 
         if self.payment_type in (101, 200):
-            success, payment = self.payment_handler.process_bank_payment(25)
+            success, payment = self.payment_handler.process_bank_payment()
             if not success:
                 self.close_window_signal.emit()
                 self.finished.emit()
