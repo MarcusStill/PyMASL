@@ -1,4 +1,5 @@
 import datetime as dt
+from functools import wraps
 
 from PySide6.QtCore import QElapsedTimer, QObject, Signal, QMetaObject, Qt, QTimer, QEventLoop
 from sqlalchemy import update
@@ -7,8 +8,18 @@ from db.models import Sale
 from modules.logger import logger
 
 
-class TransactionWorker(QObject):
-    # Константа для задержки
+def with_timer(func):
+    """Декоратор для автоматического создания QElapsedTimer"""
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        timer = QElapsedTimer()
+        timer.start()
+        return func(self, timer, *args, **kwargs)
+    return wrapper
+
+
+class BaseWorker(QObject):
+    """Базовый класс с общими методами"""
     DEFAULT_DELAY_MS = 15
 
     progress_updated = Signal(str, int)
@@ -19,6 +30,212 @@ class TransactionWorker(QObject):
     print_ticket_signal = Signal()
     close_window_signal = Signal()
 
+    @staticmethod
+    def log_step(timer, step_name):
+        elapsed = timer.elapsed()
+        logger.debug(f"[TIMER] {step_name} — {elapsed} ms")
+
+    def delayed_progress_update(self, step_text: str, progress_percent: int, delay_ms: int = DEFAULT_DELAY_MS):
+        if delay_ms < 0:
+            delay_ms = 0
+        if delay_ms > 0:
+            # Создаем локальный таймер для обеспечения задержки
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            # Соединяем сигнал таймера с продолжением выполнения
+            timer.timeout.connect(lambda: None)
+            # Отправляем сигнал прогресса немедленно
+            self.progress_updated.emit(step_text, progress_percent)
+            # Запускаем таймер задержки
+            timer.start(delay_ms)
+            # Блокируем выполнение до срабатывания таймера (не блокируя главный цикл Qt)
+            loop = QEventLoop()
+            timer.timeout.connect(loop.quit)
+            loop.exec()
+
+    def invoke_main_window_method(self, method_name: str):
+        QMetaObject.invokeMethod(
+            self.main_window,
+            method_name,
+            Qt.QueuedConnection,
+        )
+
+    def emit_error_and_finish(self, title: str, message: str, code: str = "",
+        timer: QElapsedTimer = None, step_name: str = "",
+        close_window: bool = True):
+        """
+        Универсальный метод обработки ошибок
+        :param title: Заголовок ошибки
+        :param message: Текст ошибки
+        :param code: Код ошибки (опционально)
+        :param timer: Таймер для логирования
+        :param step_name: Название шага для лога
+        :param close_window: Нужно ли закрывать окно
+        """
+        logger.error(f"{title}: {message} (код: {code})")
+        self.error_signal.emit(title, message, str(code))
+        self.delayed_progress_update(f"Ошибка: {title}", 100, 1)
+
+        if timer and step_name:
+            self.log_step(timer, step_name)
+
+        if close_window:
+            self.close_window_signal.emit()
+
+        self.finished.emit()
+
+class PaymentHandler:
+    """Обработчик банковских платежей"""
+    def __init__(self, worker, pq, payment_type, amount):
+        self.worker = worker
+        self.pq = pq
+        self.payment_type = payment_type
+        self.amount = amount
+
+    @with_timer
+    def process_bank_payment(self, timer: QElapsedTimer, progress_percent: int):
+        """Основной метод обработки банковского платежа"""
+        self.worker.delayed_progress_update("Ожидаем оплату на терминале...", progress_percent)
+        try:
+            # Пытаемся выполнить операцию на терминале
+            bank, payment = self.pq.universal_terminal_operation(
+                self.payment_type,
+                self.amount,
+                self.worker.progress_updated,
+                error_callback=self._handle_terminal_error_callback
+            )
+            self.worker.log_step(timer, "pq.universal_terminal_operation finished")
+
+            # Обрабатываем результат операции
+            if bank == 0:
+                self._handle_payment_failed(timer)
+                return False, None
+            # Возвращаем только payment
+            return True, payment
+
+        except Exception as e:
+            self._handle_payment_exception(timer, e)
+            return False, None
+
+    def _handle_terminal_error_callback(self, title: str, message: str, code: int) -> None:
+        """Callback для обработки ошибок от терминала"""
+        self.worker.emit_error_and_finish(
+            title=title,
+            message=message,
+            code=str(code),
+            step_name="terminal_error"
+        )
+        raise Exception(f"{title}: {message}")
+
+    def _handle_payment_failed(self, timer):
+        """Обработка неудачного платежа (bank == 0)"""
+        self.worker.emit_error_and_finish(
+            title="Ошибка",
+            message="Операция оплаты не удалась. Повторите попытку.",
+            timer=timer,
+            step_name="payment_failed"
+        )
+
+    # def _handle_payment_success(self, timer, payment):
+    #     """Обработка успешного платежа (bank == 1)"""
+    #     try:
+    #         self.worker.delayed_progress_update("Сохраняем банковский чек...", 45)
+    #
+    #         # Получаем чек в зависимости от типа платежа
+    #         check = "offline" if payment == 3 else self.pq.read_pinpad_file(remove_newline=False)
+    #         self.worker.log_step(timer, "pq.read_pinpad_file finished")
+    #
+    #         # Печатаем слип-чек если нужно
+    #         if self.worker.print_check == 1 and payment == 1:
+    #             self.worker.delayed_progress_update("Печатаем слип-чек...", 50)
+    #             self.pq.print_slip_check()
+    #             self.worker.log_step(timer, "pq.print_slip_check finished")
+    #
+    #         return True, payment
+    #
+    #     except Exception as e:
+    #         # Если ошибка при обработке успешного платежа
+    #         return self._handle_payment_exception(timer, e)
+
+    def _handle_payment_exception(self, timer, exception):
+        """Обработка исключений при проведении платежа"""
+        self.worker.emit_error_and_finish(
+            title="Ошибка",
+            message="Не удалось выполнить операцию на терминале.",
+            code=str(exception),
+            timer=timer,
+            step_name="payment_exception"
+        )
+
+    # def _handle_unknown_status(self, timer):
+    #     """Обработка неизвестного статуса платежа"""
+    #     error_msg = "Неизвестный статус операции от платежного терминала"
+    #     logger.error(error_msg)
+    #     self.worker.error_signal.emit(
+    #         "Ошибка",
+    #         error_msg,
+    #         ""
+    #     )
+    #     self.worker.delayed_progress_update("Ошибка оплаты", 100, 1)
+    #     self.worker.log_step(timer, "unknown payment status")
+    #     return False, None
+
+
+class CheckHandler:
+    """Обработчик печати чеков"""
+    def __init__(self, worker, pq):
+        self.worker = worker
+        self.pq = pq
+
+    def print_check(self, sale_dict, payment_type, user, print_check, amount, bank_data):
+        """Печать кассового чека"""
+        state_check = self.pq.check_open(
+            sale_dict,
+            payment_type,
+            user,
+            1,
+            print_check,
+            amount,
+            bank_data,
+            on_error=self.handle_check_error
+        )
+        if state_check != 1:
+            self.handle_check_error("Ошибка ККМ", "Документ не закрылся")
+            return False
+
+        return True
+
+    def handle_check_error(self, title="Неизвестная ошибка", text="Произошла неизвестная ошибка"):
+        """Обработчик ошибок печати чека"""
+        logger.error(f"handle_check_error вызван с title={title}, text={text}")
+        self.worker.emit_error_and_finish(
+            title="Ошибка ККМ",
+            message="Документ не закрылся после 5 попыток. Отмена кассового чека.",
+            code="critical",
+            step_name="check_error"
+        )
+        raise Exception(f"{title}: {text}")
+
+
+class DatabaseHandler:
+    """Обработчик работы с базой данных"""
+    def __init__(self, Session, engine):
+        self.Session = Session
+        self.engine = engine
+
+    def update_sale(self, sale_id, **values):
+        """Общее сохранение данных о продаже"""
+        with self.Session(self.engine) as session:
+            session.execute(
+                update(Sale)
+                .where(Sale.id == sale_id)
+                .values(**values)
+            )
+            session.commit()
+
+
+class TransactionWorker(BaseWorker):
+    """Основной класс обработки транзакций"""
     def __init__(self, payment_type, print_check, system, pq, Session, main_window, parent=None):
         super().__init__(parent)
         self.payment_type = payment_type
@@ -28,37 +245,118 @@ class TransactionWorker(QObject):
         self.Session = Session
         self.main_window = main_window
 
-    def log_step(self, timer, step_name):
-        elapsed = timer.elapsed()
-        logger.debug(f"[TIMER] {step_name} — {elapsed} ms")
+        amount = system.sale_dict["detail"][7]
 
-    def delayed_progress_update(self, step_text: str, progress_percent: int, delay_ms: int = DEFAULT_DELAY_MS):
-        """
-        Обновляет прогресс с гарантированной задержкой перед следующим шагом.
-        :param step_text: Текст для отображения
-        :param progress_percent: Процент выполнения (0-100)
-        :param delay_ms: Минимальная задержка в миллисекундах перед продолжением
-        """
-        if delay_ms < 0:
-            delay_ms = 0
-        if delay_ms > 0:
-            # Создаем локальный таймер для обеспечения задержки
-            timer = QTimer(self)
-            timer.setSingleShot(True)
+        # Инициализация обработчиков
+        self.payment_handler = PaymentHandler(self, pq, payment_type, amount)
+        self.check_handler = CheckHandler(self, pq)
+        self.db_handler = DatabaseHandler(Session, system.engine)
 
-            # Соединяем сигнал таймера с продолжением выполнения
-            timer.timeout.connect(lambda: None)  # Просто как маркер завершения задержки
+    @with_timer
+    def process_special_sale(self, timer: QElapsedTimer, progress_percent: int):
+        """Обработка специальной продажи"""
+        self.delayed_progress_update("Печатаем билеты (особая продажа)...", progress_percent)
+        self.invoke_main_window_method("print_saved_tickets")
+        self.log_step(timer, "print_saved_tickets finished")
+        self.close_window_signal.emit()
 
-            # Отправляем сигнал прогресса немедленно
-            self.progress_updated.emit(step_text, progress_percent)
+    def process_payment(self, timer):
+        """Обработка платежа"""
+        # По умолчанию наличные
+        payment = 2
+        bank_data = None
 
-            # Запускаем таймер задержки
-            timer.start(delay_ms)
+        if self.payment_type in (101, 200):
+            success, payment = self.payment_handler.process_bank_payment(25)
+            if not success:
+                self.close_window_signal.emit()
+                self.finished.emit()
+                return None, None
 
-            # Блокируем выполнение до срабатывания таймера (не блокируя главный цикл Qt)
-            loop = QEventLoop()
-            timer.timeout.connect(loop.quit)
-            loop.exec()
+            # Сохраняем банковский чек
+            self.delayed_progress_update("Сохраняем банковский чек...", 45)
+            if payment == 3:
+                check = "offline"
+            else:
+                check = self.pq.read_pinpad_file(remove_newline=False)
+                self.log_step(timer, "pq.read_pinpad_file finished")
+
+            self.db_handler.update_sale(self.system.sale_id,bank_pay=check)
+            self.log_step(timer, "save in db finished")
+
+            if self.print_check == 1 and payment == 1:
+                self.delayed_progress_update("Печатаем слип-чек...", 50)
+                self.pq.print_slip_check()
+                self.log_step(timer, "pq.print_slip_check finished")
+
+            bank_data = check
+
+        return payment, bank_data
+
+    def process_checks(self, timer, payment, bank_data):
+        """Печать чеков"""
+        self.delayed_progress_update("Печатаем кассовый чек...", 60)
+        try:
+            if not self.check_handler.print_check(
+                self.system.sale_dict,
+                self.payment_type,
+                self.system.user,
+                self.print_check,
+                self.system.sale_dict["detail"][7],
+                bank_data
+            ):
+                return False
+
+            self.log_step(timer, "pq.check_open finished")
+
+            self.delayed_progress_update("Оплата прошла успешно.", 70)
+            if self.print_check == 0:
+                self.info_signal.emit("Оплата прошла успешно.", "Чек не печатаем.", "")
+
+            self.delayed_progress_update("Сохраняем данные в БД...", 80)
+            self.db_handler.update_sale(
+                self.system.sale_id,
+                status=1,
+                id_user=self.system.user.id,
+                pc_name=self.system.pc_name,
+                payment_type=payment,
+                datetime=dt.datetime.now(),
+            )
+            self.log_step(timer, "save check in db finished")
+
+            return True
+
+        except Exception as e:
+            logger.exception("Ошибка при печати чеков: %s", e)
+            return False
+
+    def finalize_transaction(self, timer):
+        """Завершение транзакции"""
+        self.delayed_progress_update("Печатаем билеты...", 90)
+        self.invoke_main_window_method("print_saved_tickets")
+        self.log_step(timer, "print_saved_tickets finished")
+        self.system.sale_status = 0
+        self.delayed_progress_update("Завершено.", 100, 1)
+        self.log_step(timer, "all steps finished")
+        self.close_window_signal.emit()
+
+    def handle_error(self, error, timer):
+        """Обработка ошибок"""
+        self.emit_error_and_finish(
+            title="Ошибка",
+            message="Не удалось выполнить операцию на терминале.",
+            code=str(error),
+            timer=timer,
+            step_name="transaction_error",
+            close_window=True
+        )
+        self.system.sale_status = 0
+
+    def cleanup(self):
+        """Завершающие действия"""
+        self.system.sale_status = 0
+        self.finished.emit()
+        self.close_window_signal.emit()
 
     def run(self):
         timer = QElapsedTimer()
@@ -72,132 +370,23 @@ class TransactionWorker(QObject):
                 self.log_step(timer, "save_sale finished")
             # Особая продажа — только билеты
             if self.system.sale_special == 1:
-                self.delayed_progress_update("Печатаем билеты (особая продажа)...", 90)
-                QMetaObject.invokeMethod(
-                    self.main_window,
-                    "print_saved_tickets",
-                    Qt.QueuedConnection,
-                )
-                self.log_step(timer, "print_saved_tickets finished")
-                self.close_window_signal.emit()
+                self.process_special_sale(90)
                 return
 
-            # Если оплата банковской картой
-            if self.payment_type in (101, 200):
-                self.delayed_progress_update("Ожидаем оплату на терминале...", 25)
-                try:
-                    amount = self.system.sale_dict["detail"][7]
-                    bank, payment = self.pq.universal_terminal_operation(self.payment_type, amount, self.progress_updated, error_callback=self.handle_terminal_error)
-                    self.log_step(timer, "pq.universal_terminal_operation finished")
-                except Exception as e:
-                    self.error_signal.emit(
-                        "Ошибка",
-                        "Не удалось выполнить операцию на терминале.",
-                        str(e),
-                    )
-                    self.delayed_progress_update("Ошибка оплаты", 100, 1)
-                    self.log_step(timer, "error_signal finished")
-                    # Закрытие окна прогресса в случае ошибки
-                    self.close_window_signal.emit()
-                    # Завершаем поток
-                    self.finished.emit()
-                    return
-                if bank == 0:
-                    self.error_signal.emit(
-                        "Ошибка",
-                        "Операция оплаты не удалась. Повторите попытку.",
-                        "",
-                    )
-                    self.delayed_progress_update("Ошибка оплаты", 100, 1)
-                    self.log_step(timer, "payment error finished")
-                    # Закрытие окна прогресса в случае ошибки
-                    self.close_window_signal.emit()
-                    # Завершаем поток
-                    self.finished.emit()
-                    return
-                if bank == 1:
-                    self.delayed_progress_update("Сохраняем банковский чек...", 45)
-                    if payment == 3:
-                        check = "offline"
-                    else:
-                        check = self.pq.read_pinpad_file(remove_newline=False)
-                        self.log_step(timer, "pq.read_pinpad_file finished")
-                    with self.Session(self.system.engine) as session:
-                        session.execute(
-                            update(Sale)
-                            .where(Sale.id == self.system.sale_id)
-                            .values(bank_pay=check)
-                        )
-                        session.commit()
-                    self.log_step(timer, "save in db finished")
-                    if self.print_check == 1 and payment == 1:
-                        self.delayed_progress_update("Печатаем слип-чек...", 50)
-                        self.pq.print_slip_check()
-                        self.log_step(timer, "pq.print_slip_check finished")
-            else:
-                payment = 2
-                bank = None
+            # Обработка платежа
+            payment, bank_data = self.process_payment(timer)
+            # Если была ошибка
+            if payment is None:
+                return
 
-            self.delayed_progress_update("Печатаем кассовый чек...", 60)
-            state_check = self.pq.check_open(
-                self.system.sale_dict,
-                self.payment_type,
-                self.system.user,
-                1,
-                self.print_check,
-                self.system.sale_dict["detail"][7],
-                bank,
-                on_error=lambda title, text: self.error_signal.emit("Ошибка ККМ", "Документ не закрылся после 5 попыток. Отмена кассового чека.", "critical"),
-            )
-            self.log_step(timer, "pq.check_open finished")
-            if state_check == 1:
-                self.delayed_progress_update("Оплата прошла успешно.", 70)
-                if self.print_check == 0:
-                    self.info_signal.emit("Оплата прошла успешно.", "Чек не печатаем.", "")
-                self.delayed_progress_update("Сохраняем данные в БД...", 80)
-                with self.Session(self.system.engine) as session:
-                    session.execute(
-                        update(Sale)
-                        .where(Sale.id == self.system.sale_id)
-                        .values(
-                            status=1,
-                            id_user=self.system.user.id,
-                            pc_name=self.system.pc_name,
-                            payment_type=payment,
-                            datetime=dt.datetime.now(),
-                        )
-                    )
-                    session.commit()
-                self.log_step(timer, "save check in db finished")
-            self.delayed_progress_update("Печатаем билеты...", 90)
-            QMetaObject.invokeMethod(
-                self.main_window,
-                "print_saved_tickets",
-                Qt.QueuedConnection,
-            )
-            self.log_step(timer, "print_saved_tickets finished")
-            self.system.sale_status = 0
-            self.delayed_progress_update("Завершено.", 100, 1)
-            self.log_step(timer, "all steps finished")
-            self.close_window_signal.emit()
+            # Печать чеков
+            if not self.process_checks(timer, payment, bank_data):
+                return
+
+            # Завершение транзакции
+            self.finalize_transaction(timer)
 
         except Exception as e:
-            self.error_signal.emit("Ошибка", "Не удалось выполнить операцию на терминале.", str(e))
-            self.delayed_progress_update("Ошибка во время выполнения", 100, 1)
-            self.log_step(timer, "error_signal finished")
-            self.close_window_signal.emit()
-            self.finished.emit()
-            return
+            self.handle_error(e, timer)
         finally:
-            self.system.sale_status = 0
-            # Завершаем поток
-            self.finished.emit()
-            # Закрытие окна после всех операций
-            self.close_window_signal.emit()
-
-    # Создаем callback для обработки ошибок терминала
-    def handle_terminal_error(self, title: str, message: str, code: int) -> None:
-        self.error_signal.emit(title, message, str(code))
-        self.delayed_progress_update("Ошибка оплаты", 100, 1)
-        self.close_window_signal.emit()
-        self.finished.emit()
+            self.cleanup()
