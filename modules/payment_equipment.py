@@ -123,6 +123,7 @@ TERMINAL_PIN_PAD_ERROR: set[int] = {
 }
 TERMINAL_COMMAND_ERROR: set[int] = {4139, 4140, 4141, 4142, 4301, 4335}
 TERMINAL_QR_ERROR: int = 21069
+TERMINAL_OPERATION_AMOUNT_ERROR: int = 4319
 TERMINAL_SUPPORT: str = "0321"
 APPROVE: str = "ОДОБРЕНО"
 COINCIDENCE: str = "совпали"
@@ -169,6 +170,7 @@ def run_terminal_command(command_params: str, timeout: int = 120):
             - Возвращает `None`, если произошла ошибка выполнения команды.
     """
     logger.info("Запуск функции run_terminal_command")
+    logger.debug(f"Переданные в функцию параметры: {command_params}")
     pinpad_path: str = config.get("pinpad_path")  # Путь к директории
     pinpad_file: str = "loadparm.exe"  # Имя файла
     # Полный путь до исполняемого файла
@@ -272,10 +274,18 @@ def handle_error(code, title, message, error_callback=None):
     """
     logger.warning(f"{title}: {message} (Код: {code})")
 
-    if error_callback:
-        error_callback(title, message, code)
-    else:
-        windows.info_window(title, message, f"Код ошибки: {code}")
+    # Явная проверка что callback передан и вызывается
+    if error_callback is not None:
+        logger.debug(f"Вызываю callback: {error_callback}")
+        try:
+            error_callback(title, message, code)
+            return
+        except Exception as e:
+            logger.error(f"Ошибка в callback: {e}")
+
+    # Fallback на GUI
+    if hasattr(windows, 'info_window'):
+        windows.info_window(title, message, f"Код: {code}")
 
 
 @logger_wraps()
@@ -297,12 +307,19 @@ def process_terminal_error(returncode, error_callback=None):
             - Всегда возвращает 0, так как функция предназначена для обработки ошибок.
     """
     logger.info("Запуск функции process_terminal_error")
+    logger.debug(f"Получен callback: {error_callback}")
     error_handlers = {
-        TERMINAL_USER_CANCEL_CODE: ("Оплата отменена пользователем", None),
-        TERMINAL_USER_TIMEOUT: ("Слишком долгий ввод ПИН-кода", None),
+        TERMINAL_USER_CANCEL_CODE: (
+            "Оплата отменена пользователем",
+            f"Оплата отменена пользователем. Код возврата: {returncode}."
+        ),
+        TERMINAL_USER_TIMEOUT: (
+            "Слишком долгий ввод ПИН-кода",
+            f"Слишком долгий ввод ПИН-кода. Код возврата: {returncode}."
+        ),
         TERMINAL_INVALID_CURRENCY_CODE: (
             "Указан неверный код валюты",
-            f"Указан неверный код валюты. Обратитесь в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
+            f"Указан неверный код валюты. Обратитесь в банк. Телефон поддержки {TERMINAL_SUPPORT}. Код: {returncode}."
         ),
         TERMINAL_NO_ADDRESS_TO_CONTACT: (
             "Терминал потерял связь с банком",
@@ -316,6 +333,11 @@ def process_terminal_error(returncode, error_callback=None):
             "Ошибка операции по QR-коду",
             f"Необходимо провести возврат при помощи банковской карты. Если была попытка проведения операции оплаты, \n"
             f"то следует обратиться в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}. ",
+        ),
+        TERMINAL_OPERATION_AMOUNT_ERROR: (
+            "Ошибка в сумме операции",
+            f"Сумма не должна превышать 42 млн. \n"
+            f"Проведите операцию на меньшую сумму или уменьшите количество товара. Код возврата: {returncode}. ",
         ),
     }
 
@@ -434,8 +456,9 @@ def process_terminal_error(returncode, error_callback=None):
     # Общие ошибки
     if returncode in error_handlers:
         title, message = error_handlers[returncode]
-        if message:
-            handle_error(returncode, title, message)
+        logger.debug(f"Передаю callback в handle_error: {error_callback}")
+        # Явно передаём как позиционный аргумент
+        handle_error(returncode, title, message, error_callback)
         return 0
 
     # Неизвестный код
