@@ -136,27 +136,6 @@ class PaymentHandler:
             step_name="payment_failed"
         )
 
-    # def _handle_payment_success(self, timer, payment):
-    #     """Обработка успешного платежа (bank == 1)"""
-    #     try:
-    #         self.worker.delayed_progress_update("Сохраняем банковский чек...", 45)
-    #
-    #         # Получаем чек в зависимости от типа платежа
-    #         check = "offline" if payment == 3 else self.pq.read_pinpad_file(remove_newline=False)
-    #         self.worker.log_step(timer, "pq.read_pinpad_file finished")
-    #
-    #         # Печатаем слип-чек если нужно
-    #         if self.worker.print_check == 1 and payment == 1:
-    #             self.worker.delayed_progress_update("Печатаем слип-чек...", 50)
-    #             self.pq.print_slip_check()
-    #             self.worker.log_step(timer, "pq.print_slip_check finished")
-    #
-    #         return True, payment
-    #
-    #     except Exception as e:
-    #         # Если ошибка при обработке успешного платежа
-    #         return self._handle_payment_exception(timer, e)
-
     def _handle_payment_exception(self, timer, exception):
         """Обработка исключений при проведении платежа"""
         self.worker.emit_error_and_finish(
@@ -166,19 +145,6 @@ class PaymentHandler:
             timer=timer,
             step_name="payment_exception"
         )
-
-    # def _handle_unknown_status(self, timer):
-    #     """Обработка неизвестного статуса платежа"""
-    #     error_msg = "Неизвестный статус операции от платежного терминала"
-    #     logger.error(error_msg)
-    #     self.worker.error_signal.emit(
-    #         "Ошибка",
-    #         error_msg,
-    #         ""
-    #     )
-    #     self.worker.delayed_progress_update("Ошибка оплаты", 100, 1)
-    #     self.worker.log_step(timer, "unknown payment status")
-    #     return False, None
 
 
 class CheckHandler:
