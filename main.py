@@ -1686,7 +1686,7 @@ class SaleForm(QDialog):
                         logger.debug("Запускаем возврат по банковскому терминалу")
                         # В зависимости от типа возврата отправляем на банковский терминал нужную сумму
                         if sale.status == 1:
-                            bank, payment = self.pq.operation_on_the_terminal(
+                            bank, payment = pq.operation_on_the_terminal(
                                 payment_type, 2, price
                             )
                         elif sale.status == 5:
