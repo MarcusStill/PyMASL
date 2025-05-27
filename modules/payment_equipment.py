@@ -1659,6 +1659,7 @@ def register_tickets(device, sale_dict, type_operation):
         None: Функция не возвращает значений, но выполняет регистрацию билетов в чеке.
     """
     logger.info("Запуск функции register_tickets")
+    logger.debug(f"В функцию переданы: device = {device}, payment_type = {sale_dict}, type_operation = {type_operation}")
     if type_operation == 1:
         time = sale_dict["detail"][6]
         # Взрослые билеты
@@ -1715,13 +1716,13 @@ def register_tickets(device, sale_dict, type_operation):
                 logger.error(f"Ошибка типа данных. Item_data - не список.")
 
 
-def process_payment(device, payment_type, bank, sale_dict, price):
+def process_payment(device, payment_type, bank_status, sale_dict, price):
     """Функция обрабатывает оплату чека, в зависимости от типа оплаты (наличными, картой или оффлайн).
 
      Параметры:
         device (object): Объект устройства, поддерживающий метод `setParam()` для настройки параметров чека.
         payment_type (int): Тип оплаты (например, наличными, картой или оффлайн).
-        bank (int): Флаг банка, необходимый для определения метода оплаты (например, 1 для картой).
+        bank_status (int): Флаг банка, необходимый для определения метода оплаты (например, 1 для картой).
         sale_dict (dict): Словарь с данными о продаже, включая сумму.
         price (float): Общая стоимость товаров в чеке.
 
@@ -1729,11 +1730,15 @@ def process_payment(device, payment_type, bank, sale_dict, price):
         bool: Возвращает `True`, если оплата прошла успешно, иначе — `False`.
     """
     logger.info("Запуск функции process_payment")
+    logger.debug(f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {price}")
     payment_amount = sale_dict["detail"][7] if payment_type == 1 else price
     if payment_type == PAYMENT_CASH:
         logger.info("Оплата наличными")
         device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
-    elif payment_type == PAYMENT_ELECTRONIC and bank == 1:
+    elif payment_type == PAYMENT_ELECTRONIC:
+        if bank_status != 1:
+            logger.error("Отсутствует подтверждение банковской операции")
+            return False
         logger.info("Оплата картой")
         device.setParam(
             IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
@@ -1784,7 +1789,7 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
     return False
 
 
-def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank, on_error=None):
+def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank_status, on_error=None):
     """
     Проведение операции оплаты.
 
@@ -1795,7 +1800,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         type_operation (int): Тип операции (1 - продажа, 2 - возврат).
         print_check (int): Флаг печати чека.
         price (float): Сумма операции.
-        bank (int): Результат операции по терминалу.
+        bank_status (int): Результат операции по терминалу.
 
     Возвращает:
         int: 1 - успех, 0 - ошибка.
@@ -1804,7 +1809,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     retry_count = 0
     max_retries = 5
     logger.debug(
-        f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type}, type_operation = {type_operation}, bank = {bank}"
+        f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type}, type_operation = {type_operation}, bank_status = {bank_status}"
     )
     if print_check == 0:
         logger.info("Кассовый чек не печатаем")
@@ -1817,7 +1822,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         # Регистрация билетов
         register_tickets(device, sale_dict, type_operation)
         # Оплата
-        if not process_payment(device, payment_type, bank, sale_dict, price):
+        if not process_payment(device, payment_type, bank_status, sale_dict, price):
             return 0
         # Проверка состояния документа
         if not handle_document_errors(device, retry_count, max_retries, on_error):

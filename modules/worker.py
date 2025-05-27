@@ -228,15 +228,14 @@ class TransactionWorker(BaseWorker):
         """Обработка платежа"""
         # По умолчанию наличные
         payment = 2
-        bank_data = None
+        bank_status = None
 
-        if self.payment_type in (101, 200):
-            success, payment = self.payment_handler.process_bank_payment()
+        if self.payment_type in (101, 100):
+            success, payment = self.payment_handler.process_bank_payment(timer)
             if not success:
-                self.close_window_signal.emit()
-                self.finished.emit()
                 return None, None
-
+            # Успешный статус для check_open
+            bank_status = 1
             # Сохраняем банковский чек
             self.delayed_progress_update("Сохраняем банковский чек...", 45)
             if payment == 3:
@@ -253,9 +252,7 @@ class TransactionWorker(BaseWorker):
                 self.pq.print_slip_check()
                 self.log_step(timer, "pq.print_slip_check finished")
 
-            bank_data = check
-
-        return payment, bank_data
+        return payment, bank_status
 
     def process_checks(self, timer, payment, bank_data):
         """Печать чеков"""
