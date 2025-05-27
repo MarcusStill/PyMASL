@@ -157,9 +157,9 @@ class CheckHandler:
             sale_dict,
             payment_type,
             user,
-            1,
+            1, # type_operation
             print_check,
-            amount,
+            None,  # Не передаем price, т.к. берем из sale_dict
             bank_data,
             on_error=self.handle_check_error
         )

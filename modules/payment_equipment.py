@@ -1731,7 +1731,8 @@ def process_payment(device, payment_type, bank_status, sale_dict, price):
     """
     logger.info("Запуск функции process_payment")
     logger.debug(f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {price}")
-    payment_amount = sale_dict["detail"][7] if payment_type == 1 else price
+    # Всегда берем сумму из sale_dict
+    payment_amount = sale_dict["detail"][7]
     if payment_type == PAYMENT_CASH:
         logger.info("Оплата наличными")
         device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
@@ -1822,7 +1823,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         # Регистрация билетов
         register_tickets(device, sale_dict, type_operation)
         # Оплата
-        if not process_payment(device, payment_type, bank_status, sale_dict, price):
+        if not process_payment(device, payment_type, bank_status, sale_dict, None): # price не используется
             return 0
         # Проверка состояния документа
         if not handle_document_errors(device, retry_count, max_retries, on_error):
