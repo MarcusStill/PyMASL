@@ -1716,7 +1716,7 @@ def register_tickets(device, sale_dict, type_operation):
                 logger.error(f"Ошибка типа данных. Item_data - не список.")
 
 
-def process_payment(device, payment_type, bank_status, sale_dict, price):
+def process_payment(device, payment_type, bank_status, sale_dict, _):
     """Функция обрабатывает оплату чека, в зависимости от типа оплаты (наличными, картой или оффлайн).
 
      Параметры:
@@ -1724,38 +1724,44 @@ def process_payment(device, payment_type, bank_status, sale_dict, price):
         payment_type (int): Тип оплаты (например, наличными, картой или оффлайн).
         bank_status (int): Флаг банка, необходимый для определения метода оплаты (например, 1 для картой).
         sale_dict (dict): Словарь с данными о продаже, включая сумму.
-        price (float): Общая стоимость товаров в чеке.
 
     Возвращаемое значение:
         bool: Возвращает `True`, если оплата прошла успешно, иначе — `False`.
     """
     logger.info("Запуск функции process_payment")
-    logger.debug(f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {price}")
-    # Всегда берем сумму из sale_dict
-    payment_amount = sale_dict["detail"][7]
-    if payment_type == PAYMENT_CASH:
-        logger.info("Оплата наличными")
-        device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
-    elif payment_type == PAYMENT_ELECTRONIC:
-        if bank_status != 1:
-            logger.error("Отсутствует подтверждение банковской операции")
+    logger.debug(f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {_}")
+    try:
+        # Всегда берем сумму из sale_dict
+        payment_amount = sale_dict["detail"][7]
+        if not isinstance(payment_amount, (int, float)) or payment_amount <= 0:
+            raise ValueError(f"Некорректная сумма: {payment_amount}")
+
+        if payment_type == PAYMENT_CASH:
+            logger.info("Оплата наличными")
+            device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
+        elif payment_type == PAYMENT_ELECTRONIC:
+            if bank_status != 1:
+                logger.error("Отсутствует подтверждение банковской операции")
+                return False
+            logger.info("Оплата картой")
+            device.setParam(
+                IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
+            )
+        elif payment_type == PAYMENT_OFFLINE:
+            logger.info("Оплата оффлайн")
+            device.setParam(
+                IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
+            )
+        else:
+            logger.error(f"Неверный тип оплаты: {payment_type}")
             return False
-        logger.info("Оплата картой")
-        device.setParam(
-            IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
-        )
-    elif payment_type == PAYMENT_OFFLINE:
-        logger.info("Оплата оффлайн")
-        device.setParam(
-            IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_ELECTRONICALLY
-        )
-    else:
-        logger.error(f"Неверный тип оплаты: {payment_type}")
+        device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, payment_amount)
+        device.payment()
+        device.closeReceipt()
+        return True
+    except Exception as exc:
+        logger.error(f"Ошибка обработки платежа: {exc}")
         return False
-    device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, payment_amount)
-    device.payment()
-    device.closeReceipt()
-    return True
 
 
 def handle_document_errors(device, retry_count, max_retries, on_error=None):
@@ -1771,26 +1777,64 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
         bool: Возвращает `True`, если документ был успешно закрыт, или `False`, если после всех попыток документ не закрылся.
     """
     logger.info("Запуск функции handle_document_errors")
-    while retry_count < max_retries:
-        if device.checkDocumentClosed() >= 0 and device.getParamBool(
-            IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED
-        ):
-            return True
+    # Проверяем, закрыт ли документ
+    while device.checkDocumentClosed() < 0:
+        logger.warning(f"Не удалось проверить состояние документа: {device.errorDescription()}")
+        if retry_count >= max_retries - 1:
+            if on_error:
+                on_error("Ошибка ККТ", f"Не удалось проверить состояние документа после {max_retries} попыток. "
+                                       f"Проверьте соединение с ККТ и не выключайте ПК.")
+            return False
+
+        if on_error:
+            on_error("Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
+
         retry_count += 1
-        logger.warning(
-            f"Не удалось проверить состояние документа. Попытка {retry_count}"
-        )
-        time.sleep(1)
-    logger.error(f"Документ не закрылся после {max_retries} попыток. Отмена чека.")
+        time.sleep(3)
 
-    if on_error:
-        on_error("Ошибка ККМ", "Документ не закрылся после 5 попыток. Отмена чека.")
+    # Если документ не закрылся — требуется отмена чека и переоформление
+    if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
+        logger.error("Документ не закрылся. Требуется отмена.")
+        try:
+            device.cancelReceipt()
+            logger.info("Чек успешно отменен")
+        except Exception as e:
+            logger.critical(f"Ошибка при отмене чека: {e}")
+            if on_error:
+                on_error("Критическая ошибка", "Не удалось отменить чек. Требуется перезагрузка ККТ.")
+            # Пробрасываем исключение наверх
+            raise
 
-    device.cancelReceipt()
-    return False
+        if on_error:
+            on_error("Документ не закрыт", "Чек отменен. Требуется сформировать его заново.")
+        return False
+
+    # Если документ не напечатан — попробовать допечатать
+    if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED):
+        logger.warning("Документ не допечатан. Попытки допечатки...")
+        for print_attempt in range(5):
+            if device.continuePrint() >= 0:
+                logger.info("Документ успешно допечатан")
+                return True
+
+            logger.warning(f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}")
+            if on_error:
+                on_error("Ошибка печати", f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.")
+            time.sleep(3)
+
+        logger.error("Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции.")
+        # Документ закрыт, но не допечатан — допустимо.
+        # Документ будет автоматически допечатан при следующей печатной операции.
+
+        # TODO: При критических сценариях — например, если бумага кончилась — желательно уведомлять кассира и не открывать новый чек, пока не завершится печать.
+
+        return True
+
+    # Успешное закрытие и печать документа
+    return True
 
 
-def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank_status, on_error=None):
+def check_open(sale_dict, payment_type, user, type_operation, print_check, _, bank_status, on_error=None):
     """
     Проведение операции оплаты.
 
@@ -1800,7 +1844,6 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         user (object): Информация о пользователе.
         type_operation (int): Тип операции (1 - продажа, 2 - возврат).
         print_check (int): Флаг печати чека.
-        price (float): Сумма операции.
         bank_status (int): Результат операции по терминалу.
 
     Возвращает:
@@ -1823,7 +1866,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         # Регистрация билетов
         register_tickets(device, sale_dict, type_operation)
         # Оплата
-        if not process_payment(device, payment_type, bank_status, sale_dict, None): # price не используется
+        if not process_payment(device, payment_type, bank_status, sale_dict, None):
             return 0
         # Проверка состояния документа
         if not handle_document_errors(device, retry_count, max_retries, on_error):

@@ -151,23 +151,20 @@ class CheckHandler:
         self.worker = worker
         self.pq = pq
 
-    def print_check(self, sale_dict, payment_type, user, print_check, amount, bank_data):
+    def print_check(self, sale_dict, payment_type, user, print_check, _, bank_data):
         """Печать кассового чека"""
         state_check = self.pq.check_open(
-            sale_dict,
-            payment_type,
-            user,
-            1, # type_operation
-            print_check,
-            None,  # Не передаем price, т.к. берем из sale_dict
-            bank_data,
+            sale_dict=sale_dict,
+            payment_type=payment_type,
+            user=user,
+            type_operation=1,
+            print_check=print_check,
+            price=None,  # Не передаем price, т.к. берем из sale_dict
+            bank_status=bank_data,
             on_error=self.handle_check_error
         )
-        if state_check != 1:
-            self.handle_check_error("Ошибка ККМ", "Документ не закрылся")
-            return False
 
-        return True
+        return state_check == 1
 
     def handle_check_error(self, title="Неизвестная ошибка", text="Произошла неизвестная ошибка"):
         """Обработчик ошибок печати чека"""
