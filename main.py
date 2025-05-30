@@ -310,7 +310,7 @@ class ClientForm(QDialog):
 class SaleForm(QDialog):
     """Форма продажи"""
 
-    def __init__(self):
+    def __init__(self, main_window=None):
         super().__init__()
         self.ui = Ui_Dialog_Sale()
         self.ui.setupUi(self)
@@ -319,7 +319,7 @@ class SaleForm(QDialog):
         self.worker = None
         self.thread = None
         self.progress_window = None  # Создаем атрибут, но не инициализируем окно сразу
-
+        self.main_window = main_window  # Сохраняем ссылку на MainWindow
 
         self.ui.pushButton.clicked.connect(self.sale_search_clients)
         self.ui.pushButton_2.clicked.connect(lambda: MainWindow.main_open_client(self))
@@ -1609,6 +1609,7 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Функция ничего не возвращает, но добавляет сообщение в окно прогресса.
         """
+
         self.progress_window.ui.textEdit.append(message)
         # Закрытие окна прогресса только в конце
         # self.progress_window.close() можно оставить в конце, если завершение работы всех шагов произошло
@@ -1620,9 +1621,12 @@ class SaleForm(QDialog):
         Возвращаемое значение:
             None: Эта функция ничего не возвращает, но закрывает окно прогресса и логирует завершение транзакции.
         """
+        logger.info("Запуск функции on_transaction_finished")
         if hasattr(self, 'progress_window') and self.progress_window:
             self.progress_window.close()
         logger.info("Завершение транзакции")
+        if self.main_window:
+            self.main_window.main_button_all_sales()
 
 
     @logger.catch()
@@ -1675,6 +1679,7 @@ class SaleForm(QDialog):
             if sale.status in (1, 5):
                 logger.debug("Продажа оплачена. Запускаем возврат")
                 if payment_type == 102:
+                    # TODO: убрать price
                     state_check = pq.check_open(
                         tickets, payment_type, system.user, 2, 1, price, None
                     )
@@ -1725,6 +1730,7 @@ class SaleForm(QDialog):
                     if bank == 1:
                         # Если возврат по банковскому терминалу прошел успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
+                            # TODO: убрать price
                             state_check = pq.check_open(
                                 tickets, payment_type, system.user, 2, 1, price, bank
                             )
@@ -1870,6 +1876,7 @@ class SaleForm(QDialog):
                     if bank == 1:
                         # Если отмена по банковскому терминалу прошла успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
+                            # TODO: убрать price
                             state_check = pq.check_open(
                                 tickets, payment_type, system.user, 2, 1, price, bank
                             )
@@ -2087,7 +2094,23 @@ class SaleForm(QDialog):
             return
             # или закрыть SaleForm при помощи вызова reject()
         # иначе, если оплата выбрана
+
+        # Получаем флаг отладки из MainWindow
+        dev_mode = self.main_window.dev_mode if self.main_window else False
+
         if res == Payment.Card:
+            if dev_mode:
+                logger.info("РЕЖИМ ОТЛАДКИ: Имитация оплаты картой")
+                # Создаем тестовый слип-чек
+                slip = "DEBUG_SLIP\nДата: {}\nСумма: {}\nОдобрено".format(
+                    dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+                    txt
+                )
+                # Сохраняем тестовые данные
+                self.save_debug_payment(Payment.Card, slip)
+                self.accept()
+                return
+
             # Оплата банковской картой
             logger.info("Оплата банковской картой")
             payment_type: int = Payment.Card
@@ -2098,6 +2121,16 @@ class SaleForm(QDialog):
             payment_type: int = Payment.Cash
             self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Offline:
+            if dev_mode:
+                logger.info("РЕЖИМ ОТЛАДКИ: Имитация offline оплаты")
+                slip = "DEBUG_SLIP_OFFLINE\nДата: {}\nСумма: {}\nОффлайн".format(
+                    dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+                    txt
+                )
+                self.save_debug_payment(Payment.Offline, slip)
+                self.accept()
+                return
+
             user_choice = windows.info_dialog_window(
                 "Внимание",
                 f"Вы точно хотите провести оплату методом offline?\n\n"
@@ -2113,6 +2146,15 @@ class SaleForm(QDialog):
                 self.sale_transaction(payment_type, system.print_check)
         # Закрываем окно продажи и возвращаем QDialog.Accepted
         self.accept()
+
+    @staticmethod
+    def save_debug_payment(payment_type, slip_text):
+        """Сохранение тестового платежа в режиме отладки"""
+        try:
+            logger.debug(f"Сохранение тестового платежа: payment_type = {payment_type}, slip = {slip_text}")
+            # ... код для сохранения в БД ...
+        except Exception as e:
+            logger.error(f"Ошибка сохранения тестового платежа: {str(e)}")
 
 
 class PayForm(QDialog):
@@ -2252,6 +2294,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         )
         # изменяем ширину столбца
         self.ui.tableWidget_2.setColumnWidth(3, 250)
+        # Флаг режима отладки
+        self.dev_mode = False
 
     def main_transfer_of_deposit_or_payment_amount(self) -> None:
         """
@@ -2908,7 +2952,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции main_open_sale")
-        sale: SaleForm = SaleForm()
+        sale: SaleForm = SaleForm(main_window=self)
         sale.show()
         # кнопка сохранить
         sale.ui.pushButton_3.setEnabled(True)

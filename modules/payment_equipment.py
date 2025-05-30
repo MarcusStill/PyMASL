@@ -31,6 +31,8 @@ except Exception as e:
     kkt_available = False
     fptr = None
 
+# Режим отладки: true — без ККТ
+dev_mode = False
 
 # Константы для работы с кодами терминала
 TERMINAL_SUCCESS_CODE: int = 0
@@ -144,16 +146,39 @@ def fptr_connection(device):
     Возвращаемое значение:
         object: Возвращает объект `device`, переданный в функцию. Этот объект доступен внутри блока `with`.
     """
-    if not kkt_available or device is None:
-        logger.debug("ККТ не доступен, пропускаем подключение")
+    logger.info("Запуск функции fptr_connection")
+    # Режим отладки - пропускаем реальное подключение ККТ
+    if dev_mode:
+        logger.warning("РЕЖИМ ОТЛАДКИ: Кассовый аппарат не используется")
         yield None
         return
 
-    device.open()
+    # Проверка доступности ККТ
+    if not kkt_available or device is None:
+        logger.warning("ККТ не доступен, пропускаем подключение")
+        yield None
+        return
+
     try:
-        yield device  # передаем fptr внутрь контекста
+        # Попытка подключения
+        device.open()
+        if not hasattr(device, 'isOpened') or not device.isOpened():
+            logger.warning("Не удалось открыть соединение с ККТ")
+            yield None
+            return
+
+        yield device
+
+    except Exception as e:
+        logger.error(f"Ошибка подключения к ККТ: {str(e)}")
+        yield None
+
     finally:
-        device.close()
+        try:
+            if device:
+                device.close()
+        except Exception as e:
+            logger.warning(f"Ошибка при закрытии соединения с ККТ: {e}")
 
 
 def run_terminal_command(command_params: str, timeout: int = 120):
@@ -1834,7 +1859,7 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
     return True
 
 
-def check_open(sale_dict, payment_type, user, type_operation, print_check, _, bank_status, on_error=None):
+def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank_status, on_error=None):
     """
     Проведение операции оплаты.
 
@@ -1855,27 +1880,57 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, _, ba
     logger.debug(
         f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type}, type_operation = {type_operation}, bank_status = {bank_status}"
     )
-    if print_check == 0:
-        logger.info("Кассовый чек не печатаем")
     logger.info(f"Тип оплаты: {payment_type}")
-    with fptr_connection(fptr) as device:
-        # Настройка параметров ККМ
-        setup_fptr(device, user, type_operation, print_check)
-        # Открытие чека
-        device.openReceipt()
-        # Регистрация билетов
-        register_tickets(device, sale_dict, type_operation)
-        # Оплата
-        if not process_payment(device, payment_type, bank_status, sale_dict, None):
-            return 0
-        # Проверка состояния документа
-        if not handle_document_errors(device, retry_count, max_retries, on_error):
-            return 0
-        # Продолжение печати, если чек не печатается
-        if print_check == 0:
-            device.continuePrint()
-    return 1
+    try:
+        with fptr_connection(fptr) as device:
+            if device is None:
+                # В рабочем режиме это ошибка
+                if not dev_mode:
+                    msg = "Кассовый аппарат недоступен"
+                    logger.error(msg)
+                    if on_error:
+                        on_error("Ошибка ККТ", msg)
+                    return 0
+                logger.warning("РЕЖИМ ОТЛАДКИ: Пропуск работы с ККТ")
+                # В режиме отладки пропускаем ошибку
+                return 1
+            # Настройка параметров ККМ
+            if not setup_fptr(device, user, type_operation, print_check):
+                logger.error("Ошибка настройки ККТ")
+                return 0
+            # Открытие чека
+            try:
+                device.openReceipt()
+            except Exception as e:
+                logger.error(f"Ошибка открытия чека: {str(e)}")
+                if on_error:
+                    on_error("Ошибка ККТ", f"Не удалось открыть чек: {str(e)}")
+                return 0
+            # Регистрация билетов
+            if not register_tickets(device, sale_dict, type_operation):
+                logger.error("Ошибка регистрации билетов")
+                return 0
+            # Оплата
+            if not process_payment(device, payment_type, bank_status, sale_dict, None):
+                logger.error("Ошибка обработки платежа")
+                return 0
+            # Проверка состояния документа
+            if not handle_document_errors(device, retry_count, max_retries, on_error):
+                return 0
+            # Продолжение печати, если чек не печатается
+            if print_check == 0:
+                try:
+                    logger.info("Кассовый чек не печатаем")
+                    device.continuePrint()
+                except Exception as e:
+                    logger.warning(f"Ошибка continuePrint: {str(e)}")
+        return 1
 
+    except Exception as e:
+        logger.error(f"Критическая ошибка в check_open: {str(e)}")
+        if on_error:
+            on_error("Ошибка ККТ", f"Критическая ошибка: {str(e)}")
+        return 0
 
 @logger_wraps()
 def smena_close(user):

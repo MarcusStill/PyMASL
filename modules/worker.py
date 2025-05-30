@@ -84,16 +84,24 @@ class BaseWorker(QObject):
 
 class PaymentHandler:
     """Обработчик банковских платежей"""
-    def __init__(self, worker, pq, payment_type, amount):
+    def __init__(self, worker, pq, payment_type, amount, dev_mode=False):
         self.worker = worker
         self.pq = pq
         self.payment_type = payment_type
         self.amount = amount
+        # Режим отладки
+        self.dev_mode = dev_mode
 
     @with_timer
-    def process_bank_payment(self, timer: QElapsedTimer):
+    def process_bank_payment(self, timer: QElapsedTimer = None):
         """Основной метод обработки банковского платежа"""
         self.worker.delayed_progress_update("Ожидаем оплату на терминале...", 25)
+
+        if self.dev_mode:
+            self.worker.logger.info("РЕЖИМ ОТЛАДКИ: Имитация оплаты картой")
+            self.worker.logger.debug(f"Сумма: {self.amount}, Тип оплаты: {self.payment_type}")
+            return True, 1  # (success, payment_type)
+
         try:
             # Пытаемся выполнить операцию на терминале
             bank, payment = self.pq.universal_terminal_operation(
@@ -114,6 +122,15 @@ class PaymentHandler:
         except Exception as e:
             self._handle_payment_exception(timer, e)
             return False, None
+
+    def get_mock_slip(self):
+        """Генерация тестового слип-чека для режима отладки"""
+        from datetime import datetime
+        return (f"DEBUG_SLIP\n"
+                f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
+                f"Сумма: {self.amount} руб.\n"
+                f"Тип: {'Онлайн' if self.payment_type == 101 else 'Оффлайн'}\n"
+                f"СТАНДАРТНЫЙ ЧЕК ДЛЯ ТЕСТИРОВАНИЯ")
 
     def _handle_terminal_error_callback(self, title: str, message: str, code: int) -> None:
         """Callback для обработки ошибок от терминала"""
@@ -205,11 +222,19 @@ class TransactionWorker(BaseWorker):
         self.pq = pq
         self.Session = Session
         self.main_window = main_window
+        # Флаг режима отладки
+        self.dev_mode = getattr(main_window, 'dev_mode', False) if main_window else False
 
         amount = system.sale_dict["detail"][7]
 
         # Инициализация обработчиков
-        self.payment_handler = PaymentHandler(self, pq, payment_type, amount)
+        self.payment_handler = PaymentHandler(
+            worker=self,
+            pq=pq,
+            payment_type=payment_type,
+            amount=amount,
+            dev_mode=getattr(main_window, 'dev_mode', False) if main_window else False
+        )
         self.check_handler = CheckHandler(self, pq)
         self.db_handler = DatabaseHandler(Session, system.engine)
 
@@ -228,19 +253,27 @@ class TransactionWorker(BaseWorker):
         bank_status = None
 
         if self.payment_type in (101, 100):
-            success, payment = self.payment_handler.process_bank_payment(timer)
-            if not success:
-                return None, None
+            # Режим отладки
+            if self.dev_mode:
+                self.logger.info("РЕЖИМ ОТЛАДКИ: Имитация банковского платежа")
+                # Генерируем тестовые данные
+                check = (f"DEBUG_SLIP\nДата: {dt.datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
+                         f"Сумма: {self.amount} руб.\nТип: {'Онлайн' if self.payment_type == 101 else 'Оффлайн'}")
+                payment = 1  # Имитируем успешную онлайн-оплату
+            else:
+                success, payment = self.payment_handler.process_bank_payment()
+                if not success:
+                    return None, None
+
+                # Сохраняем банковский чек
+                self.delayed_progress_update("Сохраняем банковский чек...", 45)
+                if payment == 3:
+                    check = "offline"
+                else:
+                    check = self.pq.read_pinpad_file(remove_newline=False)
+                    self.log_step(timer, "pq.read_pinpad_file finished")
             # Успешный статус для check_open
             bank_status = 1
-            # Сохраняем банковский чек
-            self.delayed_progress_update("Сохраняем банковский чек...", 45)
-            if payment == 3:
-                check = "offline"
-            else:
-                check = self.pq.read_pinpad_file(remove_newline=False)
-                self.log_step(timer, "pq.read_pinpad_file finished")
-
             self.db_handler.update_sale(self.system.sale_id,bank_pay=check)
             self.log_step(timer, "save in db finished")
 

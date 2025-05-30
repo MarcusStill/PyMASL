@@ -25,8 +25,8 @@ class Config:
         for i in range(pc_count):
             pc_key = f"pc_{i+1}"
             pc_name = self.get(pc_key)
-            print(f"Загрузка {pc_key}: {pc_name}")  # Отладочный вывод
             if not pc_name:
+                logger.error(f"Пустое имя для {pc_key} в конфиге")
                 raise ValueError(f"Пустое имя для {pc_key} в конфиге")
             pc_list.append(pc_name.strip())
         return pc_list
