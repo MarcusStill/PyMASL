@@ -1878,7 +1878,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     retry_count = 0
     max_retries = 5
     logger.debug(
-        f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type}, type_operation = {type_operation}, bank_status = {bank_status}"
+        f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type},type_operation = {type_operation}, bank_status = {bank_status}"
     )
     logger.info(f"Тип оплаты: {payment_type}")
     try:
@@ -1895,21 +1895,11 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 # В режиме отладки пропускаем ошибку
                 return 1
             # Настройка параметров ККМ
-            if not setup_fptr(device, user, type_operation, print_check):
-                logger.error("Ошибка настройки ККТ")
-                return 0
+            setup_fptr(device, user, type_operation, print_check)
             # Открытие чека
-            try:
-                device.openReceipt()
-            except Exception as e:
-                logger.error(f"Ошибка открытия чека: {str(e)}")
-                if on_error:
-                    on_error("Ошибка ККТ", f"Не удалось открыть чек: {str(e)}")
-                return 0
+            device.openReceipt()
             # Регистрация билетов
-            if not register_tickets(device, sale_dict, type_operation):
-                logger.error("Ошибка регистрации билетов")
-                return 0
+            register_tickets(device, sale_dict, type_operation)
             # Оплата
             if not process_payment(device, payment_type, bank_status, sale_dict, None):
                 logger.error("Ошибка обработки платежа")
@@ -1919,11 +1909,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 return 0
             # Продолжение печати, если чек не печатается
             if print_check == 0:
-                try:
-                    logger.info("Кассовый чек не печатаем")
-                    device.continuePrint()
-                except Exception as e:
-                    logger.warning(f"Ошибка continuePrint: {str(e)}")
+                device.continuePrint()
         return 1
 
     except Exception as e:
