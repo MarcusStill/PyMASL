@@ -7,15 +7,16 @@ from pathlib import Path
 from typing import Any, Optional, Type
 
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
+from PySide6.QtCore import Signal, QThread
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
-    QDialog,
     QHBoxLayout,
     QTableWidgetItem,
-    QWidget,
 )
+from PySide6.QtWidgets import QDialog, QWidget
+from PySide6.QtWidgets import QMessageBox
 from sqlalchemy import and_, select, update, desc
 from sqlalchemy.orm import Session
 
@@ -33,6 +34,7 @@ from modules import payment_equipment as pq
 from modules import windows
 from modules.auth_logic import perform_pre_sale_checks
 from modules.logger import logger, logger_wraps
+from modules.progress_window import ProgressWindow
 from modules.sale_logic import (
     calculate_age,
     calculate_ticket_type,
@@ -49,6 +51,7 @@ from modules.sale_logic import (
     update_child_count,
 )
 from modules.system import System
+from modules.worker import TransactionWorker
 
 system = System()
 config_data = system.config
@@ -307,10 +310,17 @@ class ClientForm(QDialog):
 class SaleForm(QDialog):
     """Форма продажи"""
 
-    def __init__(self):
+    def __init__(self, main_window=None):
         super().__init__()
         self.ui = Ui_Dialog_Sale()
         self.ui.setupUi(self)
+
+        # Инициализация worker
+        self.worker = None
+        self.thread = None
+        self.progress_window = None  # Создаем атрибут, но не инициализируем окно сразу
+        self.main_window = main_window  # Сохраняем ссылку на MainWindow
+
         self.ui.pushButton.clicked.connect(self.sale_search_clients)
         self.ui.pushButton_2.clicked.connect(lambda: MainWindow.main_open_client(self))
         self.ui.pushButton_11.clicked.connect(self.edit_client_in_sale)
@@ -1517,101 +1527,107 @@ class SaleForm(QDialog):
     @logger.catch()
     def sale_transaction(self, payment_type, print_check) -> None:
         """
-        Функция осуществляет оплату ранее сохраненной продажи.
+        Выполняет транзакцию продажи с учетом типа оплаты и необходимости печати чека.
 
         Параметры:
-            payment_type (int): Тип оплаты (например, наличные, банковская карта).
-            print_check (int): Флаг печати чека (1 - печатать, 0 - не печатать).
+           payment_type (int): Тип оплаты (например, 1 — карта, 3 — оффлайн).
+           print_check (bool): Флаг, указывающий, нужно ли печатать чек.
 
         Возвращаемое значение:
-            None
+           None: Эта функция не возвращает значения, но выполняет транзакцию и обновляет статус.
         """
         logger.info("Запуск функции sale_transaction")
         logger.debug(
             f"system.sale_status: {system.sale_status}, system.sale_id: {system.sale_id}"
         )
-        # Если продажа новая
-        if system.sale_id is None:
-            self.save_sale()
-        # Если продажа особенная - генерируем билеты без оплаты
-        if system.sale_special == 1:
-            self.print_saved_tickets()
-        else:
-            # Если оплата банковской картой
-            if payment_type in (101, 100):
-                bank, payment = pq.operation_on_the_terminal(
-                    payment_type, 1, system.sale_dict["detail"][7]
-                )
-                if bank == 0:
-                    logger.error("Операция на терминале не прошла.")
-                    windows.info_window(
-                        "Ошибка", "Операция оплаты не удалась. Повторите попытку.", ""
-                    )
-                    return  # Остановка выполнения, если операция не удалась
-                elif bank == 1:
-                    logger.debug("Операция прошла успешно. Сохраняем чек.")
-                    if payment == 3:  # Если оплата offline банковской картой
-                        check = "offline"
-                    else:
-                        check = pq.read_pinpad_file(remove_newline=False)
-                    logger.debug(f"Чек прихода: {check}")
-                    with Session(system.engine) as session:
-                        session.execute(
-                            update(Sale)
-                            .where(Sale.id == system.sale_id)
-                            .values(bank_pay=check)
-                        )
-                        session.commit()
-                    # Печать банковский чек: 1 - да, 0 - нет
-                    if print_check == 1:
-                        pq.print_slip_check()
-            else:
-                payment = 2
-                bank = None
-            state_check = pq.check_open(
-                system.sale_dict,
-                payment_type,
-                system.user,
-                1,
-                print_check,
-                system.sale_dict["detail"][7],
-                bank,
-            )
-            # Если прошла оплата
-            if state_check == 1:
-                logger.info("Оплата прошла успешно")
-                if print_check == 0:
-                    windows.info_window(
-                        "Оплата прошла успешно.", "Чек не печатаем.", ""
-                    )
-                # Обновляем информацию о продаже в БД
-                logger.debug(f"Обновляем информацию в БД о продаже: {system.sale_id}")
-                with Session(system.engine) as session:
-                    session.execute(
-                        update(Sale)
-                        .where(Sale.id == system.sale_id)
-                        .values(
-                            status=1,
-                            id_user=system.user.id,
-                            pc_name=system.pc_name,
-                            payment_type=payment,
-                            datetime=dt.datetime.now(),
-                        )
-                    )
-                    session.commit()
-                # генерируем билеты
-                self.print_saved_tickets()
-                # Сбрасываем статус продажи
-                system.sale_status = 0
-                self.close()
-            else:
-                logger.warning("Оплата не прошла")
-                windows.info_window(
-                    "Внимание",
-                    "Закройте это окно, откройте сохраненную продажу и проведите"
-                    "операцию оплаты еще раз.",
-                    "",
-                )
+        self.progress_window = ProgressWindow()
+        self.progress_window.show()
+
+        # Создание воркера
+        self.worker = TransactionWorker(
+            payment_type,
+            print_check,
+            system,
+            pq,
+            Session,
+            self  # передаем self, чтобы вызвать print_saved_tickets
+        )
+
+        # Подключение сигналов
+        self.worker.progress_updated.connect(self.progress_window.update_status)
+        self.worker.finished.connect(self.on_transaction_finished)
+        self.worker.save_sale_signal.connect(self.save_sale)
+        self.worker.error_signal.connect(self.handle_error)  # Обработка ошибок
+        self.worker.info_signal.connect(self.handle_info)
+        self.worker.print_ticket_signal.connect(self.print_saved_tickets)
+        self.worker.close_window_signal.connect(self.close)
+
+        # Поток
+        self.thread = QThread()
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+
+        self.thread.start()
+
+
+    def handle_error(self, title: str, text: str, details: str):
+        """
+        Обрабатывает ошибку, закрывая окно прогресса и отображая сообщение с ошибкой.
+
+        Параметры:
+            title (str): Заголовок окна с ошибкой.
+            text (str): Основное сообщение об ошибке.
+            details (str): Дополнительные подробности об ошибке (если имеются).
+
+        Возвращаемое значение:
+            None: Функция ничего не возвращает, но закрывает окно прогресса и отображает сообщение об ошибке.
+        """
+        # Закрытие окна прогресса перед отображением ошибки
+        if hasattr(self, 'progress_window') and self.progress_window:
+            self.progress_window.close()
+
+        # Создание окна с ошибкой
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(title)
+        msg_box.setIcon(QMessageBox.Critical)
+        msg_box.setText(text)
+        if details:
+            msg_box.setDetailedText(details)
+        msg_box.exec()
+
+    def handle_info(self, message: str):
+        """
+        Обрабатывает информационные сообщения, выводя их в окно прогресса.
+
+        Параметры:
+            message (str): Сообщение для вывода в окно прогресса.
+
+        Возвращаемое значение:
+            None: Функция ничего не возвращает, но добавляет сообщение в окно прогресса.
+        """
+
+        self.progress_window.ui.textEdit.append(message)
+        # Закрытие окна прогресса только в конце
+        # self.progress_window.close() можно оставить в конце, если завершение работы всех шагов произошло
+
+    def on_transaction_finished(self):
+        """
+        Обрабатывает завершение транзакции, закрывая окно прогресса и логируя завершение.
+
+        Возвращаемое значение:
+            None: Эта функция ничего не возвращает, но закрывает окно прогресса и логирует завершение транзакции.
+        """
+        logger.info("Запуск функции on_transaction_finished")
+        if hasattr(self, 'progress_window') and self.progress_window:
+            self.progress_window.close()
+        logger.info("Завершение транзакции")
+        if self.main_window:
+            self.main_window.main_button_all_sales()
+
 
     @logger.catch()
     def sale_return(self):
@@ -1663,6 +1679,7 @@ class SaleForm(QDialog):
             if sale.status in (1, 5):
                 logger.debug("Продажа оплачена. Запускаем возврат")
                 if payment_type == 102:
+                    # TODO: убрать price
                     state_check = pq.check_open(
                         tickets, payment_type, system.user, 2, 1, price, None
                     )
@@ -1713,6 +1730,7 @@ class SaleForm(QDialog):
                     if bank == 1:
                         # Если возврат по банковскому терминалу прошел успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
+                            # TODO: убрать price
                             state_check = pq.check_open(
                                 tickets, payment_type, system.user, 2, 1, price, bank
                             )
@@ -1858,6 +1876,7 @@ class SaleForm(QDialog):
                     if bank == 1:
                         # Если отмена по банковскому терминалу прошла успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
+                            # TODO: убрать price
                             state_check = pq.check_open(
                                 tickets, payment_type, system.user, 2, 1, price, bank
                             )
@@ -2075,7 +2094,23 @@ class SaleForm(QDialog):
             return
             # или закрыть SaleForm при помощи вызова reject()
         # иначе, если оплата выбрана
+
+        # Получаем флаг отладки из MainWindow
+        dev_mode = self.main_window.dev_mode if self.main_window else False
+
         if res == Payment.Card:
+            if dev_mode:
+                logger.info("РЕЖИМ ОТЛАДКИ: Имитация оплаты картой")
+                # Создаем тестовый слип-чек
+                slip = "DEBUG_SLIP\nДата: {}\nСумма: {}\nОдобрено".format(
+                    dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+                    txt
+                )
+                # Сохраняем тестовые данные
+                self.save_debug_payment(Payment.Card, slip)
+                self.accept()
+                return
+
             # Оплата банковской картой
             logger.info("Оплата банковской картой")
             payment_type: int = Payment.Card
@@ -2086,6 +2121,16 @@ class SaleForm(QDialog):
             payment_type: int = Payment.Cash
             self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Offline:
+            if dev_mode:
+                logger.info("РЕЖИМ ОТЛАДКИ: Имитация offline оплаты")
+                slip = "DEBUG_SLIP_OFFLINE\nДата: {}\nСумма: {}\nОффлайн".format(
+                    dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+                    txt
+                )
+                self.save_debug_payment(Payment.Offline, slip)
+                self.accept()
+                return
+
             user_choice = windows.info_dialog_window(
                 "Внимание",
                 f"Вы точно хотите провести оплату методом offline?\n\n"
@@ -2101,6 +2146,15 @@ class SaleForm(QDialog):
                 self.sale_transaction(payment_type, system.print_check)
         # Закрываем окно продажи и возвращаем QDialog.Accepted
         self.accept()
+
+    @staticmethod
+    def save_debug_payment(payment_type, slip_text):
+        """Сохранение тестового платежа в режиме отладки"""
+        try:
+            logger.debug(f"Сохранение тестового платежа: payment_type = {payment_type}, slip = {slip_text}")
+            # ... код для сохранения в БД ...
+        except Exception as e:
+            logger.error(f"Ошибка сохранения тестового платежа: {str(e)}")
 
 
 class PayForm(QDialog):
@@ -2240,6 +2294,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         )
         # изменяем ширину столбца
         self.ui.tableWidget_2.setColumnWidth(3, 250)
+        # Флаг режима отладки
+        self.dev_mode = False
 
     def main_transfer_of_deposit_or_payment_amount(self) -> None:
         """
@@ -2896,7 +2952,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             None: Функция не возвращает значений, вставляет фамилию в поле формы.
         """
         logger.info("Запуск функции main_open_sale")
-        sale: SaleForm = SaleForm()
+        sale: SaleForm = SaleForm(main_window=self)
         sale.show()
         # кнопка сохранить
         sale.ui.pushButton_3.setEnabled(True)
