@@ -325,6 +325,7 @@ class SaleForm(QDialog):
         # Инициализация worker
         self.worker = None
         self.thread = None
+        self._transaction_finished = False
         self.progress_window = None  # Создаем атрибут, но не инициализируем окно сразу
         self.main_window = main_window  # Сохраняем ссылку на MainWindow
 
@@ -1567,7 +1568,8 @@ class SaleForm(QDialog):
         self.worker.error_signal.connect(self.handle_error)  # Обработка ошибок
         self.worker.info_signal.connect(self.handle_info)
         self.worker.print_ticket_signal.connect(self.print_saved_tickets)
-        self.worker.close_window_signal.connect(self.close)
+        #self.worker.close_window_signal.connect(self.close)
+        self.worker.close_window_signal.connect(self.progress_window.close)
 
         # Поток
         self.thread = QThread()
@@ -1633,6 +1635,11 @@ class SaleForm(QDialog):
             return
         self._transaction_finished = True
         logger.info("Завершение транзакции")
+        # Закрываем окно прогресса
+        if hasattr(self, 'progress_window') and self.progress_window:
+            self.progress_window.close()
+            self.progress_window = None
+
         if self.main_window:
             self.main_window.main_button_all_sales()
 
