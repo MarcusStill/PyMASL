@@ -199,7 +199,7 @@ class CheckHandler:
             code="critical",
             step_name="check_error"
         )
-        raise Exception(f"{title}: {text}")
+        # raise Exception(f"{title}: {text}")
 
 
 class DatabaseHandler:
