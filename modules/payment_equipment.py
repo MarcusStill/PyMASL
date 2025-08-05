@@ -847,17 +847,15 @@ def read_pinpad_file(remove_newline=True):
     try:
         with open(pinpad_file, "r", encoding="IBM866") as file:
             for line in file:
-                # Убираем символ новой строки, если параметр remove_newline=True
-                line: str = line.rstrip() if remove_newline else line
-                result_lines.append(line)
-                print_text(line)
+                cleaned_line = line.rstrip() if remove_newline else line
+                result_lines.append(cleaned_line)
+            return result_lines  # список строк
     except FileNotFoundError as not_found:
         logger.warning("Файл не найден: %s", not_found.filename)
         return None
     except UnicodeDecodeError as decode_error:
         logger.error("Ошибка декодирования файла: %s", decode_error)
         return None
-    return "".join(result_lines)
 
 
 @logger_wraps()
@@ -872,13 +870,25 @@ def print_slip_check(kol: int = 2):
             Функция не возвращает значений, но может вызывать исключения в случае ошибок при печати.
     """
     logger.info("Запуск функции print_slip_check")
+    lines = read_pinpad_file(remove_newline=True)
+    if not lines:
+        logger.error("Не удалось прочитать содержимое слип-чека")
+        return
+
     with fptr_connection(fptr):
         try:
+            # Проверка возможности печати
+            can_print, message = can_print_nonfiscal()
+            if not can_print:
+                logger.error(f"Невозможно напечатать слип-чек: {message}")
+                windows.info_window("Ошибка печати", "Не удалось напечатать слип-чек.", message)
+                return
+            # Первая копия
             # Открытие нефискального документа
             fptr.beginNonfiscalDocument()
-            line: str = read_pinpad_file(remove_newline=True)
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-            fptr.printText()
+            for line in lines:
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+                fptr.printText()
             # Перенос строки
             fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
             # Промотка чековой ленты на одну строку (пустую)
@@ -887,28 +897,45 @@ def print_slip_check(kol: int = 2):
             fptr.endNonfiscalDocument()
             # Печать документа
             fptr.report()
+
+            # Ожидание завершения печати
+            if not wait_for_nonfiscal_print():
+                logger.error("Печать слип-чека не завершена")
+                windows.info_window(
+                    "Ошибка печати",
+                    "Слип-чек не был напечатан.",
+                    "Проверьте бумагу и принтер."
+                )
+                return
+
             # Частичная отрезка ЧЛ
             fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
             # Отрезаем чек
             fptr.cut()
+
             # Создание копии нефискального документа
             if kol == 2:
-                # Печатаем копию слип-чека
                 fptr.beginNonfiscalDocument()
                 fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "")
                 fptr.printText()
-                line = read_pinpad_file(remove_newline=True)
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-                fptr.printText()
+                for line in lines:
+                    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+                    fptr.printText()
                 fptr.printText()
                 fptr.endNonfiscalDocument()
                 fptr.report()
+
+                if not wait_for_nonfiscal_print():
+                    logger.warning("Вторая копия слип-чека не напечатана")
+                    windows.info_window("Внимание", "Вторая копия слип-чека не напечатана.", "")
                 fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
                 fptr.cut()
         except FileNotFoundError as not_found:
             logger.error(f"Файл не найден: {not_found.filename}")
+            windows.info_window("Ошибка", "Файл слип-чека не найден.", str(not_found))
         except Exception as e:
             logger.error(f"Ошибка при печати слип-чека: {e}")
+            windows.info_window("Ошибка", "Ошибка при печати слип-чека.", str(e))
 
 
 @logger_wraps()
@@ -2024,18 +2051,46 @@ def continue_print():
             Функция не возвращает значений, но продолжает печать текущего документа.
     """
     logger.info("Запуск функции continue_print")
-    try:
-        # Попытка продолжить печать
-        fptr.continuePrint()
-    except Exception as e:
-        # Логирование ошибки
-        logger.error(f"Ошибка при продолжении печати: {e}")
-        # Уведомление пользователя
-        windows.info_window(
-            "Ошибка при продолжении печати.",
-            "Пожалуйста, проверьте подключение к фискальному принтеру и повторите попытку.",
-            str(e),
-        )
+    with fptr_connection(fptr):
+        try:
+            # Проверка состояния ККТ
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
+            fptr.queryData()
+
+            doc_closed = fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED)
+            doc_printed = fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED)
+
+            if not doc_closed:
+                logger.warning("Нельзя допечатать: документ не закрыт")
+                windows.info_window(
+                    "Невозможно допечатать",
+                    "Документ не закрыт. Требуется его отменить."
+                )
+                return
+
+            if doc_printed:
+                logger.info("Документ уже напечатан")
+                windows.info_window("Информация", "", "Документ уже напечатан.")
+                return
+
+            # Попытка допечатать
+            for attempt in range(3):
+                result = fptr.continuePrint()
+                if result >= 0:
+                    logger.info("Документ успешно допечатан")
+                    windows.info_window("Успех", "", "Документ допечатан.")
+                    return
+                logger.warning(f"Попытка допечатки №{attempt + 1} не удалась: {fptr.errorDescription()}")
+                time.sleep(1)
+
+            # Если не удалось
+            error_desc = fptr.errorDescription()
+            logger.error(f"Не удалось допечатать документ после 3 попыток: {error_desc}")
+            windows.info_window("Ошибка", "Не удалось допечатать документ.", error_desc)
+
+        except Exception as e:
+            logger.error(f"Ошибка при допечатке: {e}")
+            windows.info_window("Ошибка", "Произошла ошибка при допечатке.", str(e))
 
 
 def print_text(text: str):
@@ -2148,3 +2203,58 @@ def post_check_document_result(device, on_error=None):
         logger.warning("Не удалось допечатать. Будет напечатан при следующей операции.")
 
     return True
+
+def can_print_nonfiscal():
+    """Проверяет, можно ли печатать нефискальный документ."""
+    try:
+        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
+        fptr.queryData()
+
+        # Проверка бумаги
+        paper_present = fptr.getParamBool(IFptr.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)
+        if not paper_present:
+            logger.warning("Нет бумаги в чековом принтере")
+            return False, "Нет бумаги. Замените ленту."
+
+        # Проверка крышки
+        cover_opened = fptr.getParamBool(IFptr.LIBFPTR_PARAM_COVER_OPENED)
+        if cover_opened:
+            logger.warning("Крышка ККТ открыта")
+            return False, "Крышка ККТ открыта. Закройте и повторите."
+
+        # Проверка перегрева
+        overheated = fptr.getParamBool(IFptr.LIBFPTR_PARAM_PRINTER_OVERHEAT)
+        if overheated:
+            logger.warning("Принтер перегрет")
+            return False, "Принтер перегрет. Дайте остыть."
+
+        return True, "Готов к печати"
+
+    except Exception as e:
+        logger.error(f"Ошибка при проверке состояния ККТ: {e}")
+        return False, "Не удалось проверить состояние ККТ"
+
+
+def wait_for_nonfiscal_print(max_attempts=10):
+    """Ожидание завершения печати нефискального документа."""
+    for attempt in range(max_attempts):
+        try:
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
+            fptr.queryData()
+
+            doc_type = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_TYPE)
+            if doc_type == IFptr.LIBFPTR_DT_CLOSED:
+                logger.info("Нефискальный документ успешно закрыт и напечатан")
+                return True
+
+            if doc_type == IFptr.LIBFPTR_DT_DOCUMENT_SERVICE:
+                # Документ в процессе печати
+                time.sleep(1)
+                continue
+
+        except Exception as e:
+            logger.warning(f"Ошибка при проверке состояния: {e}")
+            time.sleep(1)
+
+    logger.error("Не удалось дождаться завершения печати нефискального документа")
+    return False
