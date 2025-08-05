@@ -71,16 +71,24 @@ class BaseWorker(QObject):
         :param close_window: Нужно ли закрывать окно
         """
         logger.error(f"{title}: {message} (код: {code})")
-        self.error_signal.emit(title, message, str(code))
-        self.delayed_progress_update(f"Ошибка: {title}", 100, 1)
+        try:
+            self.error_signal.emit(title, message, str(code))
+            self.delayed_progress_update(f"Ошибка: {title}", 100, 1)
 
-        if timer and step_name:
-            self.log_step(timer, step_name)
+            if timer and step_name:
+                self.log_step(timer, step_name)
 
-        if close_window:
-            self.close_window_signal.emit()
+            if close_window:
+                self.close_window_signal.emit()
 
-        self.finished.emit()
+            self.finished.emit()
+        except RuntimeError as e:
+            if "already deleted" in str(e):
+                logger.warning("Попытка emit после удаления объекта — игнорируем")
+            else:
+                raise
+        except Exception as e:
+            logger.exception("Неожиданная ошибка в emit_error_and_finish")
 
 class PaymentHandler:
     """Обработчик банковских платежей"""
@@ -114,7 +122,7 @@ class PaymentHandler:
 
             # Обрабатываем результат операции
             if bank == 0:
-                self._handle_payment_failed(timer)
+                # self._handle_payment_failed(timer) # ошибка обработана через callback. Не нужно вызывать emit_error_and_finish второй раз
                 return False, None
             # Возвращаем только payment
             return True, payment
@@ -140,7 +148,6 @@ class PaymentHandler:
             code=str(code),
             step_name="terminal_error"
         )
-        raise Exception(f"{title}: {message}")
 
     def _handle_payment_failed(self, timer):
         """Обработка неудачного платежа (bank == 0)"""
@@ -224,6 +231,8 @@ class TransactionWorker(BaseWorker):
         self.main_window = main_window
         # Флаг режима отладки
         self.dev_mode = getattr(main_window, 'dev_mode', False) if main_window else False
+        # Флаг cleanup
+        self._is_cleaned = False
 
         amount = system.sale_dict["detail"][7]
 
@@ -345,6 +354,10 @@ class TransactionWorker(BaseWorker):
 
     def cleanup(self):
         """Завершающие действия"""
+        if self._is_cleaned:
+            return
+        self._is_cleaned = True
+
         self.system.sale_status = 0
         self.finished.emit()
         self.close_window_signal.emit()
