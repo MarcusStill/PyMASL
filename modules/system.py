@@ -159,16 +159,17 @@ class System:
             with Session(self.engine) as session:
                 query = select(User).where(User.login == login)
                 kassir = session.execute(query).scalars().first()
-            stored_password = System.decode_password(kassir.password)
-            if stored_password == password:
-                self.user = kassir
-                logger.info(f"Успешная авторизация: {kassir.last_name}")
-                return 1
-            else:
-                logger.warning(
-                    f"Неудачная попытка авторизации для пользователя {login}"
-                )
-                return 0
+            if kassir:
+                stored_password = System.decode_password(kassir.password)
+                if stored_password == password:
+                    self.user = kassir
+                    logger.info(f"Успешная авторизация: {kassir.last_name}")
+                    return 1
+                else:
+                    logger.warning(
+                        f"Неудачная попытка авторизации для пользователя {login}"
+                    )
+                    return 0
 
         except SQLAlchemyError as e:
             logger.error(f"Ошибка базы данных при авторизации пользователя: {e}")
@@ -424,3 +425,16 @@ class System:
             merchant_id = ''
             rrn_value = ''
         return  card_tail, merchant_id, rrn_value, load_slip
+
+
+    def check_db_connection(self) -> bool:
+        """Проверка подключения к базе данных."""
+        logger.info("Проверка подключения к базе данных")
+        try:
+            with Session(self.engine) as session:
+                session.execute(select(1))  # Простой запрос для проверки
+            logger.info("Подключение к БД успешно")
+            return True
+        except Exception as e:
+            logger.error(f"Ошибка подключения к БД: {e}")
+            return False

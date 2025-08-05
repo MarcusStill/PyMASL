@@ -85,6 +85,13 @@ class AuthForm(QDialog):
             None: Функция не возвращает значений, а выполняет ряд операций, включая проверку входных данных и отображение главного окна.
         """
         logger.info("Запуск функции starting_the_main_form")
+        if not system.check_db_connection():
+            windows.info_window(
+                "База данных недоступна",
+                "Не удалось подключиться к серверу базы данных.\n Приложение будет закрыто.",
+                ""
+            )
+            sys.exit(1)
         login: str = self.ui.lineEdit.text()
         password: str = self.ui.lineEdit_2.text()
 
