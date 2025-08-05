@@ -158,10 +158,12 @@ def fptr_connection(device):
         logger.warning("ККТ не доступен, пропускаем подключение")
         yield None
         return
-
+    connected: bool = False
     try:
         # Попытка подключения
         device.open()
+        connected = True
+
         if not hasattr(device, 'isOpened') or not device.isOpened():
             logger.warning("Не удалось открыть соединение с ККТ")
             yield None
@@ -175,7 +177,7 @@ def fptr_connection(device):
 
     finally:
         try:
-            if device:
+            if connected and device:
                 device.close()
         except Exception as e:
             logger.warning(f"Ошибка при закрытии соединения с ККТ: {e}")
@@ -1792,74 +1794,74 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
         return False
 
 
-def handle_document_errors(device, retry_count, max_retries, on_error=None):
-    """Функция пытается закрыть документ, повторяя попытки в случае ошибки до достижения максимального числа попыток.
-
-    Параметры:
-        device (object): Объект устройства для работы с чеками.
-        retry_count (int): Текущее количество попыток.
-        max_retries (int): Максимальное количество попыток закрытия документа.
-        on_error (callable, optional): Функция для обработки ошибок, вызываемая при достижении максимального числа попыток.
-
-    Возвращаемое значение:
-        bool: Возвращает `True`, если документ был успешно закрыт, или `False`, если после всех попыток документ не закрылся.
-    """
-    logger.info("Запуск функции handle_document_errors")
-    # Проверяем, закрыт ли документ
-    while device.checkDocumentClosed() < 0:
-        logger.warning(f"Не удалось проверить состояние документа: {device.errorDescription()}")
-        if retry_count >= max_retries - 1:
-            if on_error:
-                on_error("Ошибка ККТ", f"Не удалось проверить состояние документа после {max_retries} попыток. "
-                                       f"Проверьте соединение с ККТ и не выключайте ПК.")
-            return False
-
-        if on_error:
-            on_error("Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
-
-        retry_count += 1
-        time.sleep(3)
-
-    # Если документ не закрылся — требуется отмена чека и переоформление
-    if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
-        logger.error("Документ не закрылся. Требуется отмена.")
-        try:
-            device.cancelReceipt()
-            logger.info("Чек успешно отменен")
-        except Exception as e:
-            logger.critical(f"Ошибка при отмене чека: {e}")
-            if on_error:
-                on_error("Критическая ошибка", "Не удалось отменить чек. Требуется перезагрузка ККТ.")
-            # Пробрасываем исключение наверх
-            raise
-
-        if on_error:
-            on_error("Документ не закрыт", "Чек отменен. Требуется сформировать его заново.")
-        return False
-
-    # Если документ не напечатан — попробовать допечатать
-    if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED):
-        logger.warning("Документ не допечатан. Попытки допечатки...")
-        for print_attempt in range(5):
-            if device.continuePrint() >= 0:
-                logger.info("Документ успешно допечатан")
-                return True
-
-            logger.warning(f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}")
-            if on_error:
-                on_error("Ошибка печати", f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.")
-            time.sleep(3)
-
-        logger.error("Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции.")
-        # Документ закрыт, но не допечатан — допустимо.
-        # Документ будет автоматически допечатан при следующей печатной операции.
-
-        # TODO: При критических сценариях — например, если бумага кончилась — желательно уведомлять кассира и не открывать новый чек, пока не завершится печать.
-
-        return True
-
-    # Успешное закрытие и печать документа
-    return True
+# def handle_document_errors(device, retry_count, max_retries, on_error=None):
+#     """Функция пытается закрыть документ, повторяя попытки в случае ошибки до достижения максимального числа попыток.
+#
+#     Параметры:
+#         device (object): Объект устройства для работы с чеками.
+#         retry_count (int): Текущее количество попыток.
+#         max_retries (int): Максимальное количество попыток закрытия документа.
+#         on_error (callable, optional): Функция для обработки ошибок, вызываемая при достижении максимального числа попыток.
+#
+#     Возвращаемое значение:
+#         bool: Возвращает `True`, если документ был успешно закрыт, или `False`, если после всех попыток документ не закрылся.
+#     """
+#     logger.info("Запуск функции handle_document_errors")
+#     # Проверяем, закрыт ли документ
+#     while device.checkDocumentClosed() < 0:
+#         logger.warning(f"Не удалось проверить состояние документа: {device.errorDescription()}")
+#         if retry_count >= max_retries - 1:
+#             if on_error:
+#                 on_error("Ошибка ККТ", f"Не удалось проверить состояние документа после {max_retries} попыток. "
+#                                        f"Проверьте соединение с ККТ и не выключайте ПК.")
+#             return False
+#
+#         if on_error:
+#             on_error("Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
+#
+#         retry_count += 1
+#         time.sleep(3)
+#
+#     # Если документ не закрылся — требуется отмена чека и переоформление
+#     if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
+#         logger.error("Документ не закрылся. Требуется отмена.")
+#         try:
+#             device.cancelReceipt()
+#             logger.info("Чек успешно отменен")
+#         except Exception as e:
+#             logger.critical(f"Ошибка при отмене чека: {e}")
+#             if on_error:
+#                 on_error("Критическая ошибка", "Не удалось отменить чек. Требуется перезагрузка ККТ.")
+#             # Пробрасываем исключение наверх
+#             raise
+#
+#         if on_error:
+#             on_error("Документ не закрыт", "Чек отменен. Требуется сформировать его заново.")
+#         return False
+#
+#     # Если документ не напечатан — попробовать допечатать
+#     if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED):
+#         logger.warning("Документ не допечатан. Попытки допечатки...")
+#         for print_attempt in range(5):
+#             if device.continuePrint() >= 0:
+#                 logger.info("Документ успешно допечатан")
+#                 return True
+#
+#             logger.warning(f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}")
+#             if on_error:
+#                 on_error("Ошибка печати", f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.")
+#             time.sleep(3)
+#
+#         logger.error("Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции.")
+#         # Документ закрыт, но не допечатан — допустимо.
+#         # Документ будет автоматически допечатан при следующей печатной операции.
+#
+#         # TODO: При критических сценариях — например, если бумага кончилась — желательно уведомлять кассира и не открывать новый чек, пока не завершится печать.
+#
+#         return True
+#
+#     # Успешное закрытие и печать документа
+#     return True
 
 
 def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank_status, on_error=None):
@@ -1878,8 +1880,8 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         int: 1 - успех, 0 - ошибка.
     """
     logger.info("Запуск функции check_open")
-    retry_count = 0
-    max_retries = 5
+    # retry_count = 0
+    # max_retries = 5
     logger.debug(
         f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type},type_operation = {type_operation}, bank_status = {bank_status}"
     )
@@ -1897,6 +1899,11 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 logger.warning("РЕЖИМ ОТЛАДКИ: Пропуск работы с ККТ")
                 # В режиме отладки пропускаем ошибку
                 return 1
+
+            # Проверка состояния
+            if not pre_check_document_state(device, on_error):
+                return 0
+
             # Настройка параметров ККМ
             setup_fptr(device, user, type_operation, print_check)
             # Открытие чека
@@ -1907,9 +1914,15 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             if not process_payment(device, payment_type, bank_status, sale_dict, None):
                 logger.error("Ошибка обработки платежа")
                 return 0
-            # Проверка состояния документа
-            if not handle_document_errors(device, retry_count, max_retries, on_error):
+
+            # # Проверка состояния документа
+            # if not handle_document_errors(device, retry_count, max_retries, on_error):
+            #     return 0
+
+            # Проверка результата (после closeReceipt)
+            if not post_check_document_result(device, on_error):
                 return 0
+
             # Продолжение печати, если чек не печатается
             if print_check == 0:
                 device.continuePrint()
@@ -2051,3 +2064,87 @@ def print_text(text: str):
             "Пожалуйста, проверьте принтер и повторите попытку.",
             str(e),
         )
+
+def pre_check_document_state(device, on_error=None):
+    """Проверка состояния ККТ перед открытием чека."""
+    logger.info("Проверка состояния документа перед открытием чека")
+
+    try:
+        device.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
+        device.queryData()
+
+        # Проверяем через DOCUMENT_TYPE
+        doc_type = device.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_TYPE)
+        if doc_type != IFptr.LIBFPTR_DT_CLOSED:
+            logger.error(f"ККТ: документ уже открыт (тип: {doc_type}).")
+            if on_error:
+                on_error("Ошибка ККТ", "Документ уже открыт. Требуется закрыть или отменить.")
+            return False
+
+        # Проверка бумаги
+        paper_present = device.getParamBool(IFptr.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)
+        if not paper_present:
+            logger.warning("Нет бумаги в чековом принтере")
+            if on_error:
+                on_error("Ошибка ККТ", "Замените бумагу и повторите операцию.")
+            return False
+
+        # Если документ закрыт, но не напечатан — попробовать допечатать
+        doc_printed = device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED)
+        if not doc_printed:
+            logger.warning("Чек закрыт, но не напечатан. Попытка допечатки...")
+            for _ in range(5):
+                if device.continuePrint() >= 0:
+                    logger.info("Чек успешно допечатан")
+                    break
+                time.sleep(1)
+            else:
+                logger.warning("Не удалось допечатать. Будет напечатан при следующей операции.")
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Ошибка при проверке состояния ККТ: {e}")
+        if on_error:
+            on_error("Ошибка ККТ", "Не удалось проверить состояние ККТ.")
+        return False
+
+
+def post_check_document_result(device, on_error=None):
+    """Проверка результата закрытия чека."""
+    logger.info("Запуск функции post_check_document_result")
+
+    # Проверяем, закрылся ли документ
+    while device.checkDocumentClosed() < 0:
+        logger.warning(f"Не удалось проверить состояние: {device.errorDescription()}")
+        if on_error:
+            on_error("Ошибка связи", "Не удалось проверить состояние чека. Повтор...")
+        time.sleep(5)
+    else:
+        if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
+            logger.error("Чек не закрылся в ФН. Требуется отмена.")
+            try:
+                device.cancelReceipt()
+                logger.info("Чек отменён")
+                if on_error:
+                    on_error("Ошибка", "Чек не закрылся. Он был отменён. Повторите операцию.")
+            except Exception as e:
+                logger.critical(f"Ошибка отмены: {e}")
+                if on_error:
+                    on_error("Критическая ошибка", "Не удалось отменить чек.")
+            return False
+
+    # Проверяем печать
+    if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED):
+        logger.warning("Чек не напечатан. Попытка допечатки...")
+        for _ in range(15):
+            if device.continuePrint() >= 0:
+                logger.info("Чек допечатан")
+                return True
+            logger.warning(f"Допечатка не удалась: {device.errorDescription()}")
+            if on_error:
+                on_error("Ошибка печати", f"Не удалось допечатать: {device.errorDescription()}")
+            time.sleep(1)
+        logger.warning("Не удалось допечатать. Будет напечатан при следующей операции.")
+
+    return True
