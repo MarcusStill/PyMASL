@@ -1622,8 +1622,9 @@ class SaleForm(QDialog):
             None: Эта функция ничего не возвращает, но закрывает окно прогресса и логирует завершение транзакции.
         """
         logger.info("Запуск функции on_transaction_finished")
-        if hasattr(self, 'progress_window') and self.progress_window:
-            self.progress_window.close()
+        if hasattr(self, '_transaction_finished') and self._transaction_finished:
+            return
+        self._transaction_finished = True
         logger.info("Завершение транзакции")
         if self.main_window:
             self.main_window.main_button_all_sales()
