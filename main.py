@@ -1659,6 +1659,10 @@ class SaleForm(QDialog):
         logger.info("Запуск функции sale_return")
         # Счетчик для отслеживания корректности проведения возврата за наличный способ расчета
         balance_error: int = 0
+        partial_return: int = 0
+        bank: int = 0
+        new_tickets = {}
+        state_check: int = 0
         tickets = self.generating_items_for_the_return_check()
         logger.info("Запрашиваем информацию о продаже в БД")
         with Session(system.engine) as session:
@@ -1670,8 +1674,8 @@ class SaleForm(QDialog):
         price: int = sale.price
         if sale.status == 5:
             logger.debug("Требуется частичный возврат.")
-            amount: int = int(sale.partial_return)
-            new_tickets = generating_parts_for_partial_returns(tickets, amount)
+            partial_return: int = int(sale.partial_return)
+            new_tickets: dict | dict = generating_parts_for_partial_returns(tickets, partial_return)
             logger.debug(f"Список билетов: {new_tickets}")
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
@@ -1706,12 +1710,20 @@ class SaleForm(QDialog):
                         logger.debug("Запускаем возврат по банковскому терминалу")
                         # В зависимости от типа возврата отправляем на банковский терминал нужную сумму
                         if sale.status == 1:
-                            bank, payment = pq.operation_on_the_terminal(
-                                payment_type, 2, price
+                            bank, payment = pq.universal_terminal_operation(
+                                payment_type=payment_type,
+                                amount=price,
+                                progress_signal=None,
+                                operation_type=2,  # возврат
+                                error_callback=lambda title, msg, code: windows.info_window(title, msg, str(code))
                             )
                         elif sale.status == 5:
-                            bank, payment = pq.operation_on_the_terminal(
-                                payment_type, 2, amount
+                            bank, payment = pq.universal_terminal_operation(
+                                payment_type=payment_type,
+                                amount=partial_return,
+                                progress_signal=None,
+                                operation_type=2,  # возврат
+                                error_callback=lambda title, msg, code: windows.info_window(title, msg, str(code))
                             )
                         if bank == 1:
                             check = pq.read_pinpad_file(remove_newline=False)
@@ -1756,7 +1768,7 @@ class SaleForm(QDialog):
                                 system.user,
                                 2,
                                 1,
-                                amount,
+                                partial_return,
                                 bank,
                             )
                 # Если возврат прошел
@@ -1790,7 +1802,14 @@ class SaleForm(QDialog):
                     )
             elif sale.status == 3:
                 logger.debug("Требуется повторный возврат по банковскому терминалу")
-                bank, payment = pq.operation_on_the_terminal(payment_type, 2, price)
+                bank, payment = pq.universal_terminal_operation(
+                    payment_type=payment_type,
+                    amount=price,
+                    progress_signal=None,
+                    operation_type=2,  # возврат
+                    error_callback=lambda title, msg, code: windows.info_window(title, msg, str(code))
+                )
+
                 if bank == 1:
                     logger.info("Операция повторного возврата прошла успешно")
                     check = pq.read_pinpad_file(remove_newline=False)
@@ -1843,6 +1862,7 @@ class SaleForm(QDialog):
         system.sale_id = sale.id
         price: int = sale.price
         payment_type: int = 0
+        state_check: int = 0
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
             payment_type: int = 101
@@ -1856,8 +1876,12 @@ class SaleForm(QDialog):
                     )
                     if sale.bank_return is None:
                         logger.debug("Запускаем отмену по банковскому терминалу")
-                        bank, payment = pq.operation_on_the_terminal(
-                            payment_type, 3, price
+                        bank, payment = pq.universal_terminal_operation(
+                            payment_type=payment_type,
+                            amount=price,
+                            progress_signal=None,
+                            operation_type=3,  # отмена
+                            error_callback=lambda title, msg, code: windows.info_window(title, msg, str(code))
                         )
                         if bank == 1:
                             check = pq.read_pinpad_file(remove_newline=False)

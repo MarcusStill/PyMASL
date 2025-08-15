@@ -259,7 +259,7 @@ class TransactionWorker(BaseWorker):
         """Обработка платежа"""
         # По умолчанию наличные
         payment = 2
-        bank_status = None
+        bank_status = 0
 
         if self.payment_type in (101, 100):
             # Режим отладки

@@ -519,33 +519,6 @@ def terminal_oplata(amount: float) -> int:
 
 
 @logger_wraps()
-def terminal_return(amount: float) -> int:
-    """
-    Выполняет операцию возврата через терминал.
-
-    Параметры:
-        amount (float): Сумма возврата в рублях.
-
-    Возвращаемое значение:
-        int: 1 — успех, 0 — ошибка.
-    """
-    return process_terminal_transaction("3", amount, "Возврат")
-
-
-@logger_wraps()
-def terminal_canceling(amount: float) -> int:
-    """
-    Выполняет операцию отмены через терминал.
-
-    Параметры:
-        amount (float): Сумма операции отмены в рублях.
-
-    Возвращаемое значение:
-        int: 1 — успех, 0 — ошибка.
-    """
-    return process_terminal_transaction("8", amount, "Отмена")
-
-@logger_wraps()
 def process_terminal_transaction(command_code: str, amount: float, operation_name: str, error_callback=None) -> int:
     """
     Обрабатывает операцию на банковском терминале.
@@ -593,7 +566,12 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
     return 0
 
 
-def universal_terminal_operation(payment_type: int, amount: float, progress_signal, error_callback=None) -> tuple[int, int]:
+def universal_terminal_operation(
+        payment_type: int,
+        amount: float,
+        progress_signal,
+        operation_type: int = 1,
+        error_callback=None) -> tuple[int, int]:
     """
     Универсальный обработчик терминальных операций для оплаты или возврата.
 
@@ -601,6 +579,9 @@ def universal_terminal_operation(payment_type: int, amount: float, progress_sign
         payment_type (int): Тип оплаты (например, 1 — карта, 3 — оффлайн).
         amount (float): Сумма операции в рублях.
         progress_signal: Сигнал для обновления статуса прогресса.
+        operation_type (int): Тип операции:
+            1 — оплата, 2 — возврат, 3 — отмена.
+        error_callback: Функция обратного вызова для обработки ошибок.
 
     Возвращаемое значение:
         tuple:
@@ -608,31 +589,78 @@ def universal_terminal_operation(payment_type: int, amount: float, progress_sign
             - payment_code (int): Код оплаты (1 — карта, 3 — оффлайн).
     """
     try:
+        # Определяем код команды и название операции
+        if operation_type == 1:
+            command_code = "1"
+            operation_name = "Оплата"
+            progress_text = "Запускаем оплату по банковскому терминалу..."
+        elif operation_type == 2:
+            command_code = "3"
+            operation_name = "Возврат"
+            progress_text = "Запускаем возврат по банковскому терминалу..."
+        elif operation_type == 3:
+            command_code = "8"
+            operation_name = "Отмена"
+            progress_text = "Запускаем отмену по банковскому терминалу..."
+        else:
+            logger.error(f"Неподдерживаемый тип операции: {operation_type}")
+            if progress_signal is not None:
+                try:
+                    progress_signal.emit("Ошибка: неподдерживаемый тип операции", 100)
+                except RuntimeError:
+                    pass  # На случай, если сигнал уже недоступен
+            return 0, 0
+
         if payment_type == PAYMENT_ELECTRONIC:
-            logger.info("Запускаем оплату по банковскому терминалу")
-            progress_signal.emit("Запускаем оплату по банковскому терминалу...", 35)
-            bank = process_terminal_transaction("1", amount, "Оплата", error_callback)
+            logger.info(f"Запускаем {operation_name} по банковскому терминалу")
+
+            # Проверяем progress_signal перед emit
+            if progress_signal is not None:
+                try:
+                    progress_signal.emit(progress_text, 35)
+                except Exception:
+                    pass  # Игнорируем ошибки emit
+
+            bank = process_terminal_transaction(command_code, amount, operation_name, error_callback)
             if bank == 1:
-                progress_signal.emit("Оплата успешна.", 45)
-                return (bank, 1)  # bank, 1 — card
-            elif bank == 0:
-                progress_signal.emit("Ошибка оплаты.", 100)
-                return 0, 1  # 0 — error, 1 — card
+                if progress_signal is not None:
+                    try:
+                        progress_signal.emit(f"{operation_name} успешна.", 45)
+                    except Exception:
+                        pass
+                return bank, 1
+            else:
+                if progress_signal is not None:
+                    try:
+                        progress_signal.emit(f"Ошибка {operation_name.lower()}.", 100)
+                    except Exception:
+                        pass
+                return 0, 1
         elif payment_type == PAYMENT_OFFLINE:
+            if operation_type != 1:
+                logger.warning("Оффлайн-режим не поддерживается для возврата или отмены")
+                progress_signal.emit("Оффлайн: только оплата", 100)
+                return 0, 0
+
             logger.info("Запускаем offline оплату по банковскому терминалу")
             progress_signal.emit("Запускаем offline оплату по банковскому терминалу...", 35)
-            return 1, 3  # 1 — success, 3 — offline
+            return 1, 3  # успех, offline
 
-        # Явный return, если ни одно из условий не выполнено
-        progress_signal.emit("Неподдерживаемый тип оплаты", 100)
-        return 0, 0
+        else:
+            logger.error(f"Неизвестный тип оплаты: {payment_type}")
+            progress_signal.emit("Неподдерживаемый тип оплаты", 100)
+            return 0, 0
     except ValueError as ve:
         logger.error(f"Ошибка: {ve}")
         progress_signal.emit(f"Ошибка: {str(ve)}", 100)
         return 0, 0
     except Exception as exp:
         logger.error(f"Неизвестная ошибка при проведении операции: {exp}")
-        progress_signal.emit(f"Неизвестная ошибка при проведении операции: {str(exp)}", 100)
+        if progress_signal is not None:
+            try:
+                progress_signal.emit(f"Неизвестная ошибка при проведении операции: {str(exp)}", 100)
+            except RuntimeError:
+                pass
         return 0, 0
 
 
@@ -847,15 +875,17 @@ def read_pinpad_file(remove_newline=True):
     try:
         with open(pinpad_file, "r", encoding="IBM866") as file:
             for line in file:
-                cleaned_line = line.rstrip() if remove_newline else line
-                result_lines.append(cleaned_line)
-            return result_lines  # список строк
+                # Убираем символ новой строки, если параметр remove_newline=True
+                line: str = line.rstrip() if remove_newline else line
+                result_lines.append(line)
+                print_text(line)
     except FileNotFoundError as not_found:
         logger.warning("Файл не найден: %s", not_found.filename)
         return None
     except UnicodeDecodeError as decode_error:
         logger.error("Ошибка декодирования файла: %s", decode_error)
         return None
+    return "".join(result_lines)
 
 
 @logger_wraps()
@@ -870,72 +900,43 @@ def print_slip_check(kol: int = 2):
             Функция не возвращает значений, но может вызывать исключения в случае ошибок при печати.
     """
     logger.info("Запуск функции print_slip_check")
-    lines = read_pinpad_file(remove_newline=True)
-    if not lines:
-        logger.error("Не удалось прочитать содержимое слип-чека")
-        return
-
     with fptr_connection(fptr):
+        line: str = read_pinpad_file(remove_newline=True)
+        if not line:
+            raise ValueError("Файл с чеком пуст или не может быть прочитан.")
         try:
-            # Проверка возможности печати
-            can_print, message = can_print_nonfiscal()
-            if not can_print:
-                logger.error(f"Невозможно напечатать слип-чек: {message}")
-                windows.info_window("Ошибка печати", "Не удалось напечатать слип-чек.", message)
-                return
-            # Первая копия
             # Открытие нефискального документа
             fptr.beginNonfiscalDocument()
-            for line in lines:
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-                fptr.printText()
             # Перенос строки
             fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-            # Промотка чековой ленты на одну строку (пустую)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
             fptr.printText()
+            # Отключаем печать подвала
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
             # Закрытие нефискального документа
             fptr.endNonfiscalDocument()
-            # Печать документа
-            fptr.report()
-
-            # Ожидание завершения печати
-            if not wait_for_nonfiscal_print():
-                logger.error("Печать слип-чека не завершена")
-                windows.info_window(
-                    "Ошибка печати",
-                    "Слип-чек не был напечатан.",
-                    "Проверьте бумагу и принтер."
-                )
-                return
-
-            # Частичная отрезка ЧЛ
-            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
-            # Отрезаем чек
-            fptr.cut()
-
-            # Создание копии нефискального документа
-            if kol == 2:
-                fptr.beginNonfiscalDocument()
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "")
-                fptr.printText()
-                for line in lines:
-                    fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-                    fptr.printText()
-                fptr.printText()
-                fptr.endNonfiscalDocument()
-                fptr.report()
-
-                if not wait_for_nonfiscal_print():
-                    logger.warning("Вторая копия слип-чека не напечатана")
-                    windows.info_window("Внимание", "Вторая копия слип-чека не напечатана.", "")
-                fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-                fptr.cut()
         except FileNotFoundError as not_found:
             logger.error(f"Файл не найден: {not_found.filename}")
-            windows.info_window("Ошибка", "Файл слип-чека не найден.", str(not_found))
         except Exception as e:
             logger.error(f"Ошибка при печати слип-чека: {e}")
-            windows.info_window("Ошибка", "Ошибка при печати слип-чека.", str(e))
+    # Создание копии нефискального документа
+    if kol == 2:
+        with fptr_connection(fptr):
+            try:
+                # Открытие нефискального документа
+                fptr.beginNonfiscalDocument()
+                # Перенос строки
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+                fptr.printText()
+                # Отключаем печать подвала
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
+                # Закрытие нефискального документа
+                fptr.endNonfiscalDocument()
+            except FileNotFoundError as not_found:
+                logger.error(f"Файл не найден: {not_found.filename}")
+            except Exception as e:
+                logger.error(f"Ошибка при печати слип-чека: {e}")
 
 
 @logger_wraps()
@@ -952,27 +953,20 @@ def print_pinpad_check(count: int = 2):
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
         try:
+            # Читаем чек из файла
+            line = read_pinpad_file(remove_newline=False)
+            if not line:
+                raise ValueError("Файл с чеком пуст или не может быть прочитан.")
             with fptr_connection(fptr):
                 fptr.beginNonfiscalDocument()
-
-                # Читаем чек из файла
-                line = read_pinpad_file(remove_newline=False)
-                if not line:
-                    raise ValueError("Файл с чеком пуст или не может быть прочитан.")
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-                fptr.printText()
                 # Перенос строки
                 fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-                # Промотка чековой ленты на одну строку (пустую)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
                 fptr.printText()
+                # Отключаем печать подвала
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
                 # Закрытие нефискального документа
                 fptr.endNonfiscalDocument()
-                # Печать документа
-                fptr.report()
-                # Полная отрезка ЧЛ
-                fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-                # Отрезаем чек
-                fptr.cut()
         except Exception as e:
             logger.error(f"Ошибка при печати слип-чека: {e}")
             # Информируем пользователя о проблемах с печатью
@@ -1553,10 +1547,10 @@ def balance_check():
             fptr.printText()
             fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
             fptr.printText()  # Промотка на одну строку
+            # Отключаем печать подвала
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
             fptr.endNonfiscalDocument()
             fptr.report()
-            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-            fptr.cut()
         return cashSum
     except ConnectionError as ce:
         # Ошибка подключения к фискальному принтеру
@@ -1578,80 +1572,6 @@ def balance_check():
         windows.info_window(
             "Ошибка", "Произошла ошибка при проверке баланса. Попробуйте снова.", ""
         )
-
-
-@logger_wraps()
-def operation_on_the_terminal(payment_type, type_operation, price):
-    """Проведение операции по банковскому терминалу.
-
-    Параметры:
-        payment_type (int):
-            Тип оплаты (например, 101 - оплата картой, 100 - offline оплата).
-        type_operation (int):
-            Тип операции (например, 1 - оплата, 2 - возврат, 3 - отмена).
-        price (float):
-            Сумма, на которую выполняется операция.
-
-    Возвращаемое значение:
-        tuple:
-            - bank (int): Результат операции по терминалу (1 - успех, 0 - ошибка).
-            - payment (int): Код оплаты (1 - оплата, 3 - offline).
-    """
-    logger.info("Запуск функции operation_on_the_terminal")
-    bank = None
-    try:
-        if payment_type == PAYMENT_ELECTRONIC:
-            payment = 1
-            if type_operation == 1:
-                logger.info("Запускаем оплату по банковскому терминалу")
-                # результат операции по терминалу
-                bank = terminal_oplata(str(price))
-                logger.debug(f"Результат операции по терминалу: {bank}")
-                if bank != 1:
-                    info = "Оплата по банковскому терминалу завершена с ошибкой"
-                    logger.warning(info)
-                    windows.info_window(info, "", "")
-                    return 0, payment
-            elif type_operation == 2:
-                logger.info("Запускаем операцию возврата по банковскому терминалу")
-                # результат операции по терминалу
-                bank = terminal_return(str(price))
-                logger.debug(f"Результат операции по терминалу: {bank}")
-                if bank != 1:
-                    info = "Возврат по банковскому терминалу завершен с ошибкой"
-                    logger.warning(info)
-                    windows.info_window(info, "", "")
-                    return 0, payment
-            elif type_operation == 3:
-                logger.info("Запускаем операцию отмены по банковскому терминалу")
-                # результат операции по терминалу
-                bank = terminal_canceling(str(price))
-                logger.debug(f"Результат операции по терминалу: {bank}")
-                if bank != 1:
-                    info = "Отмена по банковскому терминалу завершена с ошибкой"
-                    logger.warning(info)
-                    windows.info_window(info, "", "")
-                    return 0, payment
-        # если offline оплата банковской картой
-        elif payment_type == PAYMENT_OFFLINE:
-            payment = 3
-            # результат операции по терминалу
-            logger.info("Запускаем offline оплату по банковскому терминалу")
-            bank = 1
-        else:
-            raise ValueError(f"Неизвестный тип оплаты: {payment_type}")
-        # Возвращаем результат
-        return bank, payment
-    except ValueError as ve:
-        logger.error(f"Ошибка: {ve}")
-        windows.info_window("Ошибка", f"Неверный тип операции или параметр: {ve}", "")
-        return 0, 0
-    except Exception as e:
-        logger.error(f"Неизвестная ошибка при проведении операции: {e}")
-        windows.info_window(
-            "Ошибка", "Произошла ошибка при проведении операции. Попробуйте снова.", ""
-        )
-        return 0, 0
 
 
 def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT20):
@@ -1788,10 +1708,49 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
     logger.info("Запуск функции process_payment")
     logger.debug(f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {_}")
     try:
-        # Всегда берем сумму из sale_dict
-        payment_amount = sale_dict["detail"][7]
+        # Проверка payment_type
+        if not isinstance(payment_type, int):
+            logger.error(f"Некорректный тип payment_type: {type(payment_type)}, значение: {payment_type}")
+            return False
+
+        # Определение суммы
+        payment_amount = None
+
+        # Если есть sale_dict["detail"][7] — используем
+        if isinstance(sale_dict, dict) and "detail" in sale_dict:
+            try:
+                payment_amount = sale_dict["detail"][7]
+                if isinstance(payment_amount, (int, float)) and payment_amount > 0:
+                    logger.debug(f"Сумма получена из sale_dict['detail'][7]: {payment_amount}")
+            except (IndexError, TypeError):
+                pass
+
+        # Если не получилось — пытаемся посчитать из позиций
+        if payment_amount is None:
+            total = 0
+            valid = False
+            for item_data in sale_dict.values():
+                if isinstance(item_data, list) and len(item_data) >= 2:
+                    price = item_data[0]
+                    qty = item_data[1]
+                    if isinstance(price, (int, float)) and isinstance(qty, int) and price > 0 and qty > 0:
+                        total += price * qty
+                        valid = True
+            if valid and total > 0:
+                payment_amount = total
+                logger.debug(f"Сумма рассчитана по позициям: {payment_amount}")
+            else:
+                logger.error("Не удалось определить сумму из sale_dict: нет данных")
+                return False
+
         if not isinstance(payment_amount, (int, float)) or payment_amount <= 0:
-            raise ValueError(f"Некорректная сумма: {payment_amount}")
+            logger.error(f"Некорректная сумма: {payment_amount}")
+            return False
+
+        # Проверка финальной суммы
+        if not isinstance(payment_amount, (int, float)) or payment_amount <= 0:
+            logger.error(f"Некорректная сумма: {payment_amount}")
+            return False
 
         if payment_type == PAYMENT_CASH:
             logger.info("Оплата наличными")
@@ -1814,81 +1773,90 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
             return False
         device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, payment_amount)
         device.payment()
-        device.closeReceipt()
+        # Закрытие чека
+        result = device.closeReceipt()
+        if result < 0:
+            code = device.errorCode()
+            desc = device.errorDescription()
+            logger.error(f"Ошибка закрытия чека (closeReceipt): [{code}] {desc}")
+
+            return False
+
+        logger.info("Чек успешно оплачен и закрыт")
         return True
     except Exception as exc:
         logger.error(f"Ошибка обработки платежа: {exc}")
         return False
 
 
-# def handle_document_errors(device, retry_count, max_retries, on_error=None):
-#     """Функция пытается закрыть документ, повторяя попытки в случае ошибки до достижения максимального числа попыток.
-#
-#     Параметры:
-#         device (object): Объект устройства для работы с чеками.
-#         retry_count (int): Текущее количество попыток.
-#         max_retries (int): Максимальное количество попыток закрытия документа.
-#         on_error (callable, optional): Функция для обработки ошибок, вызываемая при достижении максимального числа попыток.
-#
-#     Возвращаемое значение:
-#         bool: Возвращает `True`, если документ был успешно закрыт, или `False`, если после всех попыток документ не закрылся.
-#     """
-#     logger.info("Запуск функции handle_document_errors")
-#     # Проверяем, закрыт ли документ
-#     while device.checkDocumentClosed() < 0:
-#         logger.warning(f"Не удалось проверить состояние документа: {device.errorDescription()}")
-#         if retry_count >= max_retries - 1:
-#             if on_error:
-#                 on_error("Ошибка ККТ", f"Не удалось проверить состояние документа после {max_retries} попыток. "
-#                                        f"Проверьте соединение с ККТ и не выключайте ПК.")
-#             return False
-#
-#         if on_error:
-#             on_error("Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
-#
-#         retry_count += 1
-#         time.sleep(3)
-#
-#     # Если документ не закрылся — требуется отмена чека и переоформление
-#     if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
-#         logger.error("Документ не закрылся. Требуется отмена.")
-#         try:
-#             device.cancelReceipt()
-#             logger.info("Чек успешно отменен")
-#         except Exception as e:
-#             logger.critical(f"Ошибка при отмене чека: {e}")
-#             if on_error:
-#                 on_error("Критическая ошибка", "Не удалось отменить чек. Требуется перезагрузка ККТ.")
-#             # Пробрасываем исключение наверх
-#             raise
-#
-#         if on_error:
-#             on_error("Документ не закрыт", "Чек отменен. Требуется сформировать его заново.")
-#         return False
-#
-#     # Если документ не напечатан — попробовать допечатать
-#     if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED):
-#         logger.warning("Документ не допечатан. Попытки допечатки...")
-#         for print_attempt in range(5):
-#             if device.continuePrint() >= 0:
-#                 logger.info("Документ успешно допечатан")
-#                 return True
-#
-#             logger.warning(f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}")
-#             if on_error:
-#                 on_error("Ошибка печати", f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.")
-#             time.sleep(3)
-#
-#         logger.error("Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции.")
-#         # Документ закрыт, но не допечатан — допустимо.
-#         # Документ будет автоматически допечатан при следующей печатной операции.
-#
-#         # TODO: При критических сценариях — например, если бумага кончилась — желательно уведомлять кассира и не открывать новый чек, пока не завершится печать.
-#
-#         return True
-#
-#     # Успешное закрытие и печать документа
-#     return True
+def handle_document_errors(device, retry_count, max_retries, on_error=None):
+    """Функция пытается закрыть документ, повторяя попытки в случае ошибки до достижения максимального числа попыток.
+
+    Параметры:
+        device (object): Объект устройства для работы с чеками.
+        retry_count (int): Текущее количество попыток.
+        max_retries (int): Максимальное количество попыток закрытия документа.
+        on_error (callable, optional): Функция для обработки ошибок, вызываемая при достижении максимального числа попыток.
+
+    Возвращаемое значение:
+        bool: Возвращает `True`, если документ был успешно закрыт, или `False`, если после всех попыток документ не закрылся.
+    """
+    logger.info("Запуск функции handle_document_errors")
+    # Проверяем, закрыт ли документ
+    while device.checkDocumentClosed() < 0:
+        logger.warning(f"Не удалось проверить состояние документа: {device.errorDescription()}")
+        if retry_count >= max_retries - 1:
+            if on_error:
+                on_error("Ошибка ККТ", f"Не удалось проверить состояние документа после {max_retries} попыток. "
+                                       f"Проверьте соединение с ККТ и не выключайте ПК.")
+            return False
+
+        if on_error:
+            on_error("Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
+
+        retry_count += 1
+        time.sleep(5)
+
+    # Если документ не закрылся — требуется отмена чека и переоформление
+    if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
+        logger.error("Документ не закрылся. Требуется отмена.")
+        try:
+            device.cancelReceipt()
+            logger.info("Чек успешно отменен")
+        except Exception as e:
+            logger.critical(f"Ошибка при отмене чека: {e}")
+            if on_error:
+                on_error("Критическая ошибка", "Не удалось отменить чек. Требуется перезагрузка ККТ.")
+            # Пробрасываем исключение наверх
+            raise
+
+        if on_error:
+            on_error("Документ не закрыт", "Чек отменен. Требуется сформировать его заново.")
+        return False
+
+    # Если документ не напечатан — попробовать допечатать
+    if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED):
+        logger.warning("Документ не допечатан. Попытки допечатки...")
+        for print_attempt in range(5):
+            if device.continuePrint() >= 0:
+                logger.info("Документ успешно допечатан")
+                return True
+
+            logger.warning(f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}")
+            if on_error:
+                on_error("Ошибка печати", f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.")
+            time.sleep(3)
+
+        logger.error("Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции.")
+        # Документ закрыт, но не допечатан — допустимо.
+        # Документ будет автоматически допечатан при следующей печатной операции.
+
+        # TODO: При критических сценариях — например, если бумага кончилась — желательно уведомлять кассира и не открывать новый чек, пока не завершится печать.
+
+        return True
+
+    # Успешное закрытие и печать документа
+    return True
 
 
 def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank_status, on_error=None):
@@ -1907,8 +1875,8 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
         int: 1 - успех, 0 - ошибка.
     """
     logger.info("Запуск функции check_open")
-    # retry_count = 0
-    # max_retries = 5
+    retry_count = 0
+    max_retries = 15
     logger.debug(
         f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type},type_operation = {type_operation}, bank_status = {bank_status}"
     )
@@ -1926,13 +1894,17 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 logger.warning("РЕЖИМ ОТЛАДКИ: Пропуск работы с ККТ")
                 # В режиме отладки пропускаем ошибку
                 return 1
-
-            # Проверка состояния
-            if not pre_check_document_state(device, on_error):
-                return 0
-
             # Настройка параметров ККМ
             setup_fptr(device, user, type_operation, print_check)
+            # Установка типа чека
+            if type_operation == 1:
+                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)      # Продажа
+            elif type_operation == 2:
+                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)    # Возврат
+            else:
+                logger.error(f"Неизвестный тип операции: {type_operation}")
+                return False
+
             # Открытие чека
             device.openReceipt()
             # Регистрация билетов
@@ -1941,15 +1913,9 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             if not process_payment(device, payment_type, bank_status, sale_dict, None):
                 logger.error("Ошибка обработки платежа")
                 return 0
-
-            # # Проверка состояния документа
-            # if not handle_document_errors(device, retry_count, max_retries, on_error):
-            #     return 0
-
-            # Проверка результата (после closeReceipt)
-            if not post_check_document_result(device, on_error):
+            # Проверка состояния документа
+            if not handle_document_errors(device, retry_count, max_retries, on_error):
                 return 0
-
             # Продолжение печати, если чек не печатается
             if print_check == 0:
                 device.continuePrint()
@@ -2051,46 +2017,18 @@ def continue_print():
             Функция не возвращает значений, но продолжает печать текущего документа.
     """
     logger.info("Запуск функции continue_print")
-    with fptr_connection(fptr):
-        try:
-            # Проверка состояния ККТ
-            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
-            fptr.queryData()
-
-            doc_closed = fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED)
-            doc_printed = fptr.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED)
-
-            if not doc_closed:
-                logger.warning("Нельзя допечатать: документ не закрыт")
-                windows.info_window(
-                    "Невозможно допечатать",
-                    "Документ не закрыт. Требуется его отменить."
-                )
-                return
-
-            if doc_printed:
-                logger.info("Документ уже напечатан")
-                windows.info_window("Информация", "", "Документ уже напечатан.")
-                return
-
-            # Попытка допечатать
-            for attempt in range(3):
-                result = fptr.continuePrint()
-                if result >= 0:
-                    logger.info("Документ успешно допечатан")
-                    windows.info_window("Успех", "", "Документ допечатан.")
-                    return
-                logger.warning(f"Попытка допечатки №{attempt + 1} не удалась: {fptr.errorDescription()}")
-                time.sleep(1)
-
-            # Если не удалось
-            error_desc = fptr.errorDescription()
-            logger.error(f"Не удалось допечатать документ после 3 попыток: {error_desc}")
-            windows.info_window("Ошибка", "Не удалось допечатать документ.", error_desc)
-
-        except Exception as e:
-            logger.error(f"Ошибка при допечатке: {e}")
-            windows.info_window("Ошибка", "Произошла ошибка при допечатке.", str(e))
+    try:
+        # Попытка продолжить печать
+        fptr.continuePrint()
+    except Exception as e:
+        # Логирование ошибки
+        logger.error(f"Ошибка при продолжении печати: {e}")
+        # Уведомление пользователя
+        windows.info_window(
+            "Ошибка при продолжении печати.",
+            "Пожалуйста, проверьте подключение к фискальному принтеру и повторите попытку.",
+            str(e),
+        )
 
 
 def print_text(text: str):
@@ -2119,142 +2057,3 @@ def print_text(text: str):
             "Пожалуйста, проверьте принтер и повторите попытку.",
             str(e),
         )
-
-def pre_check_document_state(device, on_error=None):
-    """Проверка состояния ККТ перед открытием чека."""
-    logger.info("Проверка состояния документа перед открытием чека")
-
-    try:
-        device.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
-        device.queryData()
-
-        # Проверяем через DOCUMENT_TYPE
-        doc_type = device.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_TYPE)
-        if doc_type != IFptr.LIBFPTR_DT_CLOSED:
-            logger.error(f"ККТ: документ уже открыт (тип: {doc_type}).")
-            if on_error:
-                on_error("Ошибка ККТ", "Документ уже открыт. Требуется закрыть или отменить.")
-            return False
-
-        # Проверка бумаги
-        paper_present = device.getParamBool(IFptr.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)
-        if not paper_present:
-            logger.warning("Нет бумаги в чековом принтере")
-            if on_error:
-                on_error("Ошибка ККТ", "Замените бумагу и повторите операцию.")
-            return False
-
-        # Если документ закрыт, но не напечатан — попробовать допечатать
-        doc_printed = device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED)
-        if not doc_printed:
-            logger.warning("Чек закрыт, но не напечатан. Попытка допечатки...")
-            for _ in range(5):
-                if device.continuePrint() >= 0:
-                    logger.info("Чек успешно допечатан")
-                    break
-                time.sleep(1)
-            else:
-                logger.warning("Не удалось допечатать. Будет напечатан при следующей операции.")
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Ошибка при проверке состояния ККТ: {e}")
-        if on_error:
-            on_error("Ошибка ККТ", "Не удалось проверить состояние ККТ.")
-        return False
-
-
-def post_check_document_result(device, on_error=None):
-    """Проверка результата закрытия чека."""
-    logger.info("Запуск функции post_check_document_result")
-
-    # Проверяем, закрылся ли документ
-    while device.checkDocumentClosed() < 0:
-        logger.warning(f"Не удалось проверить состояние: {device.errorDescription()}")
-        if on_error:
-            on_error("Ошибка связи", "Не удалось проверить состояние чека. Повтор...")
-        time.sleep(5)
-    else:
-        if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
-            logger.error("Чек не закрылся в ФН. Требуется отмена.")
-            try:
-                device.cancelReceipt()
-                logger.info("Чек отменён")
-                if on_error:
-                    on_error("Ошибка", "Чек не закрылся. Он был отменён. Повторите операцию.")
-            except Exception as e:
-                logger.critical(f"Ошибка отмены: {e}")
-                if on_error:
-                    on_error("Критическая ошибка", "Не удалось отменить чек.")
-            return False
-
-    # Проверяем печать
-    if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_PRINTED):
-        logger.warning("Чек не напечатан. Попытка допечатки...")
-        for _ in range(15):
-            if device.continuePrint() >= 0:
-                logger.info("Чек допечатан")
-                return True
-            logger.warning(f"Допечатка не удалась: {device.errorDescription()}")
-            if on_error:
-                on_error("Ошибка печати", f"Не удалось допечатать: {device.errorDescription()}")
-            time.sleep(1)
-        logger.warning("Не удалось допечатать. Будет напечатан при следующей операции.")
-
-    return True
-
-def can_print_nonfiscal():
-    """Проверяет, можно ли печатать нефискальный документ."""
-    try:
-        fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
-        fptr.queryData()
-
-        # Проверка бумаги
-        paper_present = fptr.getParamBool(IFptr.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)
-        if not paper_present:
-            logger.warning("Нет бумаги в чековом принтере")
-            return False, "Нет бумаги. Замените ленту."
-
-        # Проверка крышки
-        cover_opened = fptr.getParamBool(IFptr.LIBFPTR_PARAM_COVER_OPENED)
-        if cover_opened:
-            logger.warning("Крышка ККТ открыта")
-            return False, "Крышка ККТ открыта. Закройте и повторите."
-
-        # Проверка перегрева
-        overheated = fptr.getParamBool(IFptr.LIBFPTR_PARAM_PRINTER_OVERHEAT)
-        if overheated:
-            logger.warning("Принтер перегрет")
-            return False, "Принтер перегрет. Дайте остыть."
-
-        return True, "Готов к печати"
-
-    except Exception as e:
-        logger.error(f"Ошибка при проверке состояния ККТ: {e}")
-        return False, "Не удалось проверить состояние ККТ"
-
-
-def wait_for_nonfiscal_print(max_attempts=10):
-    """Ожидание завершения печати нефискального документа."""
-    for attempt in range(max_attempts):
-        try:
-            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
-            fptr.queryData()
-
-            doc_type = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_TYPE)
-            if doc_type == IFptr.LIBFPTR_DT_CLOSED:
-                logger.info("Нефискальный документ успешно закрыт и напечатан")
-                return True
-
-            if doc_type == IFptr.LIBFPTR_DT_DOCUMENT_SERVICE:
-                # Документ в процессе печати
-                time.sleep(1)
-                continue
-
-        except Exception as e:
-            logger.warning(f"Ошибка при проверке состояния: {e}")
-            time.sleep(1)
-
-    logger.error("Не удалось дождаться завершения печати нефискального документа")
-    return False
