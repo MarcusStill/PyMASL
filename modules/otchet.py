@@ -470,27 +470,29 @@ def process_sales_and_returns(
         for name in system.pcs
     }
 
-    type_rm = [1, 2]  # 1 - карта, 2 - наличные
-    RETURN_FIELDS = {2: "return", 4: "return_again", 6: "return_partial"}
+    type_rm = [1, 2, 3]  # 1 - карта, 2 - наличные, 3 - offline
+    return_fields: dict[int, str] = {2: "return", 4: "return_again", 6: "return_partial"}
 
     for sale in sales:
         pc_name = sale[0]
         if pc_name not in pcs:
             continue
-        if sale[1] == type_rm[0]:
+        if sale[1] == type_rm[0] or sale[1] == type_rm[2]:
+            pcs[pc_name]["card"] += sale[2]
+        elif sale[1] == type_rm[2]:
             pcs[pc_name]["card"] += sale[2]
         else:
             pcs[pc_name]["cash"] += sale[2]
 
     for sale in sales_return:
         return_type = sale[3]
-        if return_type not in RETURN_FIELDS:
+        if return_type not in return_fields:
             continue
         pc_name = sale[0]
         if pc_name in pcs:
             return_type = sale[3]
-            if return_type in RETURN_FIELDS:
-                pcs[pc_name][RETURN_FIELDS[return_type]] += 1
+            if return_type in return_fields:
+                pcs[pc_name][return_fields[return_type]] += 1
                 if sale[1] == 1:
                     pcs[pc_name]["return_card"] += sale[2]
                 else:

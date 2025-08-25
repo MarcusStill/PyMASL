@@ -234,7 +234,10 @@ class TransactionWorker(BaseWorker):
         # Флаг cleanup
         self._is_cleaned = False
 
-        amount = system.sale_dict["detail"][7]
+        try:
+            amount = system.sale_dict["detail"][7]
+        except (KeyError, IndexError, TypeError) as e:
+            logger.warning(f"Ошибка получения amount: {e}.")
 
         # Инициализация обработчиков
         self.payment_handler = PaymentHandler(
@@ -266,8 +269,8 @@ class TransactionWorker(BaseWorker):
             if self.dev_mode:
                 self.logger.info("РЕЖИМ ОТЛАДКИ: Имитация банковского платежа")
                 # Генерируем тестовые данные
-                check = (f"DEBUG_SLIP\nДата: {dt.datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
-                         f"Сумма: {self.amount} руб.\nТип: {'Онлайн' if self.payment_type == 101 else 'Оффлайн'}")
+                # check = (f"DEBUG_SLIP\nДата: {dt.datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
+                #          f"Сумма: {self.amount} руб.\nТип: {'Онлайн' if self.payment_type == 101 else 'Оффлайн'}")
                 payment = 1  # Имитируем успешную онлайн-оплату
             else:
                 success, payment = self.payment_handler.process_bank_payment()
@@ -277,13 +280,14 @@ class TransactionWorker(BaseWorker):
                 # Сохраняем банковский чек
                 self.delayed_progress_update("Сохраняем банковский чек...", 45)
                 if payment == 3:
-                    check = "offline"
+                    # Успешный статус для check_open
+                    bank_status = 1
                 else:
                     check = self.pq.read_pinpad_file(remove_newline=False)
                     self.log_step(timer, "pq.read_pinpad_file finished")
-            # Успешный статус для check_open
-            bank_status = 1
-            self.db_handler.update_sale(self.system.sale_id,bank_pay=check)
+                    # Успешный статус для check_open
+                    bank_status = 1
+                    self.db_handler.update_sale(self.system.sale_id,bank_pay=check)
             self.log_step(timer, "save in db finished")
 
             if self.print_check == 1 and payment == 1:
