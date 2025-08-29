@@ -1402,11 +1402,11 @@ def kassir_reg(user):
     try:
         with fptr_connection(fptr):
             # Параметры для регистрации кассира
-            fptr.setParam(1021, f"{user.last_name} {user.first_name}")
+            fptr.setParam(1021, f"{user.last_name} {user.first_name} {user.middle_name}")
             fptr.setParam(1203, user.inn)
             fptr.operatorLogin()
         logger.info(
-            f"Кассир {user.last_name} {user.first_name} зарегистрирован успешно."
+            f"Кассир {user.last_name} {user.first_name} {user.middle_name} зарегистрирован успешно."
         )
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")

@@ -331,7 +331,7 @@ class TransactionWorker(BaseWorker):
             return True
 
         except Exception as e:
-            logger.exception("Ошибка при печати чеков: %s", e)
+            logger.exception("Ошибка при печати чеков и сохранению продажи в БД: %s", e)
             return False
 
     def finalize_transaction(self, timer):
