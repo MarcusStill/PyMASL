@@ -158,10 +158,12 @@ def fptr_connection(device):
         logger.warning("ККТ не доступен, пропускаем подключение")
         yield None
         return
-
+    connected: bool = False
     try:
         # Попытка подключения
         device.open()
+        connected = True
+
         if not hasattr(device, 'isOpened') or not device.isOpened():
             logger.warning("Не удалось открыть соединение с ККТ")
             yield None
@@ -175,13 +177,13 @@ def fptr_connection(device):
 
     finally:
         try:
-            if device:
+            if connected and device:
                 device.close()
         except Exception as e:
             logger.warning(f"Ошибка при закрытии соединения с ККТ: {e}")
 
 
-def run_terminal_command(command_params: str, timeout: int = 120):
+def run_terminal_command(command_params: str, timeout: int = 300):
     """
     Выполняет команду на терминале и возвращает результат выполнения.
 
@@ -287,6 +289,13 @@ def process_success_result():
     return 0
 
 
+def _safe_handle_error(returncode, title, message, error_callback):
+    """Обертка try/except для handle_error."""
+    try:
+        handle_error(returncode, title, message, error_callback)
+    except Exception as e:
+        logger.exception(f"Ошибка при вызове handle_error для кода {returncode}: {e}")
+
 @logger_wraps()
 def handle_error(code, title, message, error_callback=None):
     """Универсальная обработка ошибок терминала.
@@ -307,10 +316,8 @@ def handle_error(code, title, message, error_callback=None):
             return
         except Exception as e:
             logger.error(f"Ошибка в callback: {e}")
-
-    # Fallback на GUI
-    if hasattr(windows, 'info_window'):
-        windows.info_window(title, message, f"Код: {code}")
+    else:
+        logger.error(f"Ошибка: {title} | {message} | Код: {code}")
 
 
 @logger_wraps()
@@ -367,7 +374,7 @@ def process_terminal_error(returncode, error_callback=None):
     }
 
     if returncode in TERMINAL_CARD_BLOCKED:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Карта клиента заблокирована",
             f"Карта клиента заблокирована. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
@@ -375,7 +382,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_CARD_LIMIT:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Превышен лимит операций",
             "Превышен лимит операций. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
@@ -383,7 +390,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_BIOMETRIC_ERROR:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Ошибка в работе с биометрическими данными",
             f"Ошибка в работе с биометрическими данными. Обратитесь в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
@@ -391,7 +398,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_ERROR_PIN_CODE:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Ошибка при вводе ПИН-кода",
             "ПИН-код не был введен, либо введен неверно, либо вводимый ПИН-код заблокирован. Попробуйте повторить операцию оплаты.",
@@ -399,7 +406,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_NO_CONNECTION_BANK:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Нет связи с банком",
             f"Попробуйте повторить операцию через пару минут. При повторении ошибки необходимо обратиться в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
@@ -407,7 +414,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_NEED_CASH_COLLECTION:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Необходимо произвести инкассацию",
             f"Необходимо произвести инкассацию. Обратитесь в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
@@ -415,7 +422,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_LIMIT_OPERATION:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Превышен лимит операций",
             f"Превышен лимит операций. Обратитесь в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
@@ -423,7 +430,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_DATA_EXCHANGE:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Требуется сделать сверку итогов",
             "Требуется сделать сверку итогов и повторить операцию.",
@@ -431,7 +438,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_KLK:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Ошибка в работе терминала",
             f"Необходимо обратиться в службу поддержки банка. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
@@ -439,7 +446,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_CARD_ERROR:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Операцию невозможно выполнить для этой карты",
             f"Необходимо повторить попытку. Если проблема сохраняется – использовать другую карту. Код возврата: {returncode}.",
@@ -447,7 +454,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_SERVER_ROUTINE_MAINTENANCE:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Сервера Сбербанка недоступны",
             f"Сервера Сбербанка находятся на обслуживании/ремонте/регламентных работах. Попробуйте повторить операцию позже. Если проблема сохраняется - обратитесь в службу поддержки. Телефон тех.поддержки {TERMINAL_SUPPORT}.Код возврата: {returncode}.",
@@ -455,7 +462,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_NO_MONEY:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Недостаточно средств на карте",
             f"Недостаточно средств на карте. Попробуйте произвести оплату другой картой.",
@@ -463,7 +470,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_COMMAND_ERROR:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Нет нужного варианта связи для операции",
             f"Нет нужного варианта связи для операции. Обратитесь в службу поддержки ПО. Код возврата: {returncode}.",
@@ -471,7 +478,7 @@ def process_terminal_error(returncode, error_callback=None):
         )
         return 0
     if returncode in TERMINAL_PIN_PAD_ERROR:
-        handle_error(
+        _safe_handle_error(
             returncode,
             "Проблема в работе ПИН-пада.",
             f"Необходимо обратиться в службу поддержки банка. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
@@ -483,12 +490,12 @@ def process_terminal_error(returncode, error_callback=None):
         title, message = error_handlers[returncode]
         logger.debug(f"Передаю callback в handle_error: {error_callback}")
         # Явно передаём как позиционный аргумент
-        handle_error(returncode, title, message, error_callback)
+        _safe_handle_error(returncode, title, message, error_callback)
         return 0
 
     # Неизвестный код
     logger.error(f"Неизвестный код возврата: {returncode}")
-    handle_error(
+    _safe_handle_error(
         returncode,
         "Ошибка терминала",
         f"Возвращен неизвестный код ошибки. Обратитесь в службу поддержки. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
@@ -512,33 +519,6 @@ def terminal_oplata(amount: float) -> int:
 
 
 @logger_wraps()
-def terminal_return(amount: float) -> int:
-    """
-    Выполняет операцию возврата через терминал.
-
-    Параметры:
-        amount (float): Сумма возврата в рублях.
-
-    Возвращаемое значение:
-        int: 1 — успех, 0 — ошибка.
-    """
-    return process_terminal_transaction("3", amount, "Возврат")
-
-
-@logger_wraps()
-def terminal_canceling(amount: float) -> int:
-    """
-    Выполняет операцию отмены через терминал.
-
-    Параметры:
-        amount (float): Сумма операции отмены в рублях.
-
-    Возвращаемое значение:
-        int: 1 — успех, 0 — ошибка.
-    """
-    return process_terminal_transaction("8", amount, "Отмена")
-
-@logger_wraps()
 def process_terminal_transaction(command_code: str, amount: float, operation_name: str, error_callback=None) -> int:
     """
     Обрабатывает операцию на банковском терминале.
@@ -560,7 +540,7 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
 
     if result is None:
         logger.error(f"Ошибка при выполнении команды терминала: {command}")
-        handle_error(
+        _safe_handle_error(
             f"Нет ответа от терминала",
             f"{operation_name} не была выполнена. Проверьте устройство.",
             "Код ошибки: отсутствует",
@@ -573,10 +553,6 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
     if result.returncode == TERMINAL_SUCCESS_CODE:
         return process_success_result()
 
-    if result.returncode != TERMINAL_SUCCESS_CODE:
-        process_terminal_error(result.returncode, error_callback)
-        return 0
-
     # Логируем stderr, если есть
     if result.stderr:
         try:
@@ -585,10 +561,17 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
             err_output = str(result.stderr)
         logger.error(f"Терминал вернул ошибку: {err_output}")
 
-    return process_terminal_error(result.returncode)
+    # Все остальные коды — ошибка
+    process_terminal_error(result.returncode, error_callback)
+    return 0
 
 
-def universal_terminal_operation(payment_type: int, amount: float, progress_signal, error_callback=None) -> tuple[int, int]:
+def universal_terminal_operation(
+        payment_type: int,
+        amount: float,
+        progress_signal,
+        operation_type: int = 1,
+        error_callback=None) -> tuple[int, int]:
     """
     Универсальный обработчик терминальных операций для оплаты или возврата.
 
@@ -596,6 +579,9 @@ def universal_terminal_operation(payment_type: int, amount: float, progress_sign
         payment_type (int): Тип оплаты (например, 1 — карта, 3 — оффлайн).
         amount (float): Сумма операции в рублях.
         progress_signal: Сигнал для обновления статуса прогресса.
+        operation_type (int): Тип операции:
+            1 — оплата, 2 — возврат, 3 — отмена.
+        error_callback: Функция обратного вызова для обработки ошибок.
 
     Возвращаемое значение:
         tuple:
@@ -603,31 +589,78 @@ def universal_terminal_operation(payment_type: int, amount: float, progress_sign
             - payment_code (int): Код оплаты (1 — карта, 3 — оффлайн).
     """
     try:
+        # Определяем код команды и название операции
+        if operation_type == 1:
+            command_code = "1"
+            operation_name = "Оплата"
+            progress_text = "Запускаем оплату по банковскому терминалу..."
+        elif operation_type == 2:
+            command_code = "3"
+            operation_name = "Возврат"
+            progress_text = "Запускаем возврат по банковскому терминалу..."
+        elif operation_type == 3:
+            command_code = "8"
+            operation_name = "Отмена"
+            progress_text = "Запускаем отмену по банковскому терминалу..."
+        else:
+            logger.error(f"Неподдерживаемый тип операции: {operation_type}")
+            if progress_signal is not None:
+                try:
+                    progress_signal.emit("Ошибка: неподдерживаемый тип операции", 100)
+                except RuntimeError:
+                    pass  # На случай, если сигнал уже недоступен
+            return 0, 0
+
         if payment_type == PAYMENT_ELECTRONIC:
-            logger.info("Запускаем оплату по банковскому терминалу")
-            progress_signal.emit("Запускаем оплату по банковскому терминалу...", 35)
-            bank = process_terminal_transaction("1", amount, "Оплата", error_callback)
+            logger.info(f"Запускаем {operation_name} по банковскому терминалу")
+
+            # Проверяем progress_signal перед emit
+            if progress_signal is not None:
+                try:
+                    progress_signal.emit(progress_text, 35)
+                except Exception:
+                    pass  # Игнорируем ошибки emit
+
+            bank = process_terminal_transaction(command_code, amount, operation_name, error_callback)
             if bank == 1:
-                progress_signal.emit("Оплата успешна.", 45)
-                return (bank, 1)  # bank, 1 — card
-            elif bank == 0:
-                progress_signal.emit("Ошибка оплаты.", 100)
-                return 0, 1  # 0 — error, 1 — card
+                if progress_signal is not None:
+                    try:
+                        progress_signal.emit(f"{operation_name} успешна.", 45)
+                    except Exception:
+                        pass
+                return bank, 1
+            else:
+                if progress_signal is not None:
+                    try:
+                        progress_signal.emit(f"Ошибка {operation_name.lower()}.", 100)
+                    except Exception:
+                        pass
+                return 0, 1
         elif payment_type == PAYMENT_OFFLINE:
+            if operation_type != 1:
+                logger.warning("Оффлайн-режим не поддерживается для возврата или отмены")
+                progress_signal.emit("Оффлайн: только оплата", 100)
+                return 0, 0
+
             logger.info("Запускаем offline оплату по банковскому терминалу")
             progress_signal.emit("Запускаем offline оплату по банковскому терминалу...", 35)
-            return 1, 3  # 1 — success, 3 — offline
+            return 1, 3  # успех, offline
 
-        # Явный return, если ни одно из условий не выполнено
-        progress_signal.emit("Неподдерживаемый тип оплаты", 100)
-        return 0, 0
+        else:
+            logger.error(f"Неизвестный тип оплаты: {payment_type}")
+            progress_signal.emit("Неподдерживаемый тип оплаты", 100)
+            return 0, 0
     except ValueError as ve:
         logger.error(f"Ошибка: {ve}")
         progress_signal.emit(f"Ошибка: {str(ve)}", 100)
         return 0, 0
     except Exception as exp:
         logger.error(f"Неизвестная ошибка при проведении операции: {exp}")
-        progress_signal.emit(f"Неизвестная ошибка при проведении операции: {str(exp)}", 100)
+        if progress_signal is not None:
+            try:
+                progress_signal.emit(f"Неизвестная ошибка при проведении операции: {str(exp)}", 100)
+            except RuntimeError:
+                pass
         return 0, 0
 
 
@@ -868,42 +901,42 @@ def print_slip_check(kol: int = 2):
     """
     logger.info("Запуск функции print_slip_check")
     with fptr_connection(fptr):
+        line: str = read_pinpad_file(remove_newline=True)
+        if not line:
+            raise ValueError("Файл с чеком пуст или не может быть прочитан.")
         try:
             # Открытие нефискального документа
             fptr.beginNonfiscalDocument()
-            line: str = read_pinpad_file(remove_newline=True)
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-            fptr.printText()
             # Перенос строки
             fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-            # Промотка чековой ленты на одну строку (пустую)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
             fptr.printText()
+            # Отключаем печать подвала
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
             # Закрытие нефискального документа
             fptr.endNonfiscalDocument()
-            # Печать документа
-            fptr.report()
-            # Частичная отрезка ЧЛ
-            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_PART)
-            # Отрезаем чек
-            fptr.cut()
-            # Создание копии нефискального документа
-            if kol == 2:
-                # Печатаем копию слип-чека
-                fptr.beginNonfiscalDocument()
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, "")
-                fptr.printText()
-                line = read_pinpad_file(remove_newline=True)
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-                fptr.printText()
-                fptr.printText()
-                fptr.endNonfiscalDocument()
-                fptr.report()
-                fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-                fptr.cut()
         except FileNotFoundError as not_found:
             logger.error(f"Файл не найден: {not_found.filename}")
         except Exception as e:
             logger.error(f"Ошибка при печати слип-чека: {e}")
+    # Создание копии нефискального документа
+    if kol == 2:
+        with fptr_connection(fptr):
+            try:
+                # Открытие нефискального документа
+                fptr.beginNonfiscalDocument()
+                # Перенос строки
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
+                fptr.printText()
+                # Отключаем печать подвала
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
+                # Закрытие нефискального документа
+                fptr.endNonfiscalDocument()
+            except FileNotFoundError as not_found:
+                logger.error(f"Файл не найден: {not_found.filename}")
+            except Exception as e:
+                logger.error(f"Ошибка при печати слип-чека: {e}")
 
 
 @logger_wraps()
@@ -920,27 +953,20 @@ def print_pinpad_check(count: int = 2):
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
         try:
+            # Читаем чек из файла
+            line = read_pinpad_file(remove_newline=False)
+            if not line:
+                raise ValueError("Файл с чеком пуст или не может быть прочитан.")
             with fptr_connection(fptr):
                 fptr.beginNonfiscalDocument()
-
-                # Читаем чек из файла
-                line = read_pinpad_file(remove_newline=False)
-                if not line:
-                    raise ValueError("Файл с чеком пуст или не может быть прочитан.")
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
-                fptr.printText()
                 # Перенос строки
                 fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
-                # Промотка чековой ленты на одну строку (пустую)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
                 fptr.printText()
+                # Отключаем печать подвала
+                fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
                 # Закрытие нефискального документа
                 fptr.endNonfiscalDocument()
-                # Печать документа
-                fptr.report()
-                # Полная отрезка ЧЛ
-                fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-                # Отрезаем чек
-                fptr.cut()
         except Exception as e:
             logger.error(f"Ошибка при печати слип-чека: {e}")
             # Информируем пользователя о проблемах с печатью
@@ -1376,11 +1402,11 @@ def kassir_reg(user):
     try:
         with fptr_connection(fptr):
             # Параметры для регистрации кассира
-            fptr.setParam(1021, f"{user.last_name} {user.first_name}")
+            fptr.setParam(1021, f"{user.last_name} {user.first_name} {user.middle_name}")
             fptr.setParam(1203, user.inn)
             fptr.operatorLogin()
         logger.info(
-            f"Кассир {user.last_name} {user.first_name} зарегистрирован успешно."
+            f"Кассир {user.last_name} {user.first_name} {user.middle_name} зарегистрирован успешно."
         )
     except ConnectionError as ce:
         logger.error(f"Ошибка подключения к фискальному принтеру: {ce}")
@@ -1521,10 +1547,10 @@ def balance_check():
             fptr.printText()
             fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
             fptr.printText()  # Промотка на одну строку
+            # Отключаем печать подвала
+            fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
             fptr.endNonfiscalDocument()
             fptr.report()
-            fptr.setParam(IFptr.LIBFPTR_PARAM_CUT_TYPE, IFptr.LIBFPTR_CT_FULL)
-            fptr.cut()
         return cashSum
     except ConnectionError as ce:
         # Ошибка подключения к фискальному принтеру
@@ -1546,80 +1572,6 @@ def balance_check():
         windows.info_window(
             "Ошибка", "Произошла ошибка при проверке баланса. Попробуйте снова.", ""
         )
-
-
-@logger_wraps()
-def operation_on_the_terminal(payment_type, type_operation, price):
-    """Проведение операции по банковскому терминалу.
-
-    Параметры:
-        payment_type (int):
-            Тип оплаты (например, 101 - оплата картой, 100 - offline оплата).
-        type_operation (int):
-            Тип операции (например, 1 - оплата, 2 - возврат, 3 - отмена).
-        price (float):
-            Сумма, на которую выполняется операция.
-
-    Возвращаемое значение:
-        tuple:
-            - bank (int): Результат операции по терминалу (1 - успех, 0 - ошибка).
-            - payment (int): Код оплаты (1 - оплата, 3 - offline).
-    """
-    logger.info("Запуск функции operation_on_the_terminal")
-    bank = None
-    try:
-        if payment_type == PAYMENT_ELECTRONIC:
-            payment = 1
-            if type_operation == 1:
-                logger.info("Запускаем оплату по банковскому терминалу")
-                # результат операции по терминалу
-                bank = terminal_oplata(str(price))
-                logger.debug(f"Результат операции по терминалу: {bank}")
-                if bank != 1:
-                    info = "Оплата по банковскому терминалу завершена с ошибкой"
-                    logger.warning(info)
-                    windows.info_window(info, "", "")
-                    return 0, payment
-            elif type_operation == 2:
-                logger.info("Запускаем операцию возврата по банковскому терминалу")
-                # результат операции по терминалу
-                bank = terminal_return(str(price))
-                logger.debug(f"Результат операции по терминалу: {bank}")
-                if bank != 1:
-                    info = "Возврат по банковскому терминалу завершен с ошибкой"
-                    logger.warning(info)
-                    windows.info_window(info, "", "")
-                    return 0, payment
-            elif type_operation == 3:
-                logger.info("Запускаем операцию отмены по банковскому терминалу")
-                # результат операции по терминалу
-                bank = terminal_canceling(str(price))
-                logger.debug(f"Результат операции по терминалу: {bank}")
-                if bank != 1:
-                    info = "Отмена по банковскому терминалу завершена с ошибкой"
-                    logger.warning(info)
-                    windows.info_window(info, "", "")
-                    return 0, payment
-        # если offline оплата банковской картой
-        elif payment_type == PAYMENT_OFFLINE:
-            payment = 3
-            # результат операции по терминалу
-            logger.info("Запускаем offline оплату по банковскому терминалу")
-            bank = 1
-        else:
-            raise ValueError(f"Неизвестный тип оплаты: {payment_type}")
-        # Возвращаем результат
-        return bank, payment
-    except ValueError as ve:
-        logger.error(f"Ошибка: {ve}")
-        windows.info_window("Ошибка", f"Неверный тип операции или параметр: {ve}", "")
-        return 0, 0
-    except Exception as e:
-        logger.error(f"Неизвестная ошибка при проведении операции: {e}")
-        windows.info_window(
-            "Ошибка", "Произошла ошибка при проведении операции. Попробуйте снова.", ""
-        )
-        return 0, 0
 
 
 def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT20):
@@ -1756,10 +1708,49 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
     logger.info("Запуск функции process_payment")
     logger.debug(f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {_}")
     try:
-        # Всегда берем сумму из sale_dict
-        payment_amount = sale_dict["detail"][7]
+        # Проверка payment_type
+        if not isinstance(payment_type, int):
+            logger.error(f"Некорректный тип payment_type: {type(payment_type)}, значение: {payment_type}")
+            return False
+
+        # Определение суммы
+        payment_amount = None
+
+        # Если есть sale_dict["detail"][7] — используем
+        if isinstance(sale_dict, dict) and "detail" in sale_dict:
+            try:
+                payment_amount = sale_dict["detail"][7]
+                if isinstance(payment_amount, (int, float)) and payment_amount > 0:
+                    logger.debug(f"Сумма получена из sale_dict['detail'][7]: {payment_amount}")
+            except (IndexError, TypeError):
+                pass
+
+        # Если не получилось — пытаемся посчитать из позиций
+        if payment_amount is None:
+            total = 0
+            valid = False
+            for item_data in sale_dict.values():
+                if isinstance(item_data, list) and len(item_data) >= 2:
+                    price = item_data[0]
+                    qty = item_data[1]
+                    if isinstance(price, (int, float)) and isinstance(qty, int) and price > 0 and qty > 0:
+                        total += price * qty
+                        valid = True
+            if valid and total > 0:
+                payment_amount = total
+                logger.debug(f"Сумма рассчитана по позициям: {payment_amount}")
+            else:
+                logger.error("Не удалось определить сумму из sale_dict: нет данных")
+                return False
+
         if not isinstance(payment_amount, (int, float)) or payment_amount <= 0:
-            raise ValueError(f"Некорректная сумма: {payment_amount}")
+            logger.error(f"Некорректная сумма: {payment_amount}")
+            return False
+
+        # Проверка финальной суммы
+        if not isinstance(payment_amount, (int, float)) or payment_amount <= 0:
+            logger.error(f"Некорректная сумма: {payment_amount}")
+            return False
 
         if payment_type == PAYMENT_CASH:
             logger.info("Оплата наличными")
@@ -1782,7 +1773,16 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
             return False
         device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_SUM, payment_amount)
         device.payment()
-        device.closeReceipt()
+        # Закрытие чека
+        result = device.closeReceipt()
+        if result < 0:
+            code = device.errorCode()
+            desc = device.errorDescription()
+            logger.error(f"Ошибка закрытия чека (closeReceipt): [{code}] {desc}")
+
+            return False
+
+        logger.info("Чек успешно оплачен и закрыт")
         return True
     except Exception as exc:
         logger.error(f"Ошибка обработки платежа: {exc}")
@@ -1815,7 +1815,7 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
             on_error("Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
 
         retry_count += 1
-        time.sleep(3)
+        time.sleep(5)
 
     # Если документ не закрылся — требуется отмена чека и переоформление
     if not device.getParamBool(IFptr.LIBFPTR_PARAM_DOCUMENT_CLOSED):
@@ -1876,7 +1876,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
     """
     logger.info("Запуск функции check_open")
     retry_count = 0
-    max_retries = 5
+    max_retries = 15
     logger.debug(
         f"В функцию переданы: sale_dict = {sale_dict}, payment_type = {payment_type},type_operation = {type_operation}, bank_status = {bank_status}"
     )
@@ -1896,6 +1896,15 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                 return 1
             # Настройка параметров ККМ
             setup_fptr(device, user, type_operation, print_check)
+            # Установка типа чека
+            if type_operation == 1:
+                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)      # Продажа
+            elif type_operation == 2:
+                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)    # Возврат
+            else:
+                logger.error(f"Неизвестный тип операции: {type_operation}")
+                return False
+
             # Открытие чека
             device.openReceipt()
             # Регистрация билетов
