@@ -1574,7 +1574,7 @@ def balance_check():
         )
 
 
-def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT20):
+def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT22):
     """Функция регистрирует товар в чеке с помощью переданных параметров: название, цена, количество и тип налога.
 
     Параметры:
@@ -1582,7 +1582,7 @@ def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT2
         name (str): Название товара, которое будет отображаться в чеке.
         price (float): Цена одного товара.
         quantity (int): Количество товара.
-        tax_type (int, optional): Тип налога для товара (по умолчанию используется НДС 20%).
+        tax_type (int, optional): Тип налога для товара (по умолчанию используется НДС 22%).
 
     Возвращаемое значение:
         None: Функция не возвращает значений, но выполняет регистрацию товара на устройстве.
@@ -1909,6 +1909,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             device.openReceipt()
             # Регистрация билетов
             register_tickets(device, sale_dict, type_operation)
+
             # Оплата
             if not process_payment(device, payment_type, bank_status, sale_dict, None):
                 logger.error("Ошибка обработки платежа")
