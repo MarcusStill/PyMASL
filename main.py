@@ -9,7 +9,7 @@ from typing import Any, Optional, Type
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Qt
 from PySide6.QtCore import Signal, QThread
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -2897,7 +2897,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 filter_start = (dt.datetime.today() - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
                 filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
         # Определяем, какие статусы фильтровать
-        sale_status_filter = [2, 3, 4, 5, 6, 8] if self.ui.checkBox.isChecked() else []
+        sale_status_filter = [2, 3, 4, 5, 6, 8, 9] if self.ui.checkBox.isChecked() else []
 
         # Генерация запроса
         with Session(system.engine) as session:
@@ -2948,6 +2948,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     6: "частичный возврат",
                     7: "возврат по банковским реквизитам",
                     8: "отмена",
+                    9: "оплачена картой, чек ККМ не сформирован",
                 }
                 status_type = status_dict.get(sale[4], "неизвестно")
                 self.ui.tableWidget_2.setColumnWidth(4, 350)
@@ -2962,6 +2963,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else:
                     payment_type = "-"  # Если sale[7] равно None, сразу устанавливаем дефолтное значение
                 self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(payment_type))
+
+                #  Изменяем цвет нефискализированных продаж
+                if sale[4] == 9:
+                    warning_bg = QColor(255, 153, 153)
+                    warning_text = QColor(20, 60, 100)
+                    for col in range(self.ui.tableWidget_2.columnCount()):
+                        item = self.ui.tableWidget_2.item(row, col)
+                        if item:
+                            item.setBackground(warning_bg)
+                            item.setForeground(warning_text)
 
     def main_open_client(self) -> None:
         """

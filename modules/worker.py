@@ -287,7 +287,7 @@ class TransactionWorker(BaseWorker):
                     self.log_step(timer, "pq.read_pinpad_file finished")
                     # Успешный статус для check_open
                     bank_status = 1
-                    self.db_handler.update_sale(self.system.sale_id,bank_pay=check)
+                    self.db_handler.update_sale(self.system.sale_id,bank_pay=check,status=9)
             self.log_step(timer, "save in db finished")
 
             if self.print_check == 1 and payment == 1:
