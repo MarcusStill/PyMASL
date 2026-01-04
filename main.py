@@ -2138,6 +2138,15 @@ class SaleForm(QDialog):
         dev_mode = self.main_window.dev_mode if self.main_window else False
 
         if res == Payment.Card:
+            # Оплата только для новых продаж
+            if system.sale_status != 0:
+                windows.info_window(
+                    "Внимание",
+                    "Оплата картой доступна только для новых продаж.",
+                    ""
+                )
+                return
+
             if dev_mode:
                 logger.info("РЕЖИМ ОТЛАДКИ: Имитация оплаты картой")
                 # Создаем тестовый слип-чек
@@ -2156,10 +2165,26 @@ class SaleForm(QDialog):
             # запускаем оплату по терминалу
             self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Cash:
+            # Оплата только для новых продаж
+            if system.sale_status != 0:
+                windows.info_window(
+                    "Внимание",
+                    "Оплата картой доступна только для новых продаж.",
+                    ""
+                )
+                return
             logger.info("Оплата наличными")
             payment_type: int = Payment.Cash
             self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Offline:
+            # Offline только для не фискализированных продаж
+            if system.sale_status != 9:
+                windows.info_window(
+                    "Внимание",
+                    "Оплата картой доступна только для новых продаж.",
+                    ""
+                )
+                return
             if dev_mode:
                 logger.info("РЕЖИМ ОТЛАДКИ: Имитация offline оплаты")
                 slip = "DEBUG_SLIP_OFFLINE\nДата: {}\nСумма: {}\nОффлайн".format(
@@ -2171,11 +2196,11 @@ class SaleForm(QDialog):
                 return
 
             user_choice = windows.info_dialog_window(
-                "Внимание",
-                f"Вы точно хотите провести оплату методом offline?\n\n"
-                f"Это надо делать ТОЛЬКО после успешной проверки проведения операции по банковскому терминалу!\n"
-                f"Для этого выполните команду: Касса -> Операции с банковским терминалом -> Печать ранее подготовленного документа.\n\n"
-                f"Операция считается успешной, если в распечатанном банковском слип-чеке:\n"
+                "Подтверждение",
+                f"Вы точно хотите фискализировать операцию?\n\n"
+                f"Это надо делать ТОЛЬКО после успешной проверки проведения операции по банковскому терминалу!\n\n"
+                f"Для этого выполните: Касса -> Операции с банковским терминалом -> Печать ранее подготовленного документа.\n\n"
+                f"Операция считается успешной, если в банковском слип-чеке:\n"
                 f" - сумма, дата и время проведения операции операции совпадают с данными из заказа;\n"
                 f" - указано слово 'ОДОБРЕНО'.",
             )
@@ -2695,12 +2720,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # обновляем данные о продаже
                 system.sale_tickets = None
                 system.sale_dict = {}  # Инициализация перед использованием
+                # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
                 sale.ui.pushButton_5.setEnabled(True)
+                # Кнопка обновить
                 sale.ui.pushButton_10.setEnabled(True)
+                # Кнопка возврат
                 sale.ui.pushButton_6.setEnabled(False)
+                # Кнопки просмотра и печати билетов
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
+
                 sale.ui.dateEdit.setEnabled(True)
                 sale.ui.comboBox.setEnabled(True)
                 sale.ui.tableWidget_2.setEnabled(True)
@@ -2717,6 +2748,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_6.setEnabled(False)
                 # Кнопка отмены платежа по банковской карте
                 sale.ui.pushButton_14.setEnabled(False)
+                # Кнопки просмотра и печати билетов
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
             # Если продажа требует повторный возврат по банковскому терминалу
@@ -2731,6 +2763,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_6.setEnabled(True)
                 # Кнопка отмены платежа по банковской карте
                 sale.ui.pushButton_14.setEnabled(False)
+                # Кнопки просмотра и печати билетов
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
             # Если продажа требует частичный возврат
@@ -2745,6 +2778,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_6.setEnabled(True)
                 # Кнопка отмены платежа по банковской карте
                 sale.ui.pushButton_14.setEnabled(False)
+                # Кнопки просмотра и печати билетов
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
             # Если продажа требует частичный возврат
@@ -2759,8 +2793,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_6.setEnabled(False)
                 # Кнопка отмены платежа по банковской карте
                 sale.ui.pushButton_14.setEnabled(False)
+                # Кнопки просмотра и печати билетов
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
+            # Если продажа отменена
             elif sale_status == 8:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
@@ -2772,6 +2808,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_6.setEnabled(False)
                 # Кнопка отмены платежа по банковской карте
                 sale.ui.pushButton_14.setEnabled(False)
+                # Кнопки просмотра и печати билетов
+                sale.ui.pushButton_7.setEnabled(False)
+                sale.ui.pushButton_8.setEnabled(False)
+            elif sale_status == 9:
+                # Кнопка сохранить
+                sale.ui.pushButton_3.setEnabled(False)
+                # Кнопка оплатить
+                sale.ui.pushButton_5.setEnabled(True)
+                # Кнопка обновить
+                sale.ui.pushButton_10.setEnabled(True)
+                # Кнопка возврат
+                sale.ui.pushButton_6.setEnabled(False)
+                # Кнопка отмены платежа по банковской карте
+                sale.ui.pushButton_14.setEnabled(True)
+                # Кнопки просмотра и печати билетов
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
             else:
@@ -2964,7 +3015,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     payment_type = "-"  # Если sale[7] равно None, сразу устанавливаем дефолтное значение
                 self.ui.tableWidget_2.setItem(row, 7, QTableWidgetItem(payment_type))
 
-                #  Изменяем цвет нефискализированных продаж
+                #  Изменяем цвет не фискализированных продаж
                 if sale[4] == 9:
                     warning_bg = QColor(255, 153, 153)
                     warning_text = QColor(20, 60, 100)

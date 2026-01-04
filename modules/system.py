@@ -65,6 +65,7 @@ class System:
         # 5 - требуется частичный возврат, 6 - частичный возврат
         # 7 - возврат по банковским реквизитам
         # 8 - отменена
+        # 9 - не фискализирована
         self.sale_status = None
         self.sale_id = None
         self.sale_discount = None
