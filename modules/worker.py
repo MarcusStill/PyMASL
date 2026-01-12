@@ -238,6 +238,7 @@ class TransactionWorker(BaseWorker):
             amount = system.sale_dict["detail"][7]
         except (KeyError, IndexError, TypeError) as e:
             logger.warning(f"Ошибка получения amount: {e}.")
+            amount = 0
 
         # Инициализация обработчиков
         self.payment_handler = PaymentHandler(

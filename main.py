@@ -1095,6 +1095,13 @@ class SaleForm(QDialog):
             price = self.ticket_counting(row, type_ticket)
             self.apply_discounts(row, price, type_ticket)
         itog: int = calculate_itog()
+
+        # Синхронизация system.sale_dict["detail"]
+        system.sale_dict["detail"][0] = system.sale_dict["kol_adult"]
+        system.sale_dict["detail"][1] = system.sale_dict["price_adult"]
+        system.sale_dict["detail"][2] = system.sale_dict["kol_child"]
+        system.sale_dict["detail"][3] = system.sale_dict["price_child"]
+
         self.ui.label_8.setText(str(itog))
         system.sale_dict["detail"][7] = itog
         self.ui.label_5.setText(str(system.count_number_of_visitors["kol_adult"]))

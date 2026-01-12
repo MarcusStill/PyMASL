@@ -167,10 +167,11 @@ class System:
                     logger.info(f"Успешная авторизация: {kassir.last_name}")
                     return 1
                 else:
-                    logger.warning(
-                        f"Неудачная попытка авторизации для пользователя {login}"
-                    )
+                    logger.warning(f"Неудачная попытка авторизации для пользователя {login}")
                     return 0
+            else:
+                logger.warning(f"Пользователь {login} не найден")
+                return 0
 
         except SQLAlchemyError as e:
             logger.error(f"Ошибка базы данных при авторизации пользователя: {e}")
@@ -318,24 +319,24 @@ class System:
             today.year - born.year - ((today.month, today.day) < (born.month, born.day))
         )
 
-    @staticmethod
-    def calculate_ticket_type(self, age: int) -> str:
-        """
-        Функция определяет тип входного билета.
-
-        Параметры:
-            age (int): Возраст посетителя.
-
-        Возвращаемое значение:
-            str: Тип билета (бесплатный, детский, взрослый).
-        """
-        if age < self.age["min"]:
-            return "бесплатный"
-        elif self.age["min"] <= age < self.age["max"]:
-            return "детский"
-        elif age >= self.age["max"]:
-            return "взрослый"
-        return ""
+    # @staticmethod
+    # def calculate_ticket_type(self, age: int) -> str:
+    #     """
+    #     Функция определяет тип входного билета.
+    #
+    #     Параметры:
+    #         age (int): Возраст посетителя.
+    #
+    #     Возвращаемое значение:
+    #         str: Тип билета (бесплатный, детский, взрослый).
+    #     """
+    #     if age < self.age["min"]:
+    #         return "бесплатный"
+    #     elif self.age["min"] <= age < self.age["max"]:
+    #         return "детский"
+    #     elif age >= self.age["max"]:
+    #         return "взрослый"
+    #     return ""
 
     @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
     def load_coordinates(self, config: Config):
