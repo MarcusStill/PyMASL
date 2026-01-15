@@ -1636,56 +1636,80 @@ def register_tickets(device, sale_dict, type_operation):
         None: Функция не возвращает значений, но выполняет регистрацию билетов в чеке.
     """
     logger.info("Запуск функции register_tickets")
-    logger.debug(f"В функцию переданы: device = {device}, payment_type = {sale_dict}, type_operation = {type_operation}")
+    logger.debug(f"В функцию переданы: device = {device}, sale_dict = {sale_dict}, type_operation = {type_operation}")
     if type_operation == 1:
         time = sale_dict["detail"][6]
-        # Взрослые билеты
+
+        # Взрослые билеты без акции
         kol_adult_edit = sale_dict["kol_adult"] - sale_dict["detail"][0]
-        if kol_adult_edit > 0:  # Регистрация только если есть билеты
+        logger.debug(f"Взрослые БЕЗ акции: kol_adult={sale_dict['kol_adult']}, detail[0]={sale_dict['detail'][0]}, kol_adult_edit={kol_adult_edit}")
+        # Регистрация только если есть билеты
+        if kol_adult_edit > 0:
+            logger.info(f"Регистрируем взрослый билет БЕЗ акции: {kol_adult_edit} шт × {sale_dict['price_adult']} руб")
             register_item(
                 device,
                 f"Билет взрослый {time} ч.",
                 sale_dict["price_adult"],
                 kol_adult_edit,
             )
-        # Взрослые билеты со скидкой
+        else:
+            logger.debug("Взрослые БЕЗ акции: не регистрируем (kol_adult_edit = 0)")
+
+        # Взрослые билеты с акцией
+        logger.debug(f"Взрослые С акцией: detail[0]={sale_dict['detail'][0]}, detail[1]={sale_dict['detail'][1]}, kol_adult={sale_dict['kol_adult']}")
         if (
-            sale_dict["detail"][0] > 0
-            and sale_dict["detail"][1] > 0
-            and sale_dict["kol_adult"] > 0  # Проверяем общее количество взрослых
-        ):  # Дополнительно проверяем количество обычных билетов
+                sale_dict["detail"][0] > 0
+                and sale_dict["detail"][1] > 0
+                # Проверяем общее количество взрослых
+                and sale_dict["kol_adult"] > 0
+        ):
+            logger.info(f"Регистрируем взрослый билет С акцией: {sale_dict['detail'][0]} шт × {sale_dict['detail'][1]} руб")
             register_item(
                 device,
                 f"Билет взрослый акция {time} ч.",
                 sale_dict["detail"][1],
                 sale_dict["detail"][0],
             )
-        # Детские билеты
+        else:
+            logger.debug("Взрослые С акцией: не регистрируем (условия не выполнены)")
+
+        # Детские билеты без акции
         kol_child_edit = sale_dict["kol_child"] - sale_dict["detail"][2]
-        if kol_child_edit > 0:  # Регистрация только если есть билеты
+        logger.debug(f"Детские БЕЗ акции: kol_child={sale_dict['kol_child']}, detail[2]={sale_dict['detail'][2]}, kol_child_edit={kol_child_edit}")
+        # Регистрация только если есть билеты
+        if kol_child_edit > 0:
+            logger.info(f"Регистрируем детский билет БЕЗ акции: {kol_child_edit} шт × {sale_dict['price_child']} руб")
             register_item(
                 device,
                 f"Билет детский {time} ч.",
                 sale_dict["price_child"],
                 kol_child_edit,
             )
-        # Детские билеты со скидкой
+        else:
+            logger.debug("Детские БЕЗ акции: не регистрируем (kol_child_edit = 0)")
+        # Детские билеты с акцией
+        logger.debug(f"Детские С акцией: detail[2]={sale_dict['detail'][2]}, detail[3]={sale_dict['detail'][3]}, kol_child={sale_dict['kol_child']}")
+
         if (
-            sale_dict["detail"][2] > 0
-            and sale_dict["detail"][3] > 0
-            and sale_dict["kol_child"] > 0  # Проверяем общее количество детей
-        ):  # Дополнительно проверяем количество обычных детских билетов
+                sale_dict["detail"][2] > 0
+                and sale_dict["detail"][3] > 0
+                # Проверяем общее количество детей
+                and sale_dict["kol_child"] > 0
+        ):
+            logger.info(f"Регистрируем детский билет С акцией: {sale_dict['detail'][2]} шт × {sale_dict['detail'][3]} руб")
             register_item(
                 device,
                 f"Билет детский акция {time} ч.",
                 sale_dict["detail"][3],
                 sale_dict["detail"][2],
             )
+        else:
+            logger.debug("Детские С акцией: не регистрируем (условия не выполнены)")
     else:
         # Для других типов операций, регистрация остальных товаров
         for item_name, item_data in sale_dict.items():
             if (
-                isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0
+                    isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0
             ):  # Проверяем наличие количества и цены
                 register_item(device, item_name, item_data[0], item_data[1])
             else:

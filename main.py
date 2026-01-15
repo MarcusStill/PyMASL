@@ -1096,11 +1096,19 @@ class SaleForm(QDialog):
             self.apply_discounts(row, price, type_ticket)
         itog: int = calculate_itog()
 
+        # ПЕРЕД синхронизацией
+        logger.debug(f"ПЕРЕД синхронизацией: exclude_from_sale={system.exclude_from_sale}, sale_checkbox_row={system.sale_checkbox_row}")
+        logger.debug(f"kol_adult={system.sale_dict['kol_adult']}, price_adult={system.sale_dict['price_adult']}")
+        logger.debug(f"detail ДО: {system.sale_dict['detail']}")
+
         # Синхронизация system.sale_dict["detail"]
         system.sale_dict["detail"][0] = system.sale_dict["kol_adult"]
         system.sale_dict["detail"][1] = system.sale_dict["price_adult"]
         system.sale_dict["detail"][2] = system.sale_dict["kol_child"]
         system.sale_dict["detail"][3] = system.sale_dict["price_child"]
+
+        logger.debug(f"detail ПОСЛЕ: {system.sale_dict['detail']}")
+        logger.debug(f"ПОСЛЕ синхронизации: detail[0]={system.sale_dict['detail'][0]}, detail[1]={system.sale_dict['detail'][1]}")
 
         self.ui.label_8.setText(str(itog))
         system.sale_dict["detail"][7] = itog
@@ -1414,32 +1422,49 @@ class SaleForm(QDialog):
             None
         """
         logger.info("Запуск функции adult_exclusion")
+        logger.debug(f"Входные параметры: row={row}, sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
+
         if self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).isChecked():
             # Исключаем взрослого из продажи номер строки не запоминали
             if system.sale_checkbox_row is None:
                 logger.info("Исключаем взрослого из продажи")
+
+                logger.debug(f"ДО исключения: kol_adult={system.sale_dict['kol_adult']}, price_adult={system.sale_dict['price_adult']}")
+
+                # Исключаем
+                system.sale_dict["price_adult"] = 0
+
                 system.sale_dict["detail"][0] = 1
                 system.sale_dict["detail"][4] = 100
+
+                logger.debug(f"ПОСЛЕ исключения: kol_adult={system.sale_dict['kol_adult']}, price_adult={system.sale_dict['price_adult']}")
+                logger.debug(f"detail[0]={system.sale_dict['detail'][0]}, detail[1]={system.sale_dict['detail'][1]}, detail[4]={system.sale_dict['detail'][4]}")
+
                 # Запоминаем номер строки с активным QCheckBox
                 system.sale_checkbox_row = row
                 # Изменяем флаг активности QCheckBox
                 system.exclude_from_sale = 1
                 # Ставим метку "не идет"
                 self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("н"))
+
+                logger.debug(f"Установлены флаги: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
             else:
+                logger.info("Взрослый уже исключен, обрабатываем другую строку")
                 # Если взрослый исключен из продажи, корректируем цену билета и наличие скидки
                 self.ui.tableWidget_2.setItem(
                     row, 3, QTableWidgetItem(f"{system.price['ticket_free']}")
                 )
+                # Исключаем
+                system.sale_dict["price_adult"] = 0
                 system.sale_dict["detail"][0] = 1
                 system.sale_dict["detail"][4] = 100
         else:
             if system.exclude_from_sale == 1:
                 logger.info("Возвращаем взрослого в продажу")
                 if (
-                    not self.ui.tableWidget_2.cellWidget(system.sale_checkbox_row, 8)
-                    .findChild(QCheckBox)
-                    .isChecked()
+                        not self.ui.tableWidget_2.cellWidget(system.sale_checkbox_row, 8)
+                                .findChild(QCheckBox)
+                                .isChecked()
                 ):
                     self.ui.tableWidget_2.setItem(
                         system.sale_checkbox_row, 4, QTableWidgetItem("-")
@@ -1447,8 +1472,11 @@ class SaleForm(QDialog):
                     system.sale_dict["detail"][0] = 0
                     system.sale_dict["detail"][1] = 0
                     system.sale_dict["detail"][4] = 0
+
                     system.sale_checkbox_row = None
                     system.exclude_from_sale = 0
+
+                    logger.debug("Взрослый возвращен в продажу, price_adult будет пересчитан в sale_update()")
 
     def generate_ticket_list(
         self,

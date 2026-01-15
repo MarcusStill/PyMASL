@@ -301,6 +301,10 @@ class TransactionWorker(BaseWorker):
     def process_checks(self, timer, payment, bank_data):
         """Печать чеков"""
         self.delayed_progress_update("Печатаем кассовый чек...", 60)
+
+        logger.debug(f"ДО check_open: sale_dict = {self.system.sale_dict}")
+        logger.debug(f"exclude_from_sale={self.system.exclude_from_sale}, sale_checkbox_row={self.system.sale_checkbox_row}")
+
         try:
             if not self.check_handler.print_check(
                 self.system.sale_dict,
