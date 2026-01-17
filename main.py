@@ -1521,55 +1521,59 @@ class SaleForm(QDialog):
         logger.debug(f"Checkbox для row={row}: isChecked={is_checked}")
 
         if is_checked:
-            # Checkbox включен - исключаем взрослого
             if system.sale_checkbox_row is None:
-                # Проверка количества учтенных взрослых
+                # Считаем текущее количество взрослых и детей
+                adult_count = 0
+                child_count = 0
 
-                # Подсчитать учтенных взрослых (не исключенных)
-                adults_counted = 0
-                rows = self.ui.tableWidget_2.rowCount()
+                for i in range(self.ui.tableWidget_2.rowCount()):
+                    type_item = self.ui.tableWidget_2.item(i, 2)
+                    if not type_item:
+                        continue
 
-                for r in range(rows):
-                    type_ticket = self.ui.tableWidget_2.item(r, 2)
-                    if type_ticket and type_ticket.text() == "взрослый":
-                        adults_counted += 1
+                    type_ticket = type_item.text()
 
-                logger.debug(f"Проверка: взрослых всего={adults_counted}, текущий row={row}")
+                    if type_ticket == "взрослый":
+                        adult_count += 1
+                    elif type_ticket == "детский":
+                        child_count += 1
 
-                if adults_counted <= 1:
-                    # ПОСЛЕДНИЙ взрослый - НЕ разрешаем исключение!
-                    logger.warning(f"Попытка исключить последнего взрослого row={row}")
+                logger.debug(f"В таблице: adults={adult_count}, children={child_count}")
+
+                # Проверка - единственный взрослый?
+                if adult_count == 1 and child_count == 0:
+                    logger.warning("Невозможно исключить единственного взрослого в продаже!")
 
                     QMessageBox.warning(
                         self,
                         "Невозможно исключить взрослого",
-                        "Это единственный взрослый в продаже!\n"
-                        "В продаже должен быть хотя бы один взрослый."
+                        "В продаже только один взрослый!\n"
+                        "Нельзя исключить единственного взрослого из продажи.\n"
+                        "Добавьте ребенка или других взрослых."
                     )
 
-                    # СНЯТЬ checkbox (блокируем сигналы!)
                     checkbox.blockSignals(True)
                     checkbox.setChecked(False)
                     checkbox.blockSignals(False)
 
-                    logger.debug(f"Checkbox row={row} снят (последний взрослый)")
+                    logger.debug(f"Checkbox row={row} снят (единственный взрослый)")
                     return
 
                 # Первое исключение взрослого
                 logger.info("Исключаем взрослого из продажи")
-
                 system.sale_dict["detail"][4] = 100
                 logger.debug(f"Установлен флаг исключения: detail[4] = 100")
-
                 system.sale_checkbox_row = row
                 system.exclude_from_sale = 1
                 self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("н"))
-
                 logger.debug(f"Установлены флаги: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
-            else:
-                # Уже есть исключенный взрослый - не разрешаем исключать еще одного!
-                logger.warning(f"Попытка исключить второго взрослого row={row}, уже исключен row={system.sale_checkbox_row}")
 
+            elif system.sale_checkbox_row == row:
+                logger.debug(f"Взрослый row={row} уже исключен, пропускаем")
+                return
+
+            else:
+                logger.warning(f"Попытка исключить второго взрослого row={row}, уже исключен row={system.sale_checkbox_row}")
                 QMessageBox.warning(
                     self,
                     "Невозможно исключить взрослого",
@@ -1577,11 +1581,10 @@ class SaleForm(QDialog):
                     "Можно исключить только одного взрослого."
                 )
 
-                # СНЯТЬ checkbox (блокируем сигналы!)
+                # СНЯТЬ checkbox
                 checkbox.blockSignals(True)
                 checkbox.setChecked(False)
                 checkbox.blockSignals(False)
-
                 logger.debug(f"Checkbox row={row} снят (уже есть исключенный)")
                 return
         else:
@@ -1592,15 +1595,11 @@ class SaleForm(QDialog):
                     # Это действительно исключенный взрослый - возвращаем
                     logger.info(f"Возвращаем взрослого row={row} в продажу")
                     logger.debug(f"ДО возврата: detail[0]={system.sale_dict['detail'][0]}, detail[1]={system.sale_dict['detail'][1]}, detail[4]={system.sale_dict['detail'][4]}")
-
                     self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("-"))
                     system.sale_dict["detail"][4] = 0
-
                     logger.debug(f"ПОСЛЕ возврата: detail[4]={system.sale_dict['detail'][4]}")
-
                     system.sale_checkbox_row = None
                     system.exclude_from_sale = 0
-
                     logger.debug(f"Сброшены флаги: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
                 else:
                     # Это другая строка, не исключенный взрослый
