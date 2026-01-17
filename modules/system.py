@@ -99,7 +99,7 @@ class System:
         # Количество начисляемых талантов
         self.talent = {"1_hour": 25, "2_hour": 35, "3_hour": 50}
         self.age = {"min": 5, "max": 15}  # Возраст посетителей
-        # Содержание detail: [kol_adult, price_adult, kol_child, price_child, discount, id_adult, time, sum]
+        # Содержание detail: [kol_adult, итоговая сумма (взрослые), kol_child, итоговая сумма (дети), discount, id_adult, time, sum]
         self.sale_dict = {
             "kol_adult": 0,
             "price_adult": 0,

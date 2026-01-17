@@ -224,28 +224,27 @@ def calculate_itog() -> int:
         None
 
     Возвращаемое значение:
-        None: Функция не возвращает значений, вставляет фамилию в поле формы.
+        int: Итоговая сумма заказа
     """
     logger.info("Запуск функции calculate_itog")
-    # Проверка на корректность данных (например, отрицательные значения)
+
+    # Проверка на корректность данных
     if (
-        system.sale_dict["kol_adult"] < 0
-        or system.sale_dict["kol_child"] < 0
-        or system.sale_dict["price_adult"] < 0
-        or system.sale_dict["price_child"] < 0
+            system.sale_dict["detail"][0] < 0
+            or system.sale_dict["detail"][2] < 0
+            or system.sale_dict["detail"][1] < 0
+            or system.sale_dict["detail"][3] < 0
     ):
         raise ValueError("Некорректные данные для расчета итоговой суммы")
 
-    adult_ticket: int = (
-        system.sale_dict["kol_adult"] - system.sale_dict["detail"][0]
-    ) * system.sale_dict["price_adult"]
-    child_ticket: int = (
-        system.sale_dict["kol_child"] - system.sale_dict["detail"][2]
-    ) * system.sale_dict["price_child"]
-    adult_sale: int = system.sale_dict["detail"][0] * system.sale_dict["detail"][1]
-    child_sale: int = system.sale_dict["detail"][2] * system.sale_dict["detail"][3]
-    # Вычисляем итоговую сумму
-    result: int = adult_ticket + child_ticket + adult_sale + child_sale
+    # detail[1] и detail[3] теперь хранят СУММЫ (не цены за одного)!
+    adult_total: int = system.sale_dict["detail"][1]
+    child_total: int = system.sale_dict["detail"][3]
+
+    result: int = adult_total + child_total
+
+    logger.debug(f"Расчет итого: {adult_total} (взрослые) + {child_total} (дети) = {result}")
+
     return result
 
 
