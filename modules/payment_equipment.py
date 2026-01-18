@@ -31,7 +31,7 @@ except Exception as e:
     kkt_available = False
     fptr = None
 
-# Режим отладки: true — без ККТ
+# Режим отладки: True — без ККТ
 dev_mode = False
 
 # Константы для работы с кодами терминала

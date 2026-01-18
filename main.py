@@ -1277,7 +1277,8 @@ class SaleForm(QDialog):
                     # Если checkbox в акт - применяем к этой строке скидку
                     if (self.ui.tableWidget_2.cellWidget(row, 7)
                             .findChild(QCheckBox)
-                            .isChecked()):
+                            .isChecked()):  # ✅ Если False → применить скидку
+                        # Применяем скидку ТОЛЬКО если checkbox НЕ активен
                         if type_ticket == "взрослый":
                             system.count_number_of_visitors["kol_sale_adult"] += 1
                             system.sale_dict["detail"][0] = (
@@ -1561,7 +1562,7 @@ class SaleForm(QDialog):
 
                 # Первое исключение взрослого
                 logger.info("Исключаем взрослого из продажи")
-                system.sale_dict["detail"][4] = 100
+                system.sale_dict["detail"][4] = system.sale_discount if system.sale_discount else 0
                 logger.debug(f"Установлен флаг исключения: detail[4] = 100")
                 system.sale_checkbox_row = row
                 system.exclude_from_sale = 1
@@ -1596,7 +1597,10 @@ class SaleForm(QDialog):
                     logger.info(f"Возвращаем взрослого row={row} в продажу")
                     logger.debug(f"ДО возврата: detail[0]={system.sale_dict['detail'][0]}, detail[1]={system.sale_dict['detail'][1]}, detail[4]={system.sale_dict['detail'][4]}")
                     self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("-"))
-                    system.sale_dict["detail"][4] = 0
+                    if self.ui.checkBox_2.isChecked():
+                        system.sale_dict["detail"][4] = system.sale_discount
+                    else:
+                        system.sale_dict["detail"][4] = 0
                     logger.debug(f"ПОСЛЕ возврата: detail[4]={system.sale_dict['detail'][4]}")
                     system.sale_checkbox_row = None
                     system.exclude_from_sale = 0
