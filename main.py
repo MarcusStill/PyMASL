@@ -1086,80 +1086,85 @@ class SaleForm(QDialog):
             price = self.ticket_counting(row, type_ticket)
             self.apply_discounts(row, price, type_ticket)
 
-        # Перед синхронизацией
-        logger.debug(f"ПЕРЕД синхронизацией: exclude_from_sale={system.exclude_from_sale}, sale_checkbox_row={system.sale_checkbox_row}")
-        logger.debug(f"kol_adult={system.sale_dict['kol_adult']}, price_adult={system.sale_dict['price_adult']}")
-        logger.debug(f"detail ДО: {system.sale_dict['detail']}")
+        logger.info("Формируем detail из sale_dict")
+        # Считаем билеты со скидкой
+        adult_with_discount_count = 0
+        child_with_discount_count = 0
 
-        # Рассчитываем СУММУ всех позиций из таблицы
-        logger.info("Рассчитываем итоговые суммы из таблицы")
+        # Если есть скидка
+        if self.ui.checkBox_2.isChecked() and system.sale_discount > 0:
+            for row in range(rows):
+                type_ticket_item = self.ui.tableWidget_2.item(row, 2)
+                checkbox_widget_col7 = self.ui.tableWidget_2.cellWidget(row, 7)
 
-        adult_total = 0
-        adult_count_detail = 0
-        child_total = 0
-        child_count_detail = 0
-        # Считаем всех взрослых в таблице (для проверки кнопки оплаты)
-        total_adults_in_table = 0
+                if not type_ticket_item or not checkbox_widget_col7:
+                    continue
 
+                type_ticket = type_ticket_item.text()
+
+                # Проверяем checkbox в колонке 7 (акция)
+                checkbox_action = checkbox_widget_col7.findChild(QCheckBox)
+                if checkbox_action and checkbox_action.isChecked():
+                    if type_ticket == "взрослый":
+                        # Проверяем, не исключен ли
+                        checkbox_widget_col8 = self.ui.tableWidget_2.cellWidget(row, 8)
+                        if checkbox_widget_col8:
+                            checkbox_exclude = checkbox_widget_col8.findChild(QCheckBox)
+                            if checkbox_exclude and checkbox_exclude.isChecked():
+                                continue
+
+                        adult_with_discount_count += 1
+                        logger.debug(f"row={row}: взрослый со скидкой")
+
+                    elif type_ticket == "детский":
+                        child_with_discount_count += 1
+                        logger.debug(f"row={row}: ребенок со скидкой")
+
+        # Рассчитываем цену со скидкой
+        if adult_with_discount_count > 0:
+            price_adult_with_discount = int(system.sale_dict["price_adult"] * (1 - system.sale_discount / 100))
+        else:
+            price_adult_with_discount = 0
+
+        if child_with_discount_count > 0:
+            price_child_with_discount = int(system.sale_dict["price_child"] * (1 - system.sale_discount / 100))
+        else:
+            price_child_with_discount = 0
+
+        # Заполняем detail
+        system.sale_dict["detail"][0] = adult_with_discount_count
+        system.sale_dict["detail"][1] = price_adult_with_discount
+        system.sale_dict["detail"][2] = child_with_discount_count
+        system.sale_dict["detail"][3] = price_child_with_discount
+        system.sale_dict["detail"][4] = system.sale_discount if self.ui.checkBox_2.isChecked() else 0
+
+        logger.debug(f"detail ИТОГО: {system.sale_dict['detail']}")
+        logger.debug(f"Взрослых со скидкой: {adult_with_discount_count}, цена 1 билета: {price_adult_with_discount}")
+        logger.debug(f"Детей со скидкой: {child_with_discount_count}, цена 1 билета: {price_child_with_discount}")
+
+        # Считаем без исключённых взрослых
+        adult_count_in_sale = 0
         for row in range(rows):
             type_ticket_item = self.ui.tableWidget_2.item(row, 2)
-            price_item = self.ui.tableWidget_2.item(row, 3)
-
-            if not type_ticket_item or not price_item:
+            if not type_ticket_item:
                 continue
 
-            type_ticket = type_ticket_item.text()
-
-            try:
-                price = int(price_item.text())
-            except (ValueError, AttributeError):
-                logger.warning(f"Некорректная цена в строке {row}")
-                continue
-
-            if type_ticket == "взрослый":
-                total_adults_in_table += 1
-
-                # Проверяем, не исключен ли взрослый
+            if type_ticket_item.text() == "взрослый":
                 checkbox_widget = self.ui.tableWidget_2.cellWidget(row, 8)
                 if checkbox_widget:
                     checkbox = checkbox_widget.findChild(QCheckBox)
                     if checkbox and checkbox.isChecked():
-                        logger.debug(f"row={row}: взрослый исключен из продажи")
                         continue
+                adult_count_in_sale += 1
 
-                adult_total += price
-                adult_count_detail += 1
-                logger.debug(f"row={row}: взрослый, цена={price}, промежуточная сумма={adult_total}")
+        # Синхронизируем
+        system.sale_dict["kol_adult"] = adult_count_in_sale
+        logger.debug(f"Синхронизация: kol_adult={adult_count_in_sale}, kol_child={system.sale_dict['kol_child']}")
 
-            elif type_ticket == "детский":
-                child_total += price
-                child_count_detail += 1
-                logger.debug(f"row={row}: ребенок, цена={price}, промежуточная сумма={child_total}")
-
-        # Записываем СУММЫ в detail (НЕ средние цены!)
-        system.sale_dict["detail"][0] = adult_count_detail
-        system.sale_dict["detail"][1] = adult_total  # СУММА всех взрослых!
-        system.sale_dict["detail"][2] = child_count_detail
-        system.sale_dict["detail"][3] = child_total  # СУММА всех детей!
-
-        # Сохраняем процент скидки (если checkbox активен)
-        if self.ui.checkBox_2.isChecked():
-            system.sale_dict["detail"][4] = system.sale_discount
-        else:
-            system.sale_dict["detail"][4] = 0
-
-        logger.debug(f"detail ИТОГО: {system.sale_dict['detail']}")
-        logger.debug(f"Взрослых в продаже: {adult_count_detail}, итоговая сумма: {adult_total}")
-        logger.debug(f"Детей в продаже: {child_count_detail}, итоговая сумма: {child_total}")
-
-        # Синхронизируем kol_adult и kol_child для проверок
-        system.sale_dict["kol_adult"] = adult_count_detail
-        system.sale_dict["kol_child"] = child_count_detail
-
-        logger.debug(f"Синхронизация: kol_adult={adult_count_detail}, kol_child={child_count_detail}")
-
+        # Считаем итог
         itog: int = calculate_itog()
 
+        # Обновляем UI
         self.ui.label_8.setText(str(itog))
         system.sale_dict["detail"][7] = itog
         self.ui.label_5.setText(str(system.count_number_of_visitors["kol_adult"]))
@@ -1170,9 +1175,11 @@ class SaleForm(QDialog):
         self.ui.label_19.setText(
             str(system.count_number_of_visitors["kol_child_many_child"])
         )
+
         # Преобразуем значения в system.sale_dict к нужным типам данных
         system.sale_dict = convert_sale_dict_values(system.sale_dict)
         logger.debug(f"Обновленный system.sale_dict: {system.sale_dict}")
+
         # Генерируем список с билетами
         for row in range(rows):
             # Если установлена метка "не идет"
@@ -1182,29 +1189,14 @@ class SaleForm(QDialog):
                 )
             self.generate_ticket_list(row, tickets, date_time)
         system.sale_tickets = tickets
+
         # Проверяем есть ли в продаже взрослый
-        if total_adults_in_table >= 1:
+        if system.sale_dict['kol_adult'] >= 1:
             self.ui.pushButton_5.setEnabled(True)
         else:
             self.ui.pushButton_5.setEnabled(False)
-        # Отключаем checkbox исключения из продажи для других позиций
-        if system.exclude_from_sale == 1:
-            for row in range(rows):
-                if row != system.sale_checkbox_row:
-                    self.ui.tableWidget_2.cellWidget(row, 8).findChild(
-                        QCheckBox
-                    ).setEnabled(False)
-                # Флаг состояния QCheckBox не активирован (вернули в продажу)
-                else:
-                    logger.debug(
-                        "Активируем QCheckBox строке - возвращаем клиента в продажу"
-                    )
-                    self.ui.tableWidget_2.cellWidget(row, 8).findChild(
-                        QCheckBox
-                    ).setEnabled(True)
 
         # Управление состоянием checkbox
-        rows = self.ui.tableWidget_2.rowCount()
         for row in range(rows):
             type_ticket = self.ui.tableWidget_2.item(row, 2).text()
 
@@ -1213,21 +1205,19 @@ class SaleForm(QDialog):
                 if checkbox_container:
                     checkbox = checkbox_container.findChild(QCheckBox)
                     if checkbox:
-                        # Управление доступностью checkbox
-                        if system.sale_checkbox_row is None:
-                            # НЕТ исключенных - ВСЕ checkbox доступны
-                            checkbox.setEnabled(True)
-                            logger.debug(f"Checkbox row={row} enabled (нет исключенных)")
-                        else:
-                            # ЕСТЬ исключенный - только его checkbox активен
+                        # Логика включения/отключения
+                        if system.exclude_from_sale == 1:
+                            # Если есть исключённый
                             if row == system.sale_checkbox_row:
                                 checkbox.setEnabled(True)
                                 logger.debug(f"Checkbox row={row} enabled (исключенный)")
                             else:
                                 checkbox.setEnabled(False)
-                                logger.debug(f"Checkbox row={row} disabled (другой взрослый)")
-
-        logger.debug("Управление checkbox завершено")
+                                logger.debug(f"Checkbox row={row} disabled")
+                        else:
+                            # Нет исключённых - все доступны
+                            checkbox.setEnabled(True)
+                            logger.debug(f"Checkbox row={row} enabled (нет исключенных)")
 
 
     def apply_discounts(self, row: int, price: int, type_ticket: str) -> None:
@@ -1277,7 +1267,7 @@ class SaleForm(QDialog):
                     # Если checkbox в акт - применяем к этой строке скидку
                     if (self.ui.tableWidget_2.cellWidget(row, 7)
                             .findChild(QCheckBox)
-                            .isChecked()):  # ✅ Если False → применить скидку
+                            .isChecked()):  # Если False → применить скидку
                         # Применяем скидку ТОЛЬКО если checkbox НЕ активен
                         if type_ticket == "взрослый":
                             system.count_number_of_visitors["kol_sale_adult"] += 1
@@ -1330,7 +1320,6 @@ class SaleForm(QDialog):
         self.adult_exclusion(row)
         update_adult_count()
         system.sale_dict["price_adult"] = price
-
         return price
 
     def calculate_child(self, row: int) -> int:
@@ -1347,6 +1336,7 @@ class SaleForm(QDialog):
         self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox).setEnabled(False)
         price = calculate_child_price()
         update_child_count()
+        system.sale_dict["price_child"] = price
         return price
 
     def bind_adult_to_sale(self, row: int) -> None:
@@ -1905,6 +1895,7 @@ class SaleForm(QDialog):
                                     )
                                 )
                                 session.commit()
+                                logger.debug("запись в БД успешно обновлена")
                             pq.print_pinpad_check()
                         else:
                             logger.warning(
@@ -1959,7 +1950,9 @@ class SaleForm(QDialog):
                             )
                         )
                         session.commit()
+                        logger.debug("запись в БД успешно обновлена")
                     self.close()
+                    logger.debug("Окно продажи закрыто")
                 else:
                     logger.warning("Операция возврата завершилась с ошибкой")
                     windows.info_window(
@@ -1993,11 +1986,13 @@ class SaleForm(QDialog):
                             )
                         )
                         session.commit()
+                        logger.debug("запись в БД успешно обновлена")
                     pq.print_pinpad_check()
                     windows.info_window(
                         "Внимание", "Операция повторного возврата прошла успешно.", ""
                     )
                     self.close()
+                    logger.debug("Окно продажи закрыто")
                 else:
                     logger.warning("Возврат по банковскому терминалу прошел не успешно")
                     windows.info_window(
