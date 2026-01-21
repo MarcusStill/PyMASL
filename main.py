@@ -1822,6 +1822,7 @@ class SaleForm(QDialog):
         new_tickets = {}
         state_check: int = 0
         tickets = self.generating_items_for_the_return_check()
+        logger.debug(f"Получены позиции для возврата: {tickets}")
         logger.info("Запрашиваем информацию о продаже в БД")
         with Session(system.engine) as session:
             query = select(Sale).filter(Sale.id == system.sale_id)
@@ -1856,9 +1857,8 @@ class SaleForm(QDialog):
             if sale.status in (1, 5):
                 logger.debug("Продажа оплачена. Запускаем возврат")
                 if payment_type == 102:
-                    # TODO: убрать price
                     state_check = pq.check_open(
-                        tickets, payment_type, system.user, 2, 1, price, None
+                        tickets, payment_type, system.user, 2, 1,None
                     )
                 elif payment_type == 101:
                     logger.debug(
@@ -1916,9 +1916,8 @@ class SaleForm(QDialog):
                     if bank == 1:
                         # Если возврат по банковскому терминалу прошел успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
-                            # TODO: убрать price
                             state_check = pq.check_open(
-                                tickets, payment_type, system.user, 2, 1, price, bank
+                                tickets, payment_type, system.user, 2, 1, bank
                             )
                         elif sale.status == 5:
                             state_check = pq.check_open(
@@ -2078,9 +2077,8 @@ class SaleForm(QDialog):
                     if bank == 1:
                         # Если отмена по банковскому терминалу прошла успешно, то запускаем формирование кассового чека
                         if sale.status == 1:
-                            # TODO: убрать price
                             state_check = pq.check_open(
-                                tickets, payment_type, system.user, 2, 1, price, bank
+                                tickets, payment_type, system.user, 2, 1, bank
                             )
                 # Если отмена прошла
                 if state_check == 1:

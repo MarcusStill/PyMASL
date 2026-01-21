@@ -1655,13 +1655,13 @@ def register_tickets(device, sale_dict, type_operation):
         if kol_adult_no_discount > 0:
             adults_no_discount_sum = kol_adult_no_discount * sale_dict["price_adult"]
             logger.info(f"Регистрируем взрослых без акции: {kol_adult_no_discount} шт × {sale_dict['price_adult']} = {adults_no_discount_sum} руб")
-            if device is not None: # TODO: для теста без ККТ. + отступ внизу. убрать!
-                register_item(
-                    device,
-                    f"Билет взрослый {time} ч.",
-                    adults_no_discount_sum,
-                    kol_adult_no_discount,
-                )
+            # if device is not None: # TODO: для теста без ККТ. + отступ внизу. убрать!
+            register_item(
+                device,
+                f"Билет взрослый {time} ч.",
+                adults_no_discount_sum,
+                kol_adult_no_discount,
+            )
         else:
             logger.debug("Взрослые без акции: не регистрируем (количество = 0)")
 
@@ -1673,13 +1673,13 @@ def register_tickets(device, sale_dict, type_operation):
                 and discount > 0):
             adults_with_discount_sum = count_adult_with_discount * price_adult_with_discount
             logger.info(f"Регистрируем взрослых с акцией: {count_adult_with_discount} шт × {price_adult_with_discount} = {adults_with_discount_sum} руб")
-            if device is not None: # TODO: для теста без ККТ. + отступ внизу. убрать!
-                register_item(
-                    device,
-                    f"Билет взрослый акция {time} ч.",
-                    adults_with_discount_sum,
-                    count_adult_with_discount,
-                )
+            # if device is not None: # TODO: для теста без ККТ. + отступ внизу. убрать!
+            register_item(
+                device,
+                f"Билет взрослый акция {time} ч.",
+                adults_with_discount_sum,
+                count_adult_with_discount,
+            )
         else:
             logger.debug("Взрослые с акцией: не регистрируем (условия не выполнены)")
 
@@ -1692,12 +1692,12 @@ def register_tickets(device, sale_dict, type_operation):
         if kol_child_no_discount > 0:
             children_no_discount_sum = kol_child_no_discount * sale_dict["price_child"]
             logger.info(f"Регистрируем детей без акции: {kol_child_no_discount} шт × {sale_dict['price_child']} = {children_no_discount_sum} руб")
-            if device is not None: # TODO: для теста без ККТ. + отступ внизу. убрать!
-                register_item(
-                    device,
-                    f"Билет детский {time} ч.",
-                    children_no_discount_sum,
-                    kol_child_no_discount,
+            # if device is not None: # TODO: для теста без ККТ. + отступ внизу. убрать!
+            register_item(
+                device,
+                f"Билет детский {time} ч.",
+                children_no_discount_sum,
+                kol_child_no_discount,
             )
         else:
             logger.debug("Дети без акции: не регистрируем (количество = 0)")
@@ -1710,13 +1710,13 @@ def register_tickets(device, sale_dict, type_operation):
                 and discount > 0):
             children_with_discount_sum = count_child_with_discount * price_child_with_discount
             logger.info(f"Регистрируем детей с акцией: {count_child_with_discount} шт × {price_child_with_discount} = {children_with_discount_sum} руб")
-            if device is not None: # TODO: для теста без ККТ. + отступ внизу. убрать!
-                register_item(
-                    device,
-                    f"Билет детский акция {time} ч.",
-                    children_with_discount_sum,
-                    count_child_with_discount,
-                )
+            # if device is not None: # TODO: для теста без ККТ. + отступ внизу. убрать!
+            register_item(
+                device,
+                f"Билет детский акция {time} ч.",
+                children_with_discount_sum,
+                count_child_with_discount,
+            )
         else:
             logger.debug("Дети с акцией: не регистрируем (условия не выполнены)")
     else:
@@ -1896,7 +1896,7 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
     return True
 
 
-def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank_status, on_error=None):
+def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_status, on_error=None):
     """
     Проведение операции оплаты.
 
