@@ -509,7 +509,7 @@ class SaleForm(QDialog):
         if self.ui.tableWidget_2.rowCount() > 0:
             current_row: int = self.ui.tableWidget_2.currentRow()
 
-            # ✅ ДОБАВЛЕНО: Проверка sale_checkbox_row ПЕРЕД удалением
+            # Проверка sale_checkbox_row ПЕРЕД удалением
             if system.sale_checkbox_row is not None:
                 if current_row == system.sale_checkbox_row:
                     # Удаляется исключенный взрослый
@@ -1191,7 +1191,7 @@ class SaleForm(QDialog):
         system.sale_tickets = tickets
 
         # Проверяем есть ли в продаже взрослый
-        if system.sale_dict['kol_adult'] >= 1:
+        if system.sale_dict['kol_adult'] >= 1 or system.exclude_from_sale == 1:
             self.ui.pushButton_5.setEnabled(True)
         else:
             self.ui.pushButton_5.setEnabled(False)
