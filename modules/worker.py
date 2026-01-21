@@ -183,7 +183,6 @@ class CheckHandler:
             user=user,
             type_operation=1,
             print_check=print_check,
-            price=None,  # Не передаем price, т.к. берем из sale_dict
             bank_status=bank_data,
             on_error=self.handle_check_error
         )
