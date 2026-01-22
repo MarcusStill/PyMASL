@@ -385,7 +385,7 @@ class TransactionWorker(BaseWorker):
                 self.log_step(timer, "save_sale finished")
             # Особая продажа — только билеты, но всё равно завершаем через общий finalize_transaction
             if self.system.sale_special == 1:
-                self.process_special_sale(timer, 90)
+                self.process_special_sale(90)
                 self.finalize_transaction(timer)
                 return
 

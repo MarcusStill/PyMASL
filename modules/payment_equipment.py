@@ -1935,7 +1935,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_
                     return 0
                 logger.warning("РЕЖИМ ОТЛАДКИ: Пропуск работы с ККТ")
                 # В режиме отладки пропускаем ошибку
-                # register_tickets(None, sale_dict, type_operation) TODO: для теста без ККТ
+                # register_tickets(None, sale_dict, type_operation) # TODO: для теста без ККТ
                 return 1
             # Настройка параметров ККМ
             setup_fptr(device, user, type_operation, print_check)

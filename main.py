@@ -1143,7 +1143,15 @@ class SaleForm(QDialog):
         system.sale_dict["detail"][1] = price_adult_with_discount
         system.sale_dict["detail"][2] = child_with_discount_count
         system.sale_dict["detail"][3] = price_child_with_discount
-        system.sale_dict["detail"][4] = system.sale_discount if self.ui.checkBox_2.isChecked() else 0
+
+        # Если продажа "особенная" (инвалид / многодетные) — не перезаписываем скидку
+        # предполагаем, что нужное значение уже выставлено логикой скидок
+        if system.sale_special == 1:
+            logger.debug("Особая продажа: сохраняем скидку в detail[4] без изменений")
+        else:
+            system.sale_dict["detail"][4] = (
+                system.sale_discount if self.ui.checkBox_2.isChecked() else 0
+            )
 
         logger.debug(f"detail ИТОГО: {system.sale_dict['detail']}")
         logger.debug(f"Взрослых со скидкой: {adult_with_discount_count}, цена 1 билета: {price_adult_with_discount}")
@@ -1171,17 +1179,24 @@ class SaleForm(QDialog):
         # Считаем итог
         itog: int = calculate_itog()
 
+        # Разделяем категории посетителей для отображения на форме продажи
+        kol_adult = system.count_number_of_visitors["kol_adult"]
+        kol_child = system.count_number_of_visitors["kol_child"]
+        kol_adult_many = system.count_number_of_visitors["kol_adult_many_child"]
+        kol_child_many = system.count_number_of_visitors["kol_child_many_child"]
+
+        # Обычные (не многодетные)
+        kol_adult_regular = kol_adult - kol_adult_many
+        kol_child_regular = kol_child - kol_child_many
+
         # Обновляем UI
         self.ui.label_8.setText(str(itog))
         system.sale_dict["detail"][7] = itog
-        self.ui.label_5.setText(str(system.count_number_of_visitors["kol_adult"]))
-        self.ui.label_7.setText(str(system.count_number_of_visitors["kol_child"]))
-        self.ui.label_17.setText(
-            str(system.count_number_of_visitors["kol_adult_many_child"])
-        )
-        self.ui.label_19.setText(
-            str(system.count_number_of_visitors["kol_child_many_child"])
-        )
+
+        self.ui.label_5.setText(str(kol_adult_regular))
+        self.ui.label_7.setText(str(kol_child_regular))
+        self.ui.label_17.setText(str(kol_adult_many))
+        self.ui.label_19.setText(str(kol_child_many))
 
         # Преобразуем значения в system.sale_dict к нужным типам данных
         system.sale_dict = convert_sale_dict_values(system.sale_dict)
@@ -1395,6 +1410,16 @@ class SaleForm(QDialog):
         self.ui.tableWidget_2.cellWidget(row, 7).findChild(QCheckBox).setCheckState(
             Qt.Checked
         )
+
+        # Подсчитываем количество
+        type_item = self.ui.tableWidget_2.item(row, 2)
+        if type_item:
+            type_ticket = type_item.text()
+            if type_ticket == "взрослый":
+                system.count_number_of_visitors["kol_adult_many_child"] += 1
+            elif type_ticket == "детский":
+                system.count_number_of_visitors["kol_child_many_child"] += 1
+
         if system.sunday == 1 and self.ui.checkBox_3.isChecked():
             self.apply_extended_many_children_discount()
         elif system.sunday == 1:
