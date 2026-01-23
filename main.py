@@ -143,25 +143,32 @@ class AuthForm(QDialog):
             if pq.is_kkt_connected():
                 self.perform_kkt_checks()
             elif pq.kkt_available:
-                try:
-                    if pq.get_info(hide=True) is not None:
-                        # Если получили информацию, значит ККТ подключен
-                        self.perform_kkt_checks()
-                        return
-                except (ConnectionError, TimeoutError) as e:
-                    logger.error(f"Ошибка при получении информации о ККТ: {e}")
-                except Exception as e:  # Общий блок для других исключений
-                    logger.error(f"Неизвестная ошибка при получении информации о ККТ: {e}")
+                connected = False
 
-                # Показать предупреждение, если ККТ не подключен
-                windows.info_window(
-                    "Внимание",
-                    "Кассовый аппарат не подключен",
-                    "Программа продолжит работу без фискальных операций."
-                )
+                for attempt in range(1, 4):
+                    try:
+                        logger.debug(f"Попытка подключения к ККТ: {attempt} из 3")
+
+                        if pq.get_info(hide=True) is not None:
+                            logger.info(f"ККТ подключен успешно на попытке {attempt}")
+                            self.perform_kkt_checks()
+                            connected = True
+                            break
+
+                    except (ConnectionError, TimeoutError, Exception) as e:
+                        error_type = "сетевая" if isinstance(e, (ConnectionError, TimeoutError)) else "неизвестная"
+                        logger.warning(f"Попытка {attempt} из 3: {error_type} ошибка при подключении к ККТ: {e}")
+
+                if not connected:
+                    logger.error("Все 3 попытки подключения к ККТ не удались")
+                    windows.info_window(
+                        "Внимание",
+                        "Кассовый аппарат не подключен",
+                        "Программа продолжит работу без фискальных операций."
+                    )
         except (ConnectionError, TimeoutError) as e:
             logger.error(f"Ошибка при проверке подключения к ККТ: {e}")
-        except Exception as e:  # Общий блок для других исключений
+        except Exception as e:
             logger.error(f"Неизвестная ошибка при проверке ККТ: {e}")
 
     @staticmethod
