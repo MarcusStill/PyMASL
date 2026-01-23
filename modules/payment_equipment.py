@@ -1590,8 +1590,11 @@ def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT2
     logger.info("Запуск функции register_item")
     logger.info(f"В функцию переданы параметры: {name}, {price}, {quantity}")
     device.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
+    logger.info(f"name: {name}") # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
+    logger.info(f"price: {price}") # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, quantity)
+    logger.info(f"quantity: {quantity}") # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, tax_type)
     device.registration()
 
@@ -1721,9 +1724,11 @@ def register_tickets(device, sale_dict, type_operation):
             logger.debug("Дети с акцией: не регистрируем (условия не выполнены)")
     else:
         # Для других типов операций
+        logger.error(f"Другие типы операций.")
         for item_name, item_data in sale_dict.items():
             if (isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0):
                 # Проверяем наличие количества и цены
+                logger.debug(f"item_name ={item_name}, item_data[0]={item_data[0]}, item_data[1]={item_data[1]}")
                 register_item(device, item_name, item_data[0], item_data[1])
             else:
                 # Обработка других типов данных
@@ -1934,6 +1939,20 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_
                 return 1
             # Настройка параметров ККМ
             setup_fptr(device, user, type_operation, print_check)
+
+            # Проверка состояния чека
+            device.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_RECEIPT_STATE)
+            device.queryData()
+            receipt_number   = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_NUMBER)
+            document_number  = device.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+            receipt_type = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE)
+            logger.debug(f"receipt_type: {receipt_type}, receipt_number: {receipt_number}, document_number: {document_number}")
+            if receipt_type != IFptr.LIBFPTR_RT_CLOSED:
+                logger.error(f"Чек уже открыт! Тип: {receipt_type}")
+                if on_error:
+                    on_error("Ошибка ККТ", "Чек уже открыт")
+                return 0
+
             # Установка типа чека
             if type_operation == 1:
                 device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)      # Продажа
