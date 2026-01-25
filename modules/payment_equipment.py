@@ -31,7 +31,7 @@ except Exception as e:
     kkt_available = False
     fptr = None
 
-# Режим отладки: true — без ККТ
+# Режим отладки: True — без ККТ
 dev_mode = False
 
 # Константы для работы с кодами терминала
@@ -1574,7 +1574,7 @@ def balance_check():
         )
 
 
-def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT20):
+def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT22):
     """Функция регистрирует товар в чеке с помощью переданных параметров: название, цена, количество и тип налога.
 
     Параметры:
@@ -1582,7 +1582,7 @@ def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT2
         name (str): Название товара, которое будет отображаться в чеке.
         price (float): Цена одного товара.
         quantity (int): Количество товара.
-        tax_type (int, optional): Тип налога для товара (по умолчанию используется НДС 20%).
+        tax_type (int, optional): Тип налога для товара (по умолчанию используется НДС 22%).
 
     Возвращаемое значение:
         None: Функция не возвращает значений, но выполняет регистрацию товара на устройстве.
@@ -1590,8 +1590,11 @@ def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT2
     logger.info("Запуск функции register_item")
     logger.info(f"В функцию переданы параметры: {name}, {price}, {quantity}")
     device.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
+    logger.info(f"name: {name}") # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
+    logger.info(f"price: {price}") # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, quantity)
+    logger.info(f"quantity: {quantity}") # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, tax_type)
     device.registration()
 
@@ -1636,57 +1639,96 @@ def register_tickets(device, sale_dict, type_operation):
         None: Функция не возвращает значений, но выполняет регистрацию билетов в чеке.
     """
     logger.info("Запуск функции register_tickets")
-    logger.debug(f"В функцию переданы: device = {device}, payment_type = {sale_dict}, type_operation = {type_operation}")
+    logger.debug(f"В функцию переданы: device = {device}, sale_dict = {sale_dict}, type_operation = {type_operation}")
+
     if type_operation == 1:
+        count_adult_with_discount = sale_dict["detail"][0]
+        price_adult_with_discount = sale_dict["detail"][1]
+        count_child_with_discount = sale_dict["detail"][2]
+        price_child_with_discount = sale_dict["detail"][3]
+        discount = sale_dict["detail"][4]
         time = sale_dict["detail"][6]
+
         # Взрослые билеты
-        kol_adult_edit = sale_dict["kol_adult"] - sale_dict["detail"][0]
-        if kol_adult_edit > 0:  # Регистрация только если есть билеты
+
+        # Взрослые без акции
+        count_adult_no_discount = sale_dict["kol_adult"] - count_adult_with_discount
+        logger.debug(f"Взрослые без акции: kol_adult={sale_dict['kol_adult']}, price_adult= {sale_dict['price_adult']}")
+
+        if count_adult_no_discount > 0:
+            adults_no_discount_sum = count_adult_no_discount * sale_dict["price_adult"]
+            logger.info(f"Регистрируем взрослых без акции: {count_adult_no_discount} шт × {sale_dict['price_adult']} = {adults_no_discount_sum} руб")
+            # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
                 f"Билет взрослый {time} ч.",
-                sale_dict["price_adult"],
-                kol_adult_edit,
+                sale_dict['price_adult'],
+                count_adult_no_discount,
             )
-        # Взрослые билеты со скидкой
-        if (
-            sale_dict["detail"][0] > 0
-            and sale_dict["detail"][1] > 0
-            and sale_dict["kol_adult"] > 0  # Проверяем общее количество взрослых
-        ):  # Дополнительно проверяем количество обычных билетов
+        else:
+            logger.debug("Взрослые без акции: не регистрируем (количество = 0)")
+
+        # Взрослые с акцией
+        logger.debug(f"Взрослые С акцией: count_adult_with_discount={count_adult_with_discount}, price_adult_with_discount={price_adult_with_discount}, discount={price_adult_with_discount}")
+
+        if (count_adult_with_discount > 0
+                and price_adult_with_discount > 0
+                and discount > 0):
+            adults_with_discount_sum = count_adult_with_discount * price_adult_with_discount
+            logger.info(f"Регистрируем взрослых с акцией: {count_adult_with_discount} шт × {price_adult_with_discount} = {adults_with_discount_sum} руб")
+            # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
                 f"Билет взрослый акция {time} ч.",
-                sale_dict["detail"][1],
-                sale_dict["detail"][0],
+                price_adult_with_discount,
+                count_adult_with_discount,
             )
+        else:
+            logger.debug("Взрослые с акцией: не регистрируем (условия не выполнены)")
+
         # Детские билеты
-        kol_child_edit = sale_dict["kol_child"] - sale_dict["detail"][2]
-        if kol_child_edit > 0:  # Регистрация только если есть билеты
+
+        # Дети без акции
+        count_child_no_discount = sale_dict["kol_child"] - count_child_with_discount
+        logger.debug(f"Дети без акции: kol_child={sale_dict['kol_child']}, count_child_with_discount={count_child_with_discount}, result={count_child_no_discount}")
+
+        if count_child_no_discount > 0:
+            children_no_discount_sum = count_child_no_discount * sale_dict["price_child"]
+            logger.info(f"Регистрируем детей без акции: {count_child_no_discount} шт × {sale_dict['price_child']} = {children_no_discount_sum} руб")
+            # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
                 f"Билет детский {time} ч.",
-                sale_dict["price_child"],
-                kol_child_edit,
+                sale_dict['price_child'],
+                count_child_no_discount,
             )
-        # Детские билеты со скидкой
-        if (
-            sale_dict["detail"][2] > 0
-            and sale_dict["detail"][3] > 0
-            and sale_dict["kol_child"] > 0  # Проверяем общее количество детей
-        ):  # Дополнительно проверяем количество обычных детских билетов
+        else:
+            logger.debug("Дети без акции: не регистрируем (количество = 0)")
+
+        # Дети с акцией
+        logger.debug(f"Дети с акцией: count_child_with_discount={count_child_with_discount}, price_child_with_discount={price_child_with_discount}, discount={price_adult_with_discount}")
+
+        if (count_child_with_discount > 0
+                and price_child_with_discount > 0
+                and discount > 0):
+            children_with_discount_sum = count_child_with_discount * price_child_with_discount
+            logger.info(f"Регистрируем детей с акцией: {count_child_with_discount} шт × {price_child_with_discount} = {children_with_discount_sum} руб")
+            # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
                 f"Билет детский акция {time} ч.",
-                sale_dict["detail"][3],
-                sale_dict["detail"][2],
+                price_child_with_discount,
+                count_child_with_discount,
             )
+        else:
+            logger.debug("Дети с акцией: не регистрируем (условия не выполнены)")
     else:
-        # Для других типов операций, регистрация остальных товаров
+        # Для других типов операций
+        logger.error(f"Другие типы операций.")
         for item_name, item_data in sale_dict.items():
-            if (
-                isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0
-            ):  # Проверяем наличие количества и цены
+            if (isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0):
+                # Проверяем наличие количества и цены
+                logger.debug(f"item_name ={item_name}, item_data[0]={item_data[0]}, item_data[1]={item_data[1]}")
                 register_item(device, item_name, item_data[0], item_data[1])
             else:
                 # Обработка других типов данных
@@ -1699,7 +1741,7 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
      Параметры:
         device (object): Объект устройства, поддерживающий метод `setParam()` для настройки параметров чека.
         payment_type (int): Тип оплаты (например, наличными, картой или оффлайн).
-        bank_status (int): Флаг банка, необходимый для определения метода оплаты (например, 1 для картой).
+        bank_status (int): Флаг банка, необходимый для определения метода оплаты (например, 1 для оплаты картой).
         sale_dict (dict): Словарь с данными о продаже, включая сумму.
 
     Возвращаемое значение:
@@ -1859,7 +1901,7 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
     return True
 
 
-def check_open(sale_dict, payment_type, user, type_operation, print_check, price, bank_status, on_error=None):
+def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_status, on_error=None):
     """
     Проведение операции оплаты.
 
@@ -1893,9 +1935,24 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
                     return 0
                 logger.warning("РЕЖИМ ОТЛАДКИ: Пропуск работы с ККТ")
                 # В режиме отладки пропускаем ошибку
+                # register_tickets(None, sale_dict, type_operation) # TODO: для теста без ККТ
                 return 1
             # Настройка параметров ККМ
             setup_fptr(device, user, type_operation, print_check)
+
+            # Проверка состояния чека
+            device.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_RECEIPT_STATE)
+            device.queryData()
+            receipt_number   = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_NUMBER)
+            document_number  = device.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+            receipt_type = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE)
+            logger.debug(f"receipt_type: {receipt_type}, receipt_number: {receipt_number}, document_number: {document_number}")
+            if receipt_type != IFptr.LIBFPTR_RT_CLOSED:
+                logger.error(f"Чек уже открыт! Тип: {receipt_type}")
+                if on_error:
+                    on_error("Ошибка ККТ", "Чек уже открыт")
+                return 0
+
             # Установка типа чека
             if type_operation == 1:
                 device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)      # Продажа
@@ -1909,6 +1966,7 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, price
             device.openReceipt()
             # Регистрация билетов
             register_tickets(device, sale_dict, type_operation)
+
             # Оплата
             if not process_payment(device, payment_type, bank_status, sale_dict, None):
                 logger.error("Ошибка обработки платежа")

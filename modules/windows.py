@@ -10,7 +10,7 @@ def info_window(text, infotext, detailed_text):
     msg.setText(text)
     msg.setInformativeText(infotext)
     msg.setDetailedText(detailed_text)
-    msg.exec_()
+    msg.exec()
 
 
 def info_dialog_window(title, text):

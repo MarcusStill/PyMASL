@@ -183,7 +183,6 @@ class CheckHandler:
             user=user,
             type_operation=1,
             print_check=print_check,
-            price=None,  # Не передаем price, т.к. берем из sale_dict
             bank_status=bank_data,
             on_error=self.handle_check_error
         )
@@ -238,6 +237,7 @@ class TransactionWorker(BaseWorker):
             amount = system.sale_dict["detail"][7]
         except (KeyError, IndexError, TypeError) as e:
             logger.warning(f"Ошибка получения amount: {e}.")
+            amount = 0
 
         # Инициализация обработчиков
         self.payment_handler = PaymentHandler(
@@ -245,7 +245,7 @@ class TransactionWorker(BaseWorker):
             pq=pq,
             payment_type=payment_type,
             amount=amount,
-            dev_mode=getattr(main_window, 'dev_mode', False) if main_window else False
+            dev_mode=self.dev_mode,
         )
         self.check_handler = CheckHandler(self, pq)
         self.db_handler = DatabaseHandler(Session, system.engine)
@@ -256,9 +256,9 @@ class TransactionWorker(BaseWorker):
         self.delayed_progress_update("Печатаем билеты (особая продажа)...", progress_percent)
         self.invoke_main_window_method("print_saved_tickets")
         self.log_step(timer, "print_saved_tickets finished")
-        self.close_window_signal.emit()
+        self.system.sale_status = 0
 
-    def process_payment(self, timer):
+    def process_payment(self, timer: QElapsedTimer):
         """Обработка платежа"""
         # По умолчанию наличные
         payment = 2
@@ -275,19 +275,20 @@ class TransactionWorker(BaseWorker):
             else:
                 success, payment = self.payment_handler.process_bank_payment()
                 if not success:
+                    # Ошибка уже обработана через callback (emit_error_and_finish)
                     return None, None
 
                 # Сохраняем банковский чек
                 self.delayed_progress_update("Сохраняем банковский чек...", 45)
                 if payment == 3:
-                    # Успешный статус для check_open
+                    # Условный особый статус, но для check_open всё равно успех
                     bank_status = 1
                 else:
                     check = self.pq.read_pinpad_file(remove_newline=False)
                     self.log_step(timer, "pq.read_pinpad_file finished")
                     # Успешный статус для check_open
                     bank_status = 1
-                    self.db_handler.update_sale(self.system.sale_id,bank_pay=check)
+                    self.db_handler.update_sale(self.system.sale_id,bank_pay=check,status=9)
             self.log_step(timer, "save in db finished")
 
             if self.print_check == 1 and payment == 1:
@@ -297,9 +298,13 @@ class TransactionWorker(BaseWorker):
 
         return payment, bank_status
 
-    def process_checks(self, timer, payment, bank_data):
-        """Печать чеков"""
+    def process_checks(self, timer: QElapsedTimer, payment, bank_data):
+        """Печать кассового чека и сохранение продажи"""
         self.delayed_progress_update("Печатаем кассовый чек...", 60)
+
+        logger.debug(f"ДО check_open: sale_dict = {self.system.sale_dict}")
+        logger.debug(f"exclude_from_sale={self.system.exclude_from_sale}, sale_checkbox_row={self.system.sale_checkbox_row}")
+
         try:
             if not self.check_handler.print_check(
                 self.system.sale_dict,
@@ -309,6 +314,7 @@ class TransactionWorker(BaseWorker):
                 self.system.sale_dict["detail"][7],
                 bank_data
             ):
+                # В случае ошибки внутри print_check должен быть вызван on_error
                 return False
 
             self.log_step(timer, "pq.check_open finished")
@@ -332,20 +338,24 @@ class TransactionWorker(BaseWorker):
 
         except Exception as e:
             logger.exception("Ошибка при печати чеков и сохранению продажи в БД: %s", e)
+            # Здесь можно при желании дернуть emit_error_and_finish,
+            # но тогда нужно быть уверенным, что не будет дубля с handle_check_error
             return False
 
-    def finalize_transaction(self, timer):
-        """Завершение транзакции"""
+    def finalize_transaction(self, timer: QElapsedTimer):
+        """Завершение транзакции (успешный сценарий)"""
         self.delayed_progress_update("Печатаем билеты...", 90)
         self.invoke_main_window_method("print_saved_tickets")
         self.log_step(timer, "print_saved_tickets finished")
         self.system.sale_status = 0
         self.delayed_progress_update("Завершено.", 100, 1)
         self.log_step(timer, "all steps finished")
+        # Все финальные сигналы — только здесь (успех) и в emit_error_and_finish (ошибка)
         self.close_window_signal.emit()
+        self.finished.emit()
 
-    def handle_error(self, error, timer):
-        """Обработка ошибок"""
+    def handle_error(self, error, timer: QElapsedTimer):
+        """Обработка неожиданных ошибок верхнего уровня"""
         self.emit_error_and_finish(
             title="Ошибка",
             message="Не удалось выполнить операцию на терминале.",
@@ -357,14 +367,11 @@ class TransactionWorker(BaseWorker):
         self.system.sale_status = 0
 
     def cleanup(self):
-        """Завершающие действия"""
+        """Только установка флага и приведение состояния, без сигналов."""
         if self._is_cleaned:
             return
         self._is_cleaned = True
-
         self.system.sale_status = 0
-        self.finished.emit()
-        self.close_window_signal.emit()
 
     def run(self):
         timer = QElapsedTimer()
@@ -376,25 +383,30 @@ class TransactionWorker(BaseWorker):
                 self.delayed_progress_update("Сохраняем продажу...", 10)
                 self.save_sale_signal.emit()
                 self.log_step(timer, "save_sale finished")
-            # Особая продажа — только билеты
+            # Особая продажа — только билеты, но всё равно завершаем через общий finalize_transaction
             if self.system.sale_special == 1:
                 self.process_special_sale(90)
+                self.finalize_transaction(timer)
                 return
 
             # Обработка платежа
             payment, bank_data = self.process_payment(timer)
-            # Если была ошибка
             if payment is None:
+                # Ошибка уже должна быть показана PaymentHandler/emit_error_and_finish
                 return
 
             # Печать чеков
             if not self.process_checks(timer, payment, bank_data):
+                # Ошибка либо уже показана через on_error, либо только залогирована
                 return
 
-            # Завершение транзакции
+            # Успешное завершение
             self.finalize_transaction(timer)
 
         except Exception as e:
+            # Ловим любые непредвиденные исключения
+            logger.exception("Необработанная ошибка в TransactionWorker.run: %s", e)
             self.handle_error(e, timer)
         finally:
+            # Безопасный cleanup без дублей сигналов
             self.cleanup()

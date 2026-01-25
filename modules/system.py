@@ -65,6 +65,7 @@ class System:
         # 5 - требуется частичный возврат, 6 - частичный возврат
         # 7 - возврат по банковским реквизитам
         # 8 - отменена
+        # 9 - не фискализирована
         self.sale_status = None
         self.sale_id = None
         self.sale_discount = None
@@ -98,7 +99,7 @@ class System:
         # Количество начисляемых талантов
         self.talent = {"1_hour": 25, "2_hour": 35, "3_hour": 50}
         self.age = {"min": 5, "max": 15}  # Возраст посетителей
-        # Содержание detail: [kol_adult, price_adult, kol_child, price_child, discount, id_adult, time, sum]
+        # Содержание detail: [kol_adult, итоговая сумма (взрослые), kol_child, итоговая сумма (дети), discount, id_adult, time, sum]
         self.sale_dict = {
             "kol_adult": 0,
             "price_adult": 0,
@@ -166,10 +167,11 @@ class System:
                     logger.info(f"Успешная авторизация: {kassir.last_name}")
                     return 1
                 else:
-                    logger.warning(
-                        f"Неудачная попытка авторизации для пользователя {login}"
-                    )
+                    logger.warning(f"Неудачная попытка авторизации для пользователя {login}")
                     return 0
+            else:
+                logger.warning(f"Пользователь {login} не найден")
+                return 0
 
         except SQLAlchemyError as e:
             logger.error(f"Ошибка базы данных при авторизации пользователя: {e}")
@@ -317,24 +319,24 @@ class System:
             today.year - born.year - ((today.month, today.day) < (born.month, born.day))
         )
 
-    @staticmethod
-    def calculate_ticket_type(self, age: int) -> str:
-        """
-        Функция определяет тип входного билета.
-
-        Параметры:
-            age (int): Возраст посетителя.
-
-        Возвращаемое значение:
-            str: Тип билета (бесплатный, детский, взрослый).
-        """
-        if age < self.age["min"]:
-            return "бесплатный"
-        elif self.age["min"] <= age < self.age["max"]:
-            return "детский"
-        elif age >= self.age["max"]:
-            return "взрослый"
-        return ""
+    # @staticmethod
+    # def calculate_ticket_type(self, age: int) -> str:
+    #     """
+    #     Функция определяет тип входного билета.
+    #
+    #     Параметры:
+    #         age (int): Возраст посетителя.
+    #
+    #     Возвращаемое значение:
+    #         str: Тип билета (бесплатный, детский, взрослый).
+    #     """
+    #     if age < self.age["min"]:
+    #         return "бесплатный"
+    #     elif self.age["min"] <= age < self.age["max"]:
+    #         return "детский"
+    #     elif age >= self.age["max"]:
+    #         return "взрослый"
+    #     return ""
 
     @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
     def load_coordinates(self, config: Config):
