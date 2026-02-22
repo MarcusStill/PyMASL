@@ -207,6 +207,15 @@ class DatabaseHandler:
         self.Session = Session
         self.engine = engine
 
+    def sale_exists(self, sale_id):
+        """Проверяет существование продажи по ID"""
+        try:
+            with self.Session(self.engine) as session:
+                return session.query(Sale).filter(Sale.id == sale_id).first() is not None
+        except Exception as e:
+            logger.error(f"Ошибка проверки существования продажи {sale_id}: {e}")
+            return False
+
     def update_sale(self, sale_id, **values):
         """Общее сохранение данных о продаже"""
         with self.Session(self.engine) as session:
@@ -260,9 +269,28 @@ class TransactionWorker(BaseWorker):
 
     def process_payment(self, timer: QElapsedTimer):
         """Обработка платежа"""
-        # По умолчанию наличные
-        payment = 2
+        payment = 2 # по умолчанию наличные
         bank_status = 0
+
+        # Проверяем, что sale_id существует
+        if self.system.sale_id is None:
+            logger.warning("Невозможно сохранить банковский чек: sale_id = None")
+            self.emit_error_and_finish(
+                title="Критическая ошибка",
+                message="Продажа не была создана в БД",
+                code="SALE_ID_NONE"
+            )
+            return None, None
+
+        # Проверяем существует ли продажа в БД?
+        if not self.db_handler.sale_exists(self.system.sale_id):
+            logger.warning(f"Продажа {self.system.sale_id} есть в памяти, но отсутствует в БД!")
+            self.emit_error_and_finish(
+                title="Критическая ошибка",
+                message="Продажа не найдена в БД после сохранения",
+                code="SALE_NOT_IN_DB"
+            )
+            return None, None
 
         if self.payment_type in (101, 100):
             # Режим отладки
@@ -288,7 +316,11 @@ class TransactionWorker(BaseWorker):
                     self.log_step(timer, "pq.read_pinpad_file finished")
                     # Успешный статус для check_open
                     bank_status = 1
-                    self.db_handler.update_sale(self.system.sale_id,bank_pay=check,status=9)
+                    # Обязательно сохраняем банковский слип-чек
+                    try:
+                        self.db_handler.update_sale(self.system.sale_id, bank_pay=check)
+                    except Exception as e:
+                        logger.warning(f"Ошибка сохранения банковского чека: {e}")
             self.log_step(timer, "save in db finished")
 
             if self.print_check == 1 and payment == 1:
