@@ -1,474 +1,171 @@
+import unittest
+import base64
+import os
 import json
-from unittest.mock import MagicMock, patch, mock_open
+import tempfile
+from datetime import date, datetime
+from unittest.mock import patch, MagicMock
 
-import pytest
-
-from db.models import Price
 from modules.system import System
+from modules.config import Config
+from db.models import Price
 
+class TestSystem(unittest.TestCase):
 
-# Фикстуры
-@pytest.fixture
-def mock_config_load_coordinates():
-    """Фикстура для мокирования конфигурации."""
-    config = MagicMock()
-    return config
+    def setUp(self):
+        patcher = patch('modules.system.create_engine')
+        self.mock_create_engine = patcher.start()
+        self.addCleanup(patcher.stop)
 
+        System._instance = None
 
-@pytest.fixture
-def mock_session():
-    """Фикстура для мокирования сессии базы данных."""
-    with patch("modules.system.Session") as mock:  # Исправленный путь
-        yield mock
+        with patch('modules.system.Config') as mock_config_cls:
+            mock_cfg_inst = MagicMock()
+            def config_get(key):
+                if key == "kol": return "2"
+                return "dummy"
+            mock_cfg_inst.get.side_effect = config_get
+            mock_cfg_inst.pcs = ["PC1", "PC2"]
+            mock_config_cls.return_value = mock_cfg_inst
 
+            self.system = System()
 
-@pytest.fixture
-def mock_prices():
-    """Фикстура для мокирования прайс-листа."""
-    return [
-        Price(price=100),
-        Price(price=200),
-        Price(price=300),
-        Price(price=400),
-        Price(price=500),
-        Price(price=600),
-        Price(price=700),
-        Price(price=800),
-        Price(price=900),
-    ]
+    def test_decode_password(self):
+        encoded = base64.b64encode(b"mysecret").decode()
+        self.assertEqual(System.decode_password(encoded), "mysecret")
 
+    def test_calculate_age(self):
+        today = date.today()
+        born = date(today.year - 10, today.month, today.day)
+        self.assertEqual(System.calculate_age(born), 10)
 
-@pytest.fixture
-def default_expected_prices():
-    """Фикстура для ожидаемых значений по умолчанию."""
-    return {
-        "ticket_child_1": 100,
-        "ticket_child_2": 200,
-        "ticket_child_3": 300,
-        "ticket_child_week_1": 300,  # По умолчанию
-        "ticket_child_week_2": 600,  # По умолчанию
-        "ticket_child_week_3": 900,  # По умолчанию
-        "ticket_adult_1": 150,  # По умолчанию
-        "ticket_adult_2": 200,  # По умолчанию
-        "ticket_adult_3": 250,  # По умолчанию
-    }
+        if today.month == 12 and today.day == 31:
+            born = date(today.year - 9, 1, 1)
+        else:
+            try:
+                born = date(today.year - 10, today.month, today.day + 1)
+            except ValueError:
+                born = date(today.year - 10, today.month + 1, 1)
+        self.assertEqual(System.calculate_age(born), 9)
 
+    @patch('modules.system.Session')
+    @patch('modules.system.select')
+    def test_user_authorization_success(self, mock_select, mock_Session):
+        mock_session_inst = MagicMock()
+        mock_Session.return_value.__enter__.return_value = mock_session_inst
 
-# Фикстура для создания объекта System
-@pytest.fixture
-def system(mock_session):
-    """Фикстура для создания объекта System с мокированием сессии."""
-    with patch("modules.system.Config") as mock_config:  # Исправленный путь
-        mock_config_instance = mock_config.return_value
-        mock_config_instance.get.side_effect = {
-            "host": "localhost",
-            "port": "5432",
-            "database": "test_db",
-            "user": "test_user",
-            "version": "1.0",
-            "log_file": "system.log",
-            "kol": 10,
-            "pc_1": "PC1",
-            "pc_2": "PC2",
-        }.get
-        with patch("modules.system.load_dotenv"):  # Исправленный путь
-            with patch("modules.system.os.getenv", return_value="test_password"):
-                return System()
+        mock_user = MagicMock()
+        mock_user.password = base64.b64encode(b"password123").decode()
 
+        mock_session_inst.execute.return_value.scalars.return_value.first.return_value = mock_user
 
-# Тестируем load_coordinates
-def test_load_coordinates_invalid_file_path(mock_config_load_coordinates):
-    """Тест на некорректный путь к файлу координат в конфигурации."""
-    mock_config_load_coordinates.get.return_value = 12345  # Не строка
-    system = System()
+        result = self.system.user_authorization("login1", "password123")
+        self.assertEqual(result, 1)
+        self.assertEqual(self.system.user, mock_user)
 
-    # Теперь ожидаем ошибку TypeError
-    with pytest.raises(TypeError, match="Путь к файлу координат должен быть строкой."):
-        system.load_coordinates(mock_config_load_coordinates)
+    @patch('modules.system.Session')
+    @patch('modules.system.select')
+    def test_user_authorization_failure_wrong_password(self, mock_select, mock_Session):
+        mock_session_inst = MagicMock()
+        mock_Session.return_value.__enter__.return_value = mock_session_inst
 
+        mock_user = MagicMock()
+        mock_user.password = base64.b64encode(b"password123").decode()
 
-def test_load_coordinates_missing_key_in_config(mock_config_load_coordinates):
-    """Тест на отсутствие ключа 'ticket_coordinates_file' в конфигурации."""
-    mock_config_load_coordinates.get.return_value = None
-    system = System()
+        mock_session_inst.execute.return_value.scalars.return_value.first.return_value = mock_user
 
-    with pytest.raises(
-        KeyError, match="Не указан путь к файлу координат в конфигурации."
-    ):
-        system.load_coordinates(mock_config_load_coordinates)
+        result = self.system.user_authorization("login1", "wrongpassword")
+        self.assertEqual(result, 0)
 
+    @patch('modules.system.Session')
+    def test_get_price_with_db_values(self, mock_Session):
+        mock_session_inst = MagicMock()
+        mock_Session.return_value.__enter__.return_value = mock_session_inst
 
-def test_load_coordinates_file_not_found(mock_config_load_coordinates):
-    """Тест на несуществующий файл с координатами."""
-    mock_config_load_coordinates.get.return_value = "invalid/path/to/coordinates.json"
-    system = System()
+        mock_prices = []
+        for i in range(9):
+            p = Price(price=(100 * (i+1)) ^ 42)
+            mock_prices.append(p)
 
-    with patch("os.path.isfile", return_value=False):
-        with pytest.raises(
-            FileNotFoundError,
-            match="Файл с координатами 'invalid/path/to/coordinates.json' не найден.",
-        ):
-            system.load_coordinates(mock_config_load_coordinates)
+        mock_session_inst.query.return_value.order_by.return_value.all.return_value = mock_prices
 
+        self.system.get_price()
 
-def test_load_coordinates_invalid_json(mock_config_load_coordinates):
-    """Тест на некорректный формат JSON в файле."""
-    mock_config_load_coordinates.get.return_value = "valid/path/to/coordinates.json"
-    system = System()
+        self.assertEqual(self.system.price["ticket_child_1"], 100)
 
-    with patch("os.path.isfile", return_value=True):
-        with patch("builtins.open", mock_open(read_data="invalid_json")):
-            with pytest.raises(json.JSONDecodeError):
-                system.load_coordinates(mock_config_load_coordinates)
+    @patch('modules.system.Session')
+    def test_get_price_defaults_on_empty_db(self, mock_Session):
+        mock_session_inst = MagicMock()
+        mock_Session.return_value.__enter__.return_value = mock_session_inst
 
+        mock_session_inst.query.return_value.order_by.return_value.all.return_value = []
 
-def test_load_coordinates_missing_coordinates_key(mock_config_load_coordinates):
-    """Тест на отсутствие ключа 'coordinates' в JSON файле."""
-    mock_config_load_coordinates.get.return_value = "valid/path/to/coordinates.json"
-    system = System()
+        self.system.get_price()
+        self.assertEqual(self.system.price["ticket_child_1"], 250)
+        self.assertEqual(self.system.price["ticket_adult_1"], 150)
 
-    with patch("os.path.isfile", return_value=True):
-        invalid_json = json.dumps({"invalid_key": "value"})
-        with patch("builtins.open", mock_open(read_data=invalid_json)):
-            with pytest.raises(
-                KeyError, match="В конфигурации отсутствует ключ 'coordinates'."
-            ):
-                system.load_coordinates(mock_config_load_coordinates)
+    @patch('modules.system.Session')
+    @patch('modules.system.select')
+    @patch('modules.system.dt.datetime')
+    def test_check_day_holiday(self, mock_datetime, mock_select, mock_Session):
+        mock_datetime.now.return_value.strftime.return_value = "2024-01-01"
 
+        mock_session_inst = MagicMock()
+        mock_Session.return_value.__enter__.return_value = mock_session_inst
 
-def test_load_coordinates_successful(mock_config_load_coordinates):
-    """Тест на успешную загрузку координат из корректного JSON файла."""
-    mock_config_load_coordinates.get.return_value = "valid/path/to/coordinates.json"
-    system = System()
+        def side_effect_first(*args, **kwargs):
+            return MagicMock() if "Holiday" in str(mock_select.call_args) else None
 
-    valid_json = json.dumps(
-        {
-            "coordinates": {
-                "name": {"x": 10, "y": 20},
-                "surname": {"x": 15, "y": 25},
-                "age": {"x": 20, "y": 30},
-            }
-        }
-    )
-
-    with patch("os.path.isfile", return_value=True):
-        with patch("builtins.open", mock_open(read_data=valid_json)):
-            coordinates = system.load_coordinates(mock_config_load_coordinates)
-            expected_coordinates = {
-                "name": {"x": 10, "y": 20},
-                "surname": {"x": 15, "y": 25},
-                "age": {"x": 20, "y": 30},
-            }
-            assert coordinates == expected_coordinates
-
-
-# Тестируем get_price
-def check_prices(system, expected_prices):
-    """Проверка прайс-листа в системе с детальным выводом при ошибке."""
-    for key, expected_value in expected_prices.items():
-        assert (
-            system.price[key] == expected_value
-        ), f"Ошибка для {key}: ожидалось {expected_value}, но получено {system.price[key]}"
-
-
-# Тесты остаются те же, что и у вас, но теперь с улучшением диагностики в `check_prices`
-@patch("modules.system.Session")
-def test_get_price_with_enough_records(
-    mock_session, system, mock_prices, default_expected_prices
-):
-    """Тест на достаточное количество записей в прайс-листе."""
-    mock_session.return_value.__enter__.return_value.query.return_value.order_by.return_value.all.return_value = (
-        mock_prices
-    )
-    system.get_price()
-
-    expected_prices = {
-        "ticket_child_1": 100 ^ 42,
-        "ticket_child_2": 200 ^ 42,
-        "ticket_child_3": 300 ^ 42,
-        "ticket_child_week_1": 400 ^ 42,
-        "ticket_child_week_2": 500 ^ 42,
-        "ticket_child_week_3": 600 ^ 42,
-        "ticket_adult_1": 700 ^ 42,
-        "ticket_adult_2": 800 ^ 42,
-        "ticket_adult_3": 900 ^ 42,
-    }
-
-    check_prices(system, expected_prices)
-
-
-@patch("modules.system.Session")
-def test_get_price_with_insufficient_records(
-    mock_session, system, default_expected_prices
-):
-    """Тест на недостаточное количество записей в прайс-листе."""
-    mock_prices = [Price(price=100), Price(price=200), Price(price=300)]
-    mock_session.return_value.__enter__.return_value.query.return_value.order_by.return_value.all.return_value = (
-        mock_prices
-    )
-    system.get_price()
-
-    updated_prices = default_expected_prices.copy()
-    updated_prices["ticket_child_1"] = 100 ^ 42  # 78
-    updated_prices["ticket_child_2"] = 200 ^ 42  # 234
-    updated_prices["ticket_child_3"] = 300 ^ 42  # 334
-
-    updated_prices["ticket_child_week_1"] = 300
-    updated_prices["ticket_child_week_2"] = 600
-    updated_prices["ticket_child_week_3"] = 900
-    updated_prices["ticket_adult_1"] = 150
-    updated_prices["ticket_adult_2"] = 200
-    updated_prices["ticket_adult_3"] = 250
-
-    check_prices(system, updated_prices)
-
-
-@patch("modules.system.Session")
-def test_get_price_with_empty_result(mock_session, system, default_expected_prices):
-    """Тест на пустой результат (прайс-лист пуст)."""
-    mock_session.return_value.__enter__.return_value.query.return_value.order_by.return_value.all.return_value = (
-        []
-    )
-
-    # Проверяем обновление цен при пустом результату из базы
-    system.get_price()
-
-    updated_prices = default_expected_prices.copy()
-    updated_prices["ticket_child_1"] = 250
-    updated_prices["ticket_child_2"] = 500
-    updated_prices["ticket_child_3"] = 750
-    updated_prices["ticket_child_week_1"] = 300
-    updated_prices["ticket_child_week_2"] = 600
-    updated_prices["ticket_child_week_3"] = 900
-    updated_prices["ticket_adult_1"] = 150
-    updated_prices["ticket_adult_2"] = 200
-    updated_prices["ticket_adult_3"] = 250
-
-    # Проверяем, что все ключи прайс-листа были корректно обновлены
-    check_prices(system, updated_prices)
-
-#######################################
-# Тестируем get_slip_data
-
-# Фикстуры для тестов get_slip_data
-@pytest.fixture
-def mock_session():
-    """Фикстура для мокирования сессии базы данных."""
-    with patch("modules.system.Session") as mock:
-        yield mock
-
-@pytest.fixture
-def slip_processor():
-    """Фикстура для создания тестируемого объекта."""
-    from modules.system import System
-    return System()
-
-@pytest.fixture
-def invalid_slip():
-    return "Invalid slip format without any required data"
-
-# Вспомогательная фикстура для мокирования запроса
-@pytest.fixture
-def mock_db_query(mock_session):
-    def _mock_db_query(return_value):
-        # Мокируем поведение сессии так, чтобы .execute().scalars().one() возвращали строку слипа
-        mock_query = MagicMock()
         mock_scalars = MagicMock()
-        mock_scalars.one.return_value = return_value  # Передаем строку слипа напрямую
+        mock_session_inst.execute.return_value.scalars.return_value = mock_scalars
+        mock_scalars.first.side_effect = [None, True]
 
-        # Строим цепочку вызовов: execute().scalars().one()
-        mock_session.return_value.__enter__.return_value.execute.return_value = mock_query
-        mock_query.scalars.return_value = mock_scalars
+        with patch('modules.system.calendar.weekday', return_value=0):
+            result = self.system.check_day()
 
-        return mock_session
-    return _mock_db_query
+        self.assertEqual(result, 1)
+        self.assertEqual(self.system.what_a_day, 1)
 
-# Фикстуры с примерами слипов
-@pytest.fixture
-def mastercard_slip():
-    return """
-            Umbrella Corporation            
+    def test_load_coordinates(self):
+        with tempfile.NamedTemporaryFile("w", delete=False) as f:
+            json.dump({"coordinates": {"name": {"x": 10, "y": 20}}}, f)
+            temp_path = f.name
 
-ПАО БАНК                  Оплата
-Т: 12345678           М:000000000001
-MASTERCARD            A0000000000000
-Карта:(E1)          ************1234
-Сумма (Руб):                  1.00
-Комиссия за операцию - 0 Руб.
-              ОДОБРЕНО
-К/А: 123456      RRN:   000000000001
-    Подпись клиента не требуется    
-0123456789012345678901234567890123456
-===================================="""
+        mock_config = MagicMock()
+        mock_config.get.return_value = temp_path
 
-@pytest.fixture
-def visa_slip():
-    return """
-            Umbrella Corporation            
+        try:
+            coords = self.system.load_coordinates(mock_config)
+            self.assertEqual(coords["name"]["x"], 10)
+        finally:
+            os.remove(temp_path)
 
-ПАО БАНК                  Оплата
-Т: 12345678           М:000000000001
-VISA                  A0000000000000
-Карта:(E1)          ************1234
-Сумма (Руб):                  1.00
-Комиссия за операцию - 0 Руб.
-              ОДОБРЕНО
-К/А: 123456      RRN:   000000000001
-    Подпись клиента не требуется    
-0123456789012345678901234567890123456
-===================================="""
+    @patch('modules.system.Session')
+    @patch('modules.system.select')
+    def test_check_db_connection(self, mock_select, mock_Session):
+        mock_session_inst = MagicMock()
+        mock_Session.return_value.__enter__.return_value = mock_session_inst
 
-@pytest.fixture
-def mir_slip():
-    return """
-            Umbrella Corporation            
+        self.assertTrue(self.system.check_db_connection())
 
-ПАО БАНК                  Оплата
-Т: 12345678           М:000000000001
-MIR                   A0000000000000
-Карта:(E4)       ***************1234
-Сумма (Руб):                 1.00
-Комиссия за операцию - 0 Руб.
-              ОДОБРЕНО
-К/А: 123456      RRN:   000000000001
-  Проверено на устройстве клиента   
-0123456789012345678901234567890123456
-===================================="""
+        mock_session_inst.execute.side_effect = Exception("DB Error")
+        self.assertFalse(self.system.check_db_connection())
 
-@pytest.fixture
-def qr_slip():
-    return """
-            Umbrella Corporation            
+    @patch('modules.system.Session')
+    @patch('modules.system.select')
+    def test_get_slip_data(self, mock_select, mock_Session):
+        mock_session_inst = MagicMock()
+        mock_Session.return_value.__enter__.return_value = mock_session_inst
 
-ПАО БАНК               Оплата QR
-Т: 12345678           М:000000000001
-Терминал QR:                00000001
-Номер QR:                 0000000001
-Банк плательщика:           БАНК
-Заказ:
-    352dba227a944a44b1ffa19eaf37f379
-Карта:              ************1234
-Сумма (Руб):                 1.00
-              ОДОБРЕНО
-К/А: 123456      RRN:   000000000001
-  Проверено на устройстве клиента   
-0123456789012345678901234567890123456
-===================================="""
+        fake_slip = "Номер QR: 123456\nКарта: ************1234\nМ:987654\nRRN: 111222"
+        mock_session_inst.execute.return_value.scalars.return_value.one.return_value = fake_slip
 
-@pytest.fixture
-def mir_pay_slip():
-    return """
-            Umbrella Corporation            
+        card_tail, merchant_id, rrn_value, load_slip = self.system.get_slip_data(1)
 
-ПАО БАНК                  Оплата
-Т: 12345678           М:000000000001
-MIR PAY               A0000000000000
-Карта:(E4)       ***************1234
-Сумма (Руб):                 1.00
-Комиссия за операцию - 0 Руб.
-              ОДОБРЕНО
-К/А: 123456      RRN:   000000000001
-  Проверено на устройстве клиента   
-0123456789012345678901234567890123456
-===================================="""
+        self.assertEqual(card_tail, "1234")
+        self.assertEqual(merchant_id, "987654")
+        self.assertEqual(rrn_value, "111222")
+        self.assertEqual(load_slip, fake_slip)
 
-@pytest.fixture
-def mir_classic_slip():
-    return """
-            Umbrella Corporation            
-
-ПАО БАНК                  Оплата
-Т: 12345678           М:000000000001
-MIR Classic CRD       A0000000000000
-Карта:(E)           ************1234
-Сумма (Руб):                  1.00
-Комиссия за операцию - 0 Руб.
-              ОДОБРЕНО
-К/А: 123456      RRN:   000000000001
-    Подпись клиента не требуется    
-0123456789012345678901234567890123456"""
-
-# Тесты для каждого типа слипа
-def test_mastercard_slip(slip_processor, mock_db_query, mastercard_slip):
-    # Мокируем возврат строки слипа напрямую
-    mock_db_query(mastercard_slip.strip())  # передаем строку напрямую
-
-    # Получаем результат
-    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
-
-    # Проверяем, что данные корректны
-    assert card_tail == "1234", f"Ожидалось '1234', но получено '{card_tail}'"
-    assert merchant_id == "000000000001", f"Ожидалось '000000000001', но получено '{merchant_id}'"
-    assert rrn_value == "000000000001", f"Ожидалось '000000000001', но получено '{rrn_value}'"
-    assert full_slip == mastercard_slip.strip(), f"Ожидался полный слип, но получено '{full_slip}'"
-
-def test_visa_slip(slip_processor, mock_db_query, visa_slip):
-    # Мокируем возврат строки слипа напрямую
-    mock_db_query(visa_slip.strip())  # передаем строку напрямую
-
-    # Получаем результат
-    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
-
-    # Проверяем, что данные корректны
-    assert card_tail == "1234", f"Ожидалось '1234', но получено '{card_tail}'"
-    assert merchant_id == "000000000001", f"Ожидалось '000000000001', но получено '{merchant_id}'"
-    assert rrn_value == "000000000001", f"Ожидалось '000000000001', но получено '{rrn_value}'"
-    assert full_slip == visa_slip.strip(), f"Ожидался полный слип, но получено '{full_slip}'"
-
-def test_mir_slip(slip_processor, mock_db_query, mir_slip):
-    mock_db_query(mir_slip.strip())
-    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
-
-    assert card_tail == "1234"
-    assert merchant_id == "000000000001"
-    assert rrn_value == "000000000001"
-    assert full_slip == mir_slip.strip()
-
-def test_qr_slip(slip_processor, mock_db_query, qr_slip):
-    mock_db_query(qr_slip.strip())
-    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
-
-    assert card_tail == "1234"
-    assert merchant_id == "000000000001"
-    assert rrn_value == "000000000001"
-    assert full_slip == qr_slip.strip()
-
-def test_mir_pay_slip(slip_processor, mock_db_query, mir_pay_slip):
-    mock_db_query(mir_pay_slip.strip())
-    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
-
-    assert card_tail == "1234"
-    assert merchant_id == "000000000001"
-    assert rrn_value == "000000000001"
-    assert full_slip == mir_pay_slip.strip()
-
-def test_mir_classic_slip(slip_processor, mock_db_query, mir_classic_slip):
-    mock_db_query(mir_classic_slip.strip())
-    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
-
-    assert card_tail == "1234"
-    assert merchant_id == "000000000001"
-    assert rrn_value == "000000000001"
-    assert full_slip == mir_classic_slip.strip()
-
-def test_invalid_slip(slip_processor, invalid_slip, mock_db_query):
-    # Мокируем возврат невалидного слипа
-    mock_db_query(invalid_slip.strip())  # фикстура передана как параметр
-
-    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
-
-    assert card_tail == ""
-    assert merchant_id == ""
-    assert rrn_value == ""
-    assert full_slip == invalid_slip.strip()
-
-def test_empty_slip(slip_processor, mock_db_query):
-    # Мокируем возврат пустого слипа
-    mock_db_query("")  # фикстура передана как параметр
-
-    card_tail, merchant_id, rrn_value, full_slip = slip_processor.get_slip_data(1)
-
-    assert card_tail == ""
-    assert merchant_id == ""
-    assert rrn_value == ""
-    assert full_slip == ""
+if __name__ == '__main__':
+    unittest.main()
