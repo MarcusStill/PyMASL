@@ -1,115 +1,130 @@
+import unittest
+from unittest.mock import MagicMock, patch
 import datetime as dt
-from unittest.mock import MagicMock
-
-import pytest
 
 from modules.auth_logic import perform_pre_sale_checks
 from modules.system import System
 
-system = System()
+class TestAuthLogic(unittest.TestCase):
 
+    def setUp(self):
+        # Prevent System from trying to connect to a real DB
+        patcher = patch('modules.system.create_engine')
+        self.mock_create_engine = patcher.start()
+        self.addCleanup(patcher.stop)
+        
+        self.system = System()
+        self.system.what_a_day = None
+        self.system.num_of_week = None
+        self.system.sunday = 0
 
-@pytest.fixture
-def setup_system():
-    # Настройка фикстуры, сбрасывающей состояние System перед каждым тестом
-    system.what_a_day = None
-    system.num_of_week = None
-    system.sunday = 0
-    yield
-    # Сброс состояния System после каждого теста
-    system.what_a_day = None
-    system.num_of_week = None
-    system.sunday = 0
+    def tearDown(self):
+        self.system.what_a_day = None
+        self.system.num_of_week = None
+        self.system.sunday = 0
 
+    def test_perform_pre_sale_checks_authorization_success(self):
+        self.system.user_authorization = MagicMock(return_value=1)
+        self.system.get_price = MagicMock()
+        self.system.check_day = MagicMock(return_value=0)
 
-@pytest.mark.parametrize(
-    "login, password, expected_result",
-    [("valid_login", "valid_password", 1), ("invalid_login", "invalid_password", 0)],
-)
-def test_perform_pre_sale_checks_authorization(
-    setup_system, login, password, expected_result
-):
-    """Тесты авторизации"""
-    # Подмена метода авторизации
-    system.user_authorization = MagicMock(return_value=expected_result)
+        result = perform_pre_sale_checks("valid_login", "valid_password")
+        self.assertEqual(result, 1)
+        self.system.user_authorization.assert_called_once_with("valid_login", "valid_password")
 
-    # Вызов функции без None
-    result = perform_pre_sale_checks(login, password)
+    def test_perform_pre_sale_checks_authorization_failure(self):
+        self.system.user_authorization = MagicMock(return_value=0)
 
-    assert result == expected_result
-    # Проверка, что метод user_authorization был вызван с правильными аргументами
-    system.user_authorization.assert_called_once_with(login, password)
+        result = perform_pre_sale_checks("invalid_login", "invalid_password")
+        self.assertEqual(result, 0)
+        self.system.user_authorization.assert_called_once_with("invalid_login", "invalid_password")
 
+    @patch('modules.auth_logic.dt')
+    def test_check_day_status_weekday(self, mock_dt):
+        mock_date = dt.datetime(2024, 11, 6) # Wednesday
+        mock_dt.datetime.today.return_value = mock_date
+        
+        self.system.user_authorization = MagicMock(return_value=1)
+        self.system.get_price = MagicMock()
+        self.system.check_day = MagicMock(return_value=0)
+        
+        result = perform_pre_sale_checks("valid_login", "valid_password")
+        self.assertEqual(result, 1)
+        self.assertEqual(self.system.what_a_day, 0)
 
-def test_check_day_status_weekday(setup_system):
-    """Проверка статуса для буднего дня"""
-    # Подмена метода check_day, чтобы он возвращал 0 (будний день)
-    system.check_day = MagicMock(return_value=0)
-    system.user_authorization = MagicMock(return_value=1)
+    @patch('modules.auth_logic.dt')
+    def test_check_day_status_weekend(self, mock_dt):
+        mock_date = dt.datetime(2024, 11, 2) # Saturday
+        mock_dt.datetime.today.return_value = mock_date
 
-    # Вызов функции без None
-    result = perform_pre_sale_checks("valid_login", "valid_password")
+        self.system.user_authorization = MagicMock(return_value=1)
+        self.system.get_price = MagicMock()
+        self.system.check_day = MagicMock(return_value=1)
+        
+        result = perform_pre_sale_checks("valid_login", "valid_password")
+        self.assertEqual(result, 1)
+        self.assertEqual(self.system.what_a_day, 1)
 
-    assert result == 1
-    assert system.what_a_day == 0
+    @patch('modules.auth_logic.dt')
+    def test_sunday_for_large_families_yes(self, mock_dt):
+        mock_date = MagicMock()
+        mock_date.isoweekday.return_value = 7
+        mock_date.day = 3
+        mock_dt.datetime.today.return_value = mock_date
+        
+        self.system.user_authorization = MagicMock(return_value=1)
+        self.system.get_price = MagicMock()
+        self.system.check_day = MagicMock(return_value=0)
 
+        result = perform_pre_sale_checks("valid", "valid")
+        self.assertEqual(result, 1)
+        self.assertEqual(self.system.sunday, 1)
 
-def test_check_day_status_weekend(setup_system):
-    """Проверка статуса для выходного дня"""
-    # Подмена метода check_day, чтобы он возвращал 1 (выходной день)
-    system.check_day = MagicMock(return_value=1)
-    system.user_authorization = MagicMock(return_value=1)
+    @patch('modules.auth_logic.dt')
+    def test_sunday_for_large_families_no_not_sunday(self, mock_dt):
+        mock_date = MagicMock()
+        mock_date.isoweekday.return_value = 1
+        mock_date.day = 4
+        mock_dt.datetime.today.return_value = mock_date
+        
+        self.system.user_authorization = MagicMock(return_value=1)
+        self.system.get_price = MagicMock()
+        self.system.check_day = MagicMock(return_value=0)
 
-    # Вызов функции без None
-    result = perform_pre_sale_checks("valid_login", "valid_password")
+        result = perform_pre_sale_checks("valid", "valid")
+        self.assertEqual(result, 1)
+        self.assertEqual(self.system.sunday, 0)
 
-    assert result == 1
-    assert system.what_a_day == 1
+    @patch('modules.auth_logic.dt')
+    def test_sunday_for_large_families_no_not_first_week(self, mock_dt):
+        mock_date = MagicMock()
+        mock_date.isoweekday.return_value = 7
+        mock_date.day = 10
+        mock_dt.datetime.today.return_value = mock_date
+        
+        self.system.user_authorization = MagicMock(return_value=1)
+        self.system.get_price = MagicMock()
+        self.system.check_day = MagicMock(return_value=0)
 
+        result = perform_pre_sale_checks("valid", "valid")
+        self.assertEqual(result, 1)
+        self.assertEqual(self.system.sunday, 0)
 
-@pytest.mark.parametrize(
-    "today_date, expected_sunday",
-    [
-        (dt.datetime(2024, 11, 3), 1),  # Воскресенье, первая неделя месяца
-        (dt.datetime(2024, 11, 10), 0),  # Воскресенье, не первая неделя месяца
-        (dt.datetime(2024, 11, 4), 0),  # Понедельник
-    ],
-)
-def test_sunday_for_large_families(
-    setup_system, monkeypatch, today_date, expected_sunday
-):
-    """Проверка установки флага для дня многодетных"""
-    system.user_authorization = MagicMock(return_value=1)
-    system.check_day = MagicMock(return_value=0)
+    @patch('modules.auth_logic.dt')
+    def test_week_and_month_day_assignment(self, mock_dt):
+        mock_date = MagicMock()
+        mock_date.isoweekday.return_value = 3
+        mock_date.day = 6
+        mock_dt.datetime.today.return_value = mock_date
+        
+        self.system.user_authorization = MagicMock(return_value=1)
+        self.system.get_price = MagicMock()
+        self.system.check_day = MagicMock(return_value=0)
 
-    # Подмена текущей даты
-    monkeypatch.setattr(
-        dt, "datetime", MagicMock(today=MagicMock(return_value=today_date))
-    )
+        result = perform_pre_sale_checks("valid_login", "valid_password")
 
-    result = perform_pre_sale_checks("valid_login", "valid_password")
+        self.assertEqual(result, 1)
+        self.assertEqual(self.system.num_of_week, 3)
 
-    assert result == 1
-    assert system.sunday == expected_sunday
-
-
-def test_week_and_month_day_assignment(setup_system, monkeypatch):
-    """Проверка номера дня недели и дня месяца"""
-    test_date = dt.datetime(2024, 11, 6)  # Среда, 6 ноября
-
-    # Подмена текущей даты для datetime.datetime и datetime.date
-    monkeypatch.setattr(
-        dt, "datetime", MagicMock(today=MagicMock(return_value=test_date))
-    )
-    monkeypatch.setattr(
-        dt, "date", MagicMock(today=MagicMock(return_value=test_date.date()))
-    )
-
-    system.user_authorization = MagicMock(return_value=1)
-    system.check_day = MagicMock(return_value=0)
-
-    result = perform_pre_sale_checks("valid_login", "valid_password")
-
-    assert result == 1
-    assert system.num_of_week == 3  # Среда (3-й день недели)
-    assert dt.date.today().day == 6  # Номер дня месяца (6)
+if __name__ == '__main__':
+    unittest.main()
