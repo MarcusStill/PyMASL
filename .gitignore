@@ -1,8 +1,27 @@
+# Виртуальные окружения
+.venv/
+venv_dev/
 /venv/
-/dump_*.sql
-/sbkernel2201.log
-/ticket.pdf
+
+# Результаты работы PyInstaller
+/dist/
+/build/
+*.spec
+
+# Временные файлы и настройки PyCharm
+.idea/
+__pycache__/
+*.pyc
+*.pyo
+
+# Локальные файлы
+/.env
 /debug.log
-/output/
+/sbkernel2201.log
+/requirements-dev.txt
+/dump_*.sql
+
+# Пользовательские файлы и ресурсы проекта
+/ticket.pdf
 /platforms/
 /db/alembic/

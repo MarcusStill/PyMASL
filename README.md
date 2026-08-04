@@ -10,6 +10,7 @@
 - [Технологический стек](#технологический-стек)
 - [Интерфейс и скриншоты](#интерфейс-и-скриншоты)
 - [Установка и запуск](#установка-и-запуск)
+- [Сборка .EXE (Production)](#сборка-exe-production)
 - [Архитектура](#архитектура)
 - [Лицензия](#лицензия)
 
@@ -17,12 +18,13 @@
 
 Система успешно прошла опытную эксплуатацию и полностью заменила предыдущие процессы. Динамика продаж демонстрирует надежность и масштабируемость решения:
 
-| Год | Оборот через систему   | 
-|-----|------------------------|
-| 2022 | 1,7 млн. руб. (запуск) |
-| 2023 | 7,6 млн. руб.          |
-| 2024 | 8,8 млн. руб.          |
-| 2025 | 23,5 млн. руб.         | 
+| Год  | Оборот через систему                     | 
+|------|------------------------------------------|
+| 2022 | 1,7 млн. руб. (запуск)                   |
+| 2023 | 7,6 млн. руб.                            |
+| 2024 | 8,8 млн. руб.                            |
+| 2025 | 23,5 млн. руб.                           | 
+| 2026 | 16,8 млн. руб. (01.01.2026 - 01.08.2026) | 
 
 ## 🎯 Ключевые возможности
 
@@ -58,7 +60,7 @@
 - **Стилизация:** Qt Style Sheets (QSS)
 
 ### **Деплой и инфраструктура**
-- **Сборка:** PyInstaller (через Auto PY to EXE)
+- **Сборка:** PyInstaller (`build.bat`)
 - **Целевая ОС:** Windows 10/11
 - **Генерация PDF:** ReportLab
 - **Просмотр PDF:** SumatraPDF
@@ -107,11 +109,11 @@ cd PyMASL
 
 ### 2. Создание виртуального окружения
 ```bash
-python -m venv venv
-# Для Windows:
-venv\Scripts\activate
-# Для Linux/MacOS:
-source venv/bin/activate
+python -m venv .venv
+# Для Windows (PowerShell):
+.\.venv\Scripts\Activate.ps1
+# Для Windows (cmd):
+.\.venv\Scripts\activate.bat
 ```
 
 ### 3. Установка зависимостей
@@ -119,10 +121,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-###4. Настройка базы данных
+### 4. Настройка базы данных
 1. Установите PostgreSQL
 2. Создайте базу данных и пользователя
-3. Настройте подключение в config/database.ini
+3. Настройте подключение в config.ini
 4. Выполните миграции:
 ```bash
 alembic upgrade head
@@ -133,32 +135,48 @@ alembic upgrade head
 python main.py
 ```
 
-### Сборка под Windows (для production)
-Конфигурация для Auto PY to EXE сохранена в files/pyinstaller_conf.json.
-Замена PATH на актуальный путь → сборка → дистрибутив в dist/.
+## 📦 Сборка .EXE (Production)
+Сборка исполняемого .exe файла для Windows выполняется в автоматическом режиме через файл build.bat, расположенный в корне проекта.
+
+Порядок сборки:
+1. Убедитесь, что зависимости установлены в виртуальное окружение .venv:
+```bash
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install pyinstaller
+```
+
+2. Запустите файл build.bat (двойным кликом или через консоль):
+```dos
+.\build.bat
+```
+3. Готовый дистрибутив будет сформирован в директории dist/
+
+> Примечание: Скрипт build.bat автоматически использует относительные пути и вызывает интерпретатор из локального окружения .venv, обеспечивая одинаковый результат сборки на любой рабочей станции.
+
 
 ## 🏗 Архитектура
 ```text
 PyMASL/
-├── 📂 src/ # Исходный код приложения
-│ ├── 📂 core/ # 🧠 Бизнес-логика и основные сервисы
-│ ├── 📂 database/ # 🗄️ Работа с базой данных
-│ │ └── 📂 models/ # Модели SQLAlchemy
-│ ├── 📂 gui/ # 🎨 Графический интерфейс
-│ │ ├── 📂 logic/ # Логика обработки UI-событий
-│ │ ├── 📂 resources/ # Файлы интерфейса Qt
-│ │ └── 📂 windows/ # Управление окнами
-│ ├── 📂 hardware/ # 🔌 Интеграция с оборудованием
-│ ├── 📂 reports/ # 📊 Генерация отчетов
-│ └── 📂 utils/ # 🛠️ Вспомогательные утилиты
-├── 📂 config/ # ⚙️ Конфигурационные файлы
-├── 📂 resources/ # 📎 Ресурсы и статические файлы
-├── 📂 build/ # 🏗️ Сборка и деплой
-│ ├── 📂 config/ # Конфигурация сборки
-│ └── 📂 scripts/ # Вспомогательные скрипты
-├── 📂 docs/ # 📚 Документация
-├── 📂 tests/ # 🧪 Тестирование
-└── 📄 main.py # 🚀 Точка входа в приложение
+├── 📂 db/                     # 🗄️ База данных (ORM SQLAlchemy)
+│   └── 📂 models/             # Модели сущностей (Client, Sale, Ticket, User и др.)
+├── 📂 design/                 # 🎨 Графический интерфейс (Qt)
+│   ├── 📂 logic/              # Логика контроллеров и диалоговых окон UI
+│   └── 📂 resources/          # Вьюхи и формы, созданные в Qt Designer (.ui)
+├── 📂 modules/                # 🧠 Ядро приложения и бизнес-логика
+│   ├── 📄 auth_logic.py       # Логика аутентификации и прав доступа
+│   ├── 📄 sale_logic.py       # Расчет стоимости, правил скидок и продаж
+│   ├── 📄 payment_equipment.py# Интеграция с эквайринговыми терминалами (PAX/Ingenico)
+│   ├── 📄 libfptr10.py        # Взаимодействие с ККТ АТОЛ (драйвер дККТ10)
+│   ├── 📄 otchet.py           # Генерация PDF-отчетов и кассовых документов
+│   ├── 📄 config.py           # Загрузка и валидация конфигурации из config.ini
+│   ├── 📄 system.py           # Системные проверки (БД, драйверы, окружение)
+│   └── 📄 logger.py           # Модуль логирования (Loguru/logging)
+├── 📂 files/                  # 📎 Статические ресурсы (шрифты TTF, иконка .ico, шаблоны JSON)
+├── 📂 scripts/                # 📜 Системные скрипты печати (.cmd)
+├── 📂 tests/                  # 🧪 Модульные тесты pytest (логика, БД, оборудование)
+├── 📄 config.ini              # ⚙️ Основной конфигурационный файл
+├── 📄 build.bat               # 🚀 Автоматическая сборка в .EXE через PyInstaller (.venv)
+└── 📄 main.py                 # 🏁 Точка входа в приложение
 ```
 
 ## 📄 Лицензия
@@ -170,7 +188,7 @@ PyMASL использует смешанные лицензии в зависи�
 | Alembic | MIT License | [Лицензия](https://github.com/sqlalchemy/alembic/blob/master/LICENSE) |
 | SQLAlchemy | MIT License | [Лицензия](https://github.com/sqlalchemy/sqlalchemy/blob/main/LICENSE) |
 | PySide6 | LGPL v3 | [Лицензия](https://doc.qt.io/qtforpython/licenses.html) |
-| Auto PY to EXE | MIT License | [Лицензия](https://github.com/brentvollebregt/auto-py-to-exe/blob/master/LICENSE) |
+| PyInstaller | GPL v2 / ALv2 | [Лицензия](https://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt) |
 | ReportLab | BSD License | [Лицензия](https://www.reportlab.com/opensource/) |
 | SumatraPDF | GPL v3 | [Лицензия](https://www.sumatrapdfreader.org/free-pdf-reader) |
 
