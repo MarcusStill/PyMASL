@@ -10,6 +10,10 @@ class TestSaleLogic(unittest.TestCase):
 
     def setUp(self):
         # We must re-bind the system instance in sl to our mocked one
+        self.patcher = patch('modules.system.create_engine')
+        self.mock_create_engine = self.patcher.start()
+
+        modules.system.System._instance = None
         self.system = modules.system.System()
 
         self.system.age = {"min": 5, "max": 15}
@@ -55,6 +59,11 @@ class TestSaleLogic(unittest.TestCase):
 
     def tearDown(self):
         sl.system = self.original_system
+        self.patcher.stop()
+
+    def test_get_today_date(self):
+        d = sl.get_today_date()
+        self.assertEqual(d, date.today())
 
     def test_calculate_age(self):
         with patch('modules.sale_logic.get_today_date', return_value=date(2024, 1, 1)):
@@ -80,14 +89,23 @@ class TestSaleLogic(unittest.TestCase):
 
         self.system.sale_dict["detail"][6] = 2
         self.system.count_number_of_visitors["many_child"] = 1
+        self.system.what_a_day = 0
         self.assertEqual(sl.calculate_adult_price(), 0)
+
+        self.system.count_number_of_visitors["many_child"] = 1
+        self.system.what_a_day = 1
+        self.assertEqual(sl.calculate_adult_price(), 200)
 
         self.system.sale_dict["detail"][6] = 3
         self.system.count_number_of_visitors["invalid"] = 1
         self.assertEqual(sl.calculate_adult_price(), 0)
 
+        self.system.count_number_of_visitors["invalid"] = 0
+        self.assertEqual(sl.calculate_adult_price(), 250)
+
     def test_calculate_child_price(self):
         self.system.sale_dict["detail"][6] = 1
+        self.system.what_a_day = 0
         self.assertEqual(sl.calculate_child_price(), 250)
 
         self.system.what_a_day = 1
@@ -98,9 +116,15 @@ class TestSaleLogic(unittest.TestCase):
         self.system.count_number_of_visitors["many_child"] = 1
         self.assertEqual(sl.calculate_child_price(), 0)
 
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.assertEqual(sl.calculate_child_price(), 500)
+
         self.system.sale_dict["detail"][6] = 3
         self.system.count_number_of_visitors["invalid"] = 1
         self.assertEqual(sl.calculate_child_price(), 0)
+
+        self.system.count_number_of_visitors["invalid"] = 0
+        self.assertEqual(sl.calculate_child_price(), 750)
 
     def test_calculate_discounted_price(self):
         self.system.count_number_of_visitors["many_child"] = 1
@@ -135,11 +159,17 @@ class TestSaleLogic(unittest.TestCase):
         # 3*100 + 2*50 + 2*20 + 1*10 = 300 + 100 + 40 + 10 = 450
         self.assertEqual(res, 450)
 
+    def test_calculate_itog_invalid_data(self):
+        self.system.sale_dict["detail"][0] = -1
+        with self.assertRaises(ValueError):
+            sl.calculate_itog()
+
     def test_get_talent_based_on_time(self):
         self.assertEqual(sl.get_talent_based_on_time(1), (1, 25))
         self.assertEqual(sl.get_talent_based_on_time(2), (2, 35))
         self.assertEqual(sl.get_talent_based_on_time(3), (3, 50))
         self.assertEqual(sl.get_talent_based_on_time(4), (0, 0))
+        self.assertEqual(sl.get_talent_based_on_time(-1), (0, 0))
 
     def test_update_sale_dict_methods(self):
         self.system.count_number_of_visitors["kol_adult_many_child"] = 2
@@ -182,6 +212,27 @@ class TestSaleLogic(unittest.TestCase):
         self.assertEqual(updated["price_child"], 750.5)
         self.assertEqual(updated["detail"], [125, 375.5, "some_string"])
 
+    def test_convert_sale_dict_values_floats_and_decimals(self):
+        sale_dict = {
+            "price_adult": Decimal("250.0"),
+            "price_child": 750.0,
+            "detail": [Decimal("125.0"), 375.0, "str"],
+        }
+        updated = sl.convert_sale_dict_values(sale_dict)
+        self.assertEqual(updated["price_adult"], 250)
+        self.assertEqual(updated["price_child"], 750)
+        self.assertEqual(updated["detail"], [125, 375, "str"])
+
+        sale_dict = {
+            "price_adult": Decimal("250.5"),
+            "price_child": 750.5,
+            "detail": [Decimal("125.5"), 375.5, "str"],
+        }
+        updated = sl.convert_sale_dict_values(sale_dict)
+        self.assertEqual(updated["price_adult"], 250.5)
+        self.assertEqual(updated["price_child"], 750.5)
+        self.assertEqual(updated["detail"], [125.5, 375.5, "str"])
+
     def test_generating_parts_for_partial_returns(self):
         tickets = {"adult": [100, 2], "child": [50, 2]}
         amount = 120
@@ -191,19 +242,43 @@ class TestSaleLogic(unittest.TestCase):
         self.assertEqual(sl.generating_parts_for_partial_returns("not a dict", 100), {})
         self.assertEqual(sl.generating_parts_for_partial_returns(tickets, -10), {})
 
-if __name__ == '__main__':
-    unittest.main()
-
-    def test_calculate_itog_invalid_data(self):
-        self.system.sale_dict["detail"][0] = -1
-        with self.assertRaises(ValueError):
-            sl.calculate_itog()
-
-    def test_get_talent_invalid_input(self):
-        self.assertEqual(sl.get_talent_based_on_time(-1), (0, 0))
-
     def test_generating_parts_partial_returns_complex(self):
         tickets = {"adult": [100, 3], "child": [50, 1]}
-        # Try to return 260
         res = sl.generating_parts_for_partial_returns(tickets, 260)
         self.assertEqual(res, {"adult": [100, 2], "child": [50, 1], "child акция": [10, 1]})
+
+    def test_generating_parts_returns_exceptions(self):
+        self.assertEqual(sl.generating_parts_for_partial_returns({}, 100), {})
+
+        tickets = {"adult": "invalid"}
+        self.assertEqual(sl.generating_parts_for_partial_returns(tickets, 100), {})
+
+        tickets = {"adult": [-10, 2]}
+        self.assertEqual(sl.generating_parts_for_partial_returns(tickets, 100), {})
+
+        tickets = {"adult": [10, -2]}
+        self.assertEqual(sl.generating_parts_for_partial_returns(tickets, 100), {})
+
+        tickets = {"adult": [100, 1]}
+        self.assertEqual(sl.generating_parts_for_partial_returns(tickets, 100), {"adult": [100, 1]})
+
+    def test_generating_parts_partial_returns_full(self):
+        tickets = {"adult": [100]}
+        sl.generating_parts_for_partial_returns(tickets, 150)
+
+        tickets = {"adult": [100, 2]}
+        res = sl.generating_parts_for_partial_returns(tickets, 50)
+        self.assertEqual(res, {"adult акция": [50, 1]})
+
+        # Force an exception inside to test the catch block
+        # We need a dictionary that throws when items() is called, but passes the isinstance(dict) check.
+        class DictSub(dict):
+            def items(self):
+                raise Exception("Boom")
+
+        with patch('modules.sale_logic.logger.exception') as mock_log:
+            sl.generating_parts_for_partial_returns(DictSub({"k": "v"}), 100)
+            self.assertTrue(mock_log.called)
+
+if __name__ == '__main__':
+    unittest.main()
