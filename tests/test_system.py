@@ -169,3 +169,17 @@ class TestSystem(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    @patch('modules.system.Session')
+    def test_check_day_normal_day(self, mock_Session):
+        # We need a clear weekday and no holiday mock
+        mock_session_inst = MagicMock()
+        mock_Session.return_value.__enter__.return_value = mock_session_inst
+
+        # scalars().first() returns None meaning no holiday
+        mock_session_inst.execute.return_value.scalars.return_value.first.return_value = None
+
+        with patch('modules.system.dt.datetime') as mock_datetime:
+            mock_datetime.now.return_value.strftime.return_value = "2024-01-02"
+            with patch('modules.system.calendar.weekday', return_value=0): # 0 = Monday = Workday
+                self.assertEqual(self.system.check_day(), 0)

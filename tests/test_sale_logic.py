@@ -193,3 +193,17 @@ class TestSaleLogic(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_calculate_itog_invalid_data(self):
+        self.system.sale_dict["detail"][0] = -1
+        with self.assertRaises(ValueError):
+            sl.calculate_itog()
+
+    def test_get_talent_invalid_input(self):
+        self.assertEqual(sl.get_talent_based_on_time(-1), (0, 0))
+
+    def test_generating_parts_partial_returns_complex(self):
+        tickets = {"adult": [100, 3], "child": [50, 1]}
+        # Try to return 260
+        res = sl.generating_parts_for_partial_returns(tickets, 260)
+        self.assertEqual(res, {"adult": [100, 2], "child": [50, 1], "child акция": [10, 1]})

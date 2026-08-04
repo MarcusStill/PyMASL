@@ -157,3 +157,44 @@ available = on
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_missing_pc_name_empty(self):
+        # Additional edge cases from original term-missing
+        invalid_content = """
+[DATABASE]
+host = 127.0.0.1
+port = 5432
+database = mydb
+user = myuser
+
+[OTHER]
+version = 1.0.0
+log_file = app.log
+ticket_coordinates_file = coords.json
+
+[PC]
+kol = 1
+pc_1 =
+
+[TERMINAL]
+pinpad_path = /opt/pinpad
+
+[PRINT]
+ticket = on
+
+[KKT]
+available = on
+"""
+        with open(self.config_path, "w") as f:
+            f.write(invalid_content)
+
+        with self.assertRaises(RuntimeError):
+            Config(config_file=self.config_path)
+
+    def test_missing_section_header(self):
+        invalid_content = "this is not a valid ini file"
+        with open(self.config_path, "w") as f:
+            f.write(invalid_content)
+
+        with self.assertRaises(RuntimeError):
+            Config(config_file=self.config_path)

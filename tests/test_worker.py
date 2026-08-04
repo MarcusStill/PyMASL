@@ -2,13 +2,10 @@ import unittest
 import sys
 from unittest.mock import MagicMock, patch
 
-# Need to import modules carefully or mock QObject properly
-class MockQObject:
-    def __init__(self, parent=None):
-        pass
-
 sys.modules['PySide6'] = MagicMock()
 sys.modules['PySide6.QtCore'] = MagicMock()
+class MockQObject:
+    def __init__(self, parent=None): pass
 sys.modules['PySide6.QtCore'].QObject = MockQObject
 sys.modules['PySide6.QtCore'].Signal = MagicMock()
 sys.modules['PySide6.QtWidgets'] = MagicMock()
@@ -137,10 +134,74 @@ class TestWorker(unittest.TestCase):
         self.assertTrue(tw._is_cleaned)
         self.assertEqual(mock_system.sale_status, 0)
 
-        # Calling again should do nothing
         mock_system.sale_status = 1
         tw.cleanup()
         self.assertEqual(mock_system.sale_status, 1)
+
+    def test_transaction_worker_process_special_sale(self):
+        mock_system = MagicMock()
+        mock_system.sale_dict = {"detail": [0,0,0,0,0,0,0,100]}
+        tw = worker.TransactionWorker(1, 1, mock_system, MagicMock(), MagicMock(), MagicMock())
+        tw.invoke_main_window_method = MagicMock()
+        tw.delayed_progress_update = MagicMock()
+
+        # Call it directly bypassing the decorator logic issues with MagicMock args
+        tw.process_special_sale.__wrapped__(tw, MagicMock(), 90)
+        tw.invoke_main_window_method.assert_called_with("print_saved_tickets")
+
+    def test_transaction_worker_process_payment(self):
+        mock_system = MagicMock()
+        mock_system.sale_id = 1
+        mock_system.sale_dict = {"detail": [0,0,0,0,0,0,0,100]}
+        tw = worker.TransactionWorker(101, 1, mock_system, MagicMock(), MagicMock(), MagicMock())
+        tw.delayed_progress_update = MagicMock()
+        tw.db_handler = MagicMock()
+        tw.db_handler.sale_exists.return_value = True
+
+        tw.payment_handler = MagicMock()
+        tw.payment_handler.process_bank_payment.return_value = (True, 1)
+        tw.dev_mode = False # Prevent attribute error
+
+        tw.pq = MagicMock()
+        tw.pq.read_pinpad_file.return_value = "check_text"
+
+        payment, bank_status = tw.process_payment(MagicMock())
+        self.assertEqual(payment, 1)
+        self.assertEqual(bank_status, 1)
+        tw.db_handler.update_sale.assert_called()
+
+    def test_transaction_worker_process_checks(self):
+        mock_system = MagicMock()
+        mock_system.sale_id = 1
+        mock_system.sale_dict = {"detail": [0,0,0,0,0,0,0,100]}
+        tw = worker.TransactionWorker(101, 1, mock_system, MagicMock(), MagicMock(), MagicMock())
+        tw.delayed_progress_update = MagicMock()
+
+        tw.check_handler = MagicMock()
+        tw.check_handler.print_check.return_value = True
+
+        tw.db_handler = MagicMock()
+
+        res = tw.process_checks(MagicMock(), 1, 1)
+        self.assertTrue(res)
+        tw.db_handler.update_sale.assert_called()
+
+    def test_transaction_worker_run(self):
+        mock_system = MagicMock()
+        mock_system.sale_id = 1
+        mock_system.sale_special = 0
+        mock_system.sale_dict = {"detail": [0,0,0,0,0,0,0,100]}
+
+        tw = worker.TransactionWorker(101, 1, mock_system, MagicMock(), MagicMock(), MagicMock())
+        tw.delayed_progress_update = MagicMock()
+        tw.process_payment = MagicMock(return_value=(1, 1))
+        tw.process_checks = MagicMock(return_value=True)
+        tw.finalize_transaction = MagicMock()
+
+        tw.run()
+        tw.process_payment.assert_called()
+        tw.process_checks.assert_called()
+        tw.finalize_transaction.assert_called()
 
 if __name__ == '__main__':
     unittest.main()
