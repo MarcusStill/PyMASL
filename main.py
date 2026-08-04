@@ -1769,7 +1769,7 @@ class SaleForm(QDialog):
         # Подключение сигналов
         self.worker.progress_updated.connect(self.progress_window.update_status)
         self.worker.finished.connect(self.on_transaction_finished)
-        self.worker.save_sale_signal.connect(self.save_sale)
+        self.worker.save_sale_signal.connect(self.save_sale, Qt.BlockingQueuedConnection)
         self.worker.error_signal.connect(self.handle_error)  # Обработка ошибок
         self.worker.info_signal.connect(self.handle_info)
         self.worker.print_ticket_signal.connect(self.print_saved_tickets)
