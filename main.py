@@ -55,7 +55,19 @@ from modules.worker import TransactionWorker
 
 system = System()
 config_data = system.config
-logger.add(system.log_file, rotation="1 MB")
+logger.add(system.log_file, rotation="1 MB", enqueue=True)
+
+
+def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
+    """Глобальный обработчик неперехваченных исключений"""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logger.opt(exception=(exc_type, exc_value, exc_traceback)).error(
+        "Неперехваченное исключение"
+    )
+
+sys.excepthook = handle_uncaught_exception
 
 
 class AuthForm(QDialog):
