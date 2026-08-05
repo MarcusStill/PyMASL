@@ -6,16 +6,17 @@ from unittest.mock import patch, MagicMock
 import modules.sale_logic as sl
 import modules.system
 
+
 class TestSaleLogic(unittest.TestCase):
 
     def setUp(self):
         # We must re-bind the system instance in sl to our mocked one
         self.patcher = patch('modules.system.create_engine')
         self.mock_create_engine = self.patcher.start()
-        
+
         modules.system.System._instance = None
         self.system = modules.system.System()
-        
+
         self.system.age = {"min": 5, "max": 15}
         self.system.price = {
             "ticket_child_1": 250,
@@ -51,8 +52,8 @@ class TestSaleLogic(unittest.TestCase):
             "invalid": 0,
             "talent": 0,
         }
-        self.system.what_a_day = 0 # 0=weekday, 1=weekend
-        
+        self.system.what_a_day = 0  # 0=weekday, 1=weekend
+
         # Override the system object inside the sale_logic module
         self.original_system = sl.system
         sl.system = self.system
@@ -86,12 +87,12 @@ class TestSaleLogic(unittest.TestCase):
     def test_calculate_adult_price(self):
         self.system.sale_dict["detail"][6] = 1
         self.assertEqual(sl.calculate_adult_price(), 150)
-        
+
         self.system.sale_dict["detail"][6] = 2
         self.system.count_number_of_visitors["many_child"] = 1
         self.system.what_a_day = 0
         self.assertEqual(sl.calculate_adult_price(), 0)
-        
+
         self.system.count_number_of_visitors["many_child"] = 1
         self.system.what_a_day = 1
         self.assertEqual(sl.calculate_adult_price(), 200)
@@ -107,10 +108,10 @@ class TestSaleLogic(unittest.TestCase):
         self.system.sale_dict["detail"][6] = 1
         self.system.what_a_day = 0
         self.assertEqual(sl.calculate_child_price(), 250)
-        
+
         self.system.what_a_day = 1
         self.assertEqual(sl.calculate_child_price(), 300)
-        
+
         self.system.what_a_day = 0
         self.system.sale_dict["detail"][6] = 2
         self.system.count_number_of_visitors["many_child"] = 1
@@ -118,7 +119,7 @@ class TestSaleLogic(unittest.TestCase):
 
         self.system.count_number_of_visitors["many_child"] = 0
         self.assertEqual(sl.calculate_child_price(), 500)
-        
+
         self.system.sale_dict["detail"][6] = 3
         self.system.count_number_of_visitors["invalid"] = 1
         self.assertEqual(sl.calculate_child_price(), 0)
@@ -131,11 +132,11 @@ class TestSaleLogic(unittest.TestCase):
         price, cat, status = sl.calculate_discounted_price(500, "детский")
         self.assertEqual(price, 0)
         self.assertEqual(self.system.sale_special, 1)
-        
+
         self.system.count_number_of_visitors["many_child"] = 2
         price, cat, status = sl.calculate_discounted_price(500, "детский")
         self.assertEqual(price, 250)
-        
+
         self.system.count_number_of_visitors["many_child"] = 0
         self.system.count_number_of_visitors["invalid"] = 1
         price, cat, status = sl.calculate_discounted_price(500, "взрослый")
@@ -153,7 +154,7 @@ class TestSaleLogic(unittest.TestCase):
             "price_adult": 100,
             "kol_child": 3,
             "price_child": 50,
-            "detail": [2, 20, 1, 10, 0, 0, 0, 0] # adult_dis_cnt, adult_dis_price, child_dis_cnt, child_dis_price
+            "detail": [2, 20, 1, 10, 0, 0, 0, 0]  # adult_dis_cnt, adult_dis_price, child_dis_cnt, child_dis_price
         }
         res = sl.calculate_itog()
         # 3*100 + 2*50 + 2*20 + 1*10 = 300 + 100 + 40 + 10 = 450
@@ -176,17 +177,17 @@ class TestSaleLogic(unittest.TestCase):
         sl.update_sale_dict_adult_many_child()
         self.assertEqual(self.system.sale_dict["detail"][0], 2)
         self.assertEqual(self.system.sale_dict["detail"][1], 0)
-        
+
         self.system.count_number_of_visitors["kol_adult_invalid"] = 1
         sl.update_sale_dict_adult_invalid()
         self.assertEqual(self.system.sale_dict["detail"][0], 1)
         self.assertEqual(self.system.sale_dict["detail"][1], 0)
-        
+
         self.system.count_number_of_visitors["kol_child_many_child"] = 3
         sl.update_sale_dict_child_many_child()
         self.assertEqual(self.system.sale_dict["detail"][2], 3)
         self.assertEqual(self.system.sale_dict["detail"][3], 0)
-        
+
         self.system.count_number_of_visitors["kol_child_invalid"] = 4
         sl.update_sale_dict_child_invalid()
         self.assertEqual(self.system.sale_dict["detail"][2], 4)
@@ -196,7 +197,7 @@ class TestSaleLogic(unittest.TestCase):
         sl.update_adult_count()
         self.assertEqual(self.system.count_number_of_visitors["kol_adult"], 1)
         self.assertEqual(self.system.sale_dict["kol_adult"], 1)
-        
+
         sl.update_child_count()
         self.assertEqual(self.system.count_number_of_visitors["kol_child"], 1)
         self.assertEqual(self.system.sale_dict["kol_child"], 1)
@@ -238,7 +239,7 @@ class TestSaleLogic(unittest.TestCase):
         amount = 120
         res = sl.generating_parts_for_partial_returns(tickets, amount)
         self.assertEqual(res, {"adult": [100, 1], "child акция": [20, 1]})
-        
+
         self.assertEqual(sl.generating_parts_for_partial_returns("not a dict", 100), {})
         self.assertEqual(sl.generating_parts_for_partial_returns(tickets, -10), {})
 
@@ -249,23 +250,23 @@ class TestSaleLogic(unittest.TestCase):
 
     def test_generating_parts_returns_exceptions(self):
         self.assertEqual(sl.generating_parts_for_partial_returns({}, 100), {})
-        
+
         tickets = {"adult": "invalid"}
         self.assertEqual(sl.generating_parts_for_partial_returns(tickets, 100), {})
-        
+
         tickets = {"adult": [-10, 2]}
         self.assertEqual(sl.generating_parts_for_partial_returns(tickets, 100), {})
-        
+
         tickets = {"adult": [10, -2]}
         self.assertEqual(sl.generating_parts_for_partial_returns(tickets, 100), {})
-        
+
         tickets = {"adult": [100, 1]}
         self.assertEqual(sl.generating_parts_for_partial_returns(tickets, 100), {"adult": [100, 1]})
 
     def test_generating_parts_partial_returns_full(self):
         tickets = {"adult": [100]}
         sl.generating_parts_for_partial_returns(tickets, 150)
-        
+
         tickets = {"adult": [100, 2]}
         res = sl.generating_parts_for_partial_returns(tickets, 50)
         self.assertEqual(res, {"adult акция": [50, 1]})
@@ -275,10 +276,69 @@ class TestSaleLogic(unittest.TestCase):
         class DictSub(dict):
             def items(self):
                 raise Exception("Boom")
-                
+
         with patch('modules.sale_logic.logger.exception') as mock_log:
             sl.generating_parts_for_partial_returns(DictSub({"k": "v"}), 100)
             self.assertTrue(mock_log.called)
+
+    def test_calculate_ticket_type_all_false(self):
+        class WeirdInt(int):
+            def __lt__(self, other): return False
+
+            def __le__(self, other): return False
+
+            def __ge__(self, other): return False
+
+        self.assertEqual(sl.calculate_ticket_type(WeirdInt(10)), "")
+
+    def test_calculate_discounted_price_all_false(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 0
+        price, cat, status = sl.calculate_discounted_price(500, "взрослый")
+        self.assertEqual(price, 500)
+        self.assertEqual(cat, "")
+
+    def test_convert_sale_dict_values_other_types(self):
+        sale_dict = {"other": "string", "float_non_int": 250.5}
+        updated = sl.convert_sale_dict_values(sale_dict)
+        self.assertEqual(updated["other"], "string")
+        self.assertEqual(updated["float_non_int"], 250.5)
+
+    def test_calculate_discounted_price_invalid_child(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 1
+        price, cat, status = sl.calculate_discounted_price(500, "детский")
+        self.assertEqual(price, 0)
+        self.assertEqual(cat, "")
+
+
+
+    def test_calculate_ticket_type_all_false(self):
+        class WeirdInt(int):
+            def __lt__(self, other): return False
+            def __le__(self, other): return False
+            def __ge__(self, other): return False
+        self.assertEqual(sl.calculate_ticket_type(WeirdInt(10)), "")
+
+    def test_calculate_discounted_price_all_false(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 0
+        price, cat, status = sl.calculate_discounted_price(500, "взрослый")
+        self.assertEqual(price, 500)
+        self.assertEqual(cat, "")
+
+    def test_convert_sale_dict_values_other_types(self):
+        sale_dict = {"other": "string", "float_non_int": 250.5}
+        updated = sl.convert_sale_dict_values(sale_dict)
+        self.assertEqual(updated["other"], "string")
+        self.assertEqual(updated["float_non_int"], 250.5)
+
+    def test_calculate_discounted_price_invalid_child(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 1
+        price, cat, status = sl.calculate_discounted_price(500, "детский")
+        self.assertEqual(price, 0)
+        self.assertEqual(cat, "")
 
 if __name__ == '__main__':
     unittest.main()
