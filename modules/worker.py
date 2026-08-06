@@ -295,7 +295,7 @@ class TransactionWorker(BaseWorker):
         if self.payment_type in (101, 100):
             # Режим отладки
             if self.dev_mode:
-                self.logger.info("РЕЖИМ ОТЛАДКИ: Имитация банковского платежа")
+                logger.info("РЕЖИМ ОТЛАДКИ: Имитация банковского платежа")
                 # Генерируем тестовые данные
                 # check = (f"DEBUG_SLIP\nДата: {dt.datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
                 #          f"Сумма: {self.amount} руб.\nТип: {'Онлайн' if self.payment_type == 101 else 'Оффлайн'}")

@@ -304,69 +304,47 @@ class TestSaleLogic(unittest.TestCase):
         self.assertEqual(updated["other"], "string")
         self.assertEqual(updated["float_non_int"], 250.5)
 
-    def test_calculate_discounted_price_invalid_child(self):
-        self.system.count_number_of_visitors["many_child"] = 0
-        self.system.count_number_of_visitors["invalid"] = 1
+
+
+
+    def test_calculate_discounted_price_many_child_first_sunday(self):
+        # 1 - many child 100% discount, 2 - many child 50% discount
+        self.system.count_number_of_visitors["many_child"] = 1
+        self.system.count_number_of_visitors["invalid"] = 0
+        self.system.price["ticket_free"] = 0
+        
         price, cat, status = sl.calculate_discounted_price(500, "детский")
         self.assertEqual(price, 0)
         self.assertEqual(cat, "")
+        self.assertEqual(status, False)
 
+    def test_calculate_discounted_price_many_child_weekday(self):
+        self.system.count_number_of_visitors["many_child"] = 2
+        self.system.count_number_of_visitors["invalid"] = 0
+        
+        price, cat, status = sl.calculate_discounted_price(500, "детский")
+        self.assertEqual(price, 250)
+        self.assertEqual(cat, "")
+        self.assertEqual(status, False)
 
+    def test_calculate_discounted_price_invalid(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 1
+        self.system.price["ticket_free"] = 0
+        
+        price, cat, status = sl.calculate_discounted_price(500, "взрослый")
+        self.assertEqual(price, 0)
+        self.assertEqual(cat, "с")
+        self.assertEqual(status, False)
 
-    def test_calculate_ticket_type_all_false(self):
-        class WeirdInt(int):
-            def __lt__(self, other): return False
-            def __le__(self, other): return False
-            def __ge__(self, other): return False
-        self.assertEqual(sl.calculate_ticket_type(WeirdInt(10)), "")
-
-    def test_calculate_discounted_price_all_false(self):
+    def test_calculate_discounted_price_normal_visitor(self):
         self.system.count_number_of_visitors["many_child"] = 0
         self.system.count_number_of_visitors["invalid"] = 0
+        
         price, cat, status = sl.calculate_discounted_price(500, "взрослый")
         self.assertEqual(price, 500)
         self.assertEqual(cat, "")
-
-    def test_convert_sale_dict_values_other_types(self):
-        sale_dict = {"other": "string", "float_non_int": 250.5}
-        updated = sl.convert_sale_dict_values(sale_dict)
-        self.assertEqual(updated["other"], "string")
-        self.assertEqual(updated["float_non_int"], 250.5)
-
-    def test_calculate_discounted_price_invalid_child(self):
-        self.system.count_number_of_visitors["many_child"] = 0
-        self.system.count_number_of_visitors["invalid"] = 1
-        price, cat, status = sl.calculate_discounted_price(500, "детский")
-        self.assertEqual(price, 0)
-        self.assertEqual(cat, "")
-
-
-    def test_calculate_ticket_type_all_false(self):
-        class WeirdInt(int):
-            def __lt__(self, other): return False
-            def __le__(self, other): return False
-            def __ge__(self, other): return False
-        self.assertEqual(sl.calculate_ticket_type(WeirdInt(10)), "")
-
-    def test_calculate_discounted_price_all_false(self):
-        self.system.count_number_of_visitors["many_child"] = 0
-        self.system.count_number_of_visitors["invalid"] = 0
-        price, cat, status = sl.calculate_discounted_price(500, "взрослый")
-        self.assertEqual(price, 500)
-        self.assertEqual(cat, "")
-
-    def test_convert_sale_dict_values_other_types(self):
-        sale_dict = {"other": "string", "float_non_int": 250.5}
-        updated = sl.convert_sale_dict_values(sale_dict)
-        self.assertEqual(updated["other"], "string")
-        self.assertEqual(updated["float_non_int"], 250.5)
-
-    def test_calculate_discounted_price_invalid_child(self):
-        self.system.count_number_of_visitors["many_child"] = 0
-        self.system.count_number_of_visitors["invalid"] = 1
-        price, cat, status = sl.calculate_discounted_price(500, "детский")
-        self.assertEqual(price, 0)
-        self.assertEqual(cat, "")
+        self.assertEqual(status, False)
 
 if __name__ == '__main__':
     unittest.main()
