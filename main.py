@@ -229,7 +229,7 @@ class AuthForm(QDialog):
             f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
         )
         window.main_button_all_sales()
-        window.exec_()
+        window.show()
 
 
 class ClientForm(QDialog):
@@ -514,7 +514,10 @@ class SaleForm(QDialog):
             None
         """
         logger.info("Запуск функции tracking_button_pressing")
-        if event.key() == QtCore.Qt.Key_Delete or event.key() == QtCore.Qt.Key_Backspace:
+        if (
+            event.key() == QtCore.Qt.Key_Delete
+            or event.key() == QtCore.Qt.Key_Backspace
+        ):
             self.deleting_selected_record()
 
     def deleting_selected_record(self) -> None:
