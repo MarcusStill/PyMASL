@@ -66,6 +66,7 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
     logger.opt(exception=(exc_type, exc_value, exc_traceback)).error(
         "Неперехваченное исключение"
     )
+    logger.complete()
 
 sys.excepthook = handle_uncaught_exception
 
