@@ -37,7 +37,7 @@ class Sale(Base):
     datetime_return: Mapped[DateTime | None] = mapped_column(
         DateTime, comment="Дата и время возврата продажи"
     )
-    bank_return: Mapped[str | None | None] = mapped_column(
+    bank_return: Mapped[str | None] = mapped_column(
         Text, comment="Банковский чек возврата"
     )
     partial_return: Mapped[int] = mapped_column(

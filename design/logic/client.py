@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class Ui_Dialog_Client(object):
+class Ui_Dialog_Client:
     def setupUi(self, Dialog_Client):
         if not Dialog_Client.objectName():
             Dialog_Client.setObjectName("Dialog_Client")
