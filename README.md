@@ -1,5 +1,7 @@
 # PyMASL — Система автоматизации детских развлекательных центров
 
+[![CI](https://github.com/MarcusStill/PyMASL/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/MarcusStill/PyMASL/actions/workflows/ci.yml)
+
 **Производственная desktop-система** для автоматизации продаж, учета посетителей и интеграции с торговым оборудованием в детских развлекательных центрах.
 
 > **Внедрена в эксплуатацию:** 01.06.2022 • **Статус:** ✅ Работает в production

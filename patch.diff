@@ -1,0 +1,56 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+new file mode 100644
+index 0000000..ff8260f
+--- /dev/null
++++ b/.github/workflows/ci.yml
+@@ -0,0 +1,38 @@
++name: CI
++
++on:
++  push:
++    branches: [ "dev" ]
++
++jobs:
++  test:
++    runs-on: ubuntu-latest
++
++    steps:
++    - uses: actions/checkout@v4
++
++    - name: Set up Python 3.12
++      uses: actions/setup-python@v5
++      with:
++        python-version: "3.12"
++        cache: "pip"
++
++    - name: Install system dependencies
++      run: |
++        sudo apt-get update
++        sudo apt-get install -y libxcb-cursor0 xvfb
++
++    - name: Install Python dependencies
++      run: |
++        python -m pip install --upgrade pip
++        iconv -f UTF-16LE -t UTF-8 requirements.txt | grep -ivE "pywin32|pypiwin32|win32_setctime" > requirements-linux.txt
++        pip install -r requirements-linux.txt pytest pytest-qt
++
++    - name: Run tests
++      env:
++        DB_PASSWORD: dummy
++        DB_USER: dummy
++        DB_NAME: dummy
++        DB_HOST: dummy
++      run: |
++        xvfb-run -a python -m pytest -p no:pytest-qt tests/
+diff --git a/README.md b/README.md
+index 231c084..0a6704a 100644
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,7 @@
+ # PyMASL — Система автоматизации детских развлекательных центров
+
++[![CI](https://github.com/MarcusStill/PyMASL/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/MarcusStill/PyMASL/actions/workflows/ci.yml)
++
+ **Производственная desktop-система** для автоматизации продаж, учета посетителей и интеграции с торговым оборудованием в детских развлекательных центрах.
+
+ > **Внедрена в эксплуатацию:** 01.06.2022 • **Статус:** ✅ Работает в production
