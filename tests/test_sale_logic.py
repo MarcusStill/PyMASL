@@ -304,7 +304,69 @@ class TestSaleLogic(unittest.TestCase):
         self.assertEqual(updated["other"], "string")
         self.assertEqual(updated["float_non_int"], 250.5)
 
+    def test_calculate_discounted_price_invalid_child(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 1
+        price, cat, status = sl.calculate_discounted_price(500, "детский")
+        self.assertEqual(price, 0)
+        self.assertEqual(cat, "")
 
+
+
+    def test_calculate_ticket_type_all_false(self):
+        class WeirdInt(int):
+            def __lt__(self, other): return False
+            def __le__(self, other): return False
+            def __ge__(self, other): return False
+        self.assertEqual(sl.calculate_ticket_type(WeirdInt(10)), "")
+
+    def test_calculate_discounted_price_all_false(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 0
+        price, cat, status = sl.calculate_discounted_price(500, "взрослый")
+        self.assertEqual(price, 500)
+        self.assertEqual(cat, "")
+
+    def test_convert_sale_dict_values_other_types(self):
+        sale_dict = {"other": "string", "float_non_int": 250.5}
+        updated = sl.convert_sale_dict_values(sale_dict)
+        self.assertEqual(updated["other"], "string")
+        self.assertEqual(updated["float_non_int"], 250.5)
+
+    def test_calculate_discounted_price_invalid_child(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 1
+        price, cat, status = sl.calculate_discounted_price(500, "детский")
+        self.assertEqual(price, 0)
+        self.assertEqual(cat, "")
+
+
+    def test_calculate_ticket_type_all_false(self):
+        class WeirdInt(int):
+            def __lt__(self, other): return False
+            def __le__(self, other): return False
+            def __ge__(self, other): return False
+        self.assertEqual(sl.calculate_ticket_type(WeirdInt(10)), "")
+
+    def test_calculate_discounted_price_all_false(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 0
+        price, cat, status = sl.calculate_discounted_price(500, "взрослый")
+        self.assertEqual(price, 500)
+        self.assertEqual(cat, "")
+
+    def test_convert_sale_dict_values_other_types(self):
+        sale_dict = {"other": "string", "float_non_int": 250.5}
+        updated = sl.convert_sale_dict_values(sale_dict)
+        self.assertEqual(updated["other"], "string")
+        self.assertEqual(updated["float_non_int"], 250.5)
+
+    def test_calculate_discounted_price_invalid_child(self):
+        self.system.count_number_of_visitors["many_child"] = 0
+        self.system.count_number_of_visitors["invalid"] = 1
+        price, cat, status = sl.calculate_discounted_price(500, "детский")
+        self.assertEqual(price, 0)
+        self.assertEqual(cat, "")
 
 
     def test_calculate_discounted_price_many_child_first_sunday(self):
