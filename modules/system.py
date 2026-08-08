@@ -12,19 +12,19 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from db.models import Holiday, Workday, Price, User, Sale
+from db.models import Holiday, Price, Sale, User, Workday
 from modules.config import Config
 from modules.logger import logger, logger_wraps
 
 
 class System:
-    """Класс для хранения системной информации и функций"""
+    """Класс для хранения системной информации и функций."""
 
     _instance = None
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(System, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self):
@@ -48,7 +48,8 @@ class System:
         pswrd = os.getenv("DB_PASSWORD")
         if not pswrd:
             logger.error("Переменная окружения DB_PASSWORD не установлена!")
-            raise ValueError("Переменная окружения DB_PASSWORD не установлена!")
+            raise ValueError(
+                "Переменная окружения DB_PASSWORD не установлена!")
 
         self.engine = create_engine(
             f"postgresql+psycopg2://{self.user}:{pswrd}@{self.host}:{self.port}/{self.database}"
@@ -145,8 +146,8 @@ class System:
         return base64.b64decode(encoded_password.encode()).decode()
 
     def user_authorization(self, login: str, password: str) -> int:
-        """
-        Функция проверяет есть ли пользователь в БД с данными, указанными на форме авторизации.
+        """Функция проверяет есть ли пользователь в БД с данными, указанными на
+        форме авторизации.
 
         Параметры:
             login (str): Логин пользователя.
@@ -167,14 +168,16 @@ class System:
                     logger.info(f"Успешная авторизация: {kassir.last_name}")
                     return 1
                 else:
-                    logger.warning(f"Неудачная попытка авторизации для пользователя {login}")
+                    logger.warning(
+                        f"Неудачная попытка авторизации для пользователя {login}")
                     return 0
             else:
                 logger.warning(f"Пользователь {login} не найден")
                 return 0
 
         except SQLAlchemyError as e:
-            logger.error(f"Ошибка базы данных при авторизации пользователя: {e}")
+            logger.error(
+                f"Ошибка базы данных при авторизации пользователя: {e}")
             return 0
         except Exception as e:
             logger.error(f"Неизвестная ошибка при авторизации: {e}")
@@ -182,8 +185,7 @@ class System:
 
     @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
     def get_price(self) -> None:
-        """
-        Функция загружает прайс-лист основных услуг из БД.
+        """Функция загружает прайс-лист основных услуг из БД.
 
         Параметры:
         self: object
@@ -232,7 +234,7 @@ class System:
                 logger.warning(
                     f"Недостаточно записей в прайс-листе: {len(result)} вместо 9."
                 )
-                missing_keys = list(default_prices.keys())[len(result) :]
+                missing_keys = list(default_prices.keys())[len(result):]
                 for idx, key in enumerate(list(default_prices.keys())[: len(result)]):
                     db_prices[key] = result[idx]
 
@@ -241,7 +243,7 @@ class System:
                     db_prices[key] = default_prices[key]
         else:
             # Если записей нет, используем дефолтные значения для всех элементов
-            logger.warning(f"Используем дефолтные значения для прайс-листа")
+            logger.warning("Используем дефолтные значения для прайс-листа")
             db_prices = default_prices
 
         # Устанавливаем цены, используя данные из db_prices или дефолтные значения
@@ -261,8 +263,7 @@ class System:
             )
 
     def check_day(self) -> int:
-        """
-        Функция проверяет статус текущего дня.
+        """Функция проверяет статус текущего дня.
 
         Параметры:
         self: object
@@ -283,7 +284,8 @@ class System:
         else:
             # Преобразуем текущую дату в список
             day: list[str] = day.split("-")
-            number_day = calendar.weekday(int(day[0]), int(day[1]), int(day[2]))
+            number_day = calendar.weekday(
+                int(day[0]), int(day[1]), int(day[2]))
             if number_day >= 5:
                 status_day = 1
                 self.what_a_day = 1
@@ -293,7 +295,8 @@ class System:
                 # Проверяем есть ли текущая дата в списке дополнительных праздничных дней
                 with Session(self.engine) as session:
                     query = select(Holiday).where(Holiday.date == day)
-                    check_day: Holiday | None = session.execute(query).scalars().first()
+                    check_day: Holiday | None = session.execute(
+                        query).scalars().first()
                 if check_day:
                     status_day = 1
                     self.what_a_day = 1
@@ -305,8 +308,7 @@ class System:
 
     @staticmethod
     def calculate_age(born: date) -> int:
-        """
-        Функция вычисляет возраст посетителя.
+        """Функция вычисляет возраст посетителя.
 
         Параметры:
             born (date): Дата рождения.
@@ -316,7 +318,8 @@ class System:
         """
         today = date.today()
         return (
-            today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+            today.year - born.year -
+            ((today.month, today.day) < (born.month, born.day))
         )
 
     # @staticmethod
@@ -340,7 +343,8 @@ class System:
 
     @logger_wraps(entry=True, exit=True, level="DEBUG", catch_exceptions=True)
     def load_coordinates(self, config: Config):
-        """Функция для проверки загрузки файла с координатами, необходимыми для генерации билетов.
+        """Функция для проверки загрузки файла с координатами, необходимыми для
+        генерации билетов.
 
         Параметры:
             config_file (str): Путь к файлу конфигурации, содержащему координаты.
@@ -381,7 +385,8 @@ class System:
             with open(coordinates_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if "coordinates" not in data:
-                    raise KeyError("В конфигурации отсутствует ключ 'coordinates'.")
+                    raise KeyError(
+                        "В конфигурации отсутствует ключ 'coordinates'.")
                 return data["coordinates"]
         except json.JSONDecodeError as e:
             logger.error(f"Ошибка при разборе JSON: {e}")
@@ -391,9 +396,8 @@ class System:
             raise
 
     def get_slip_data(self, sale_id: int) -> tuple[str, str, str, str]:
-        """
-        Функция запрашивает банковский слип-чек в БД и извлекает из него данные:
-        последние 4 цифры карты, merchant ID, RRN и полный текст чека.
+        """Функция запрашивает банковский слип-чек в БД и извлекает из него
+        данные: последние 4 цифры карты, merchant ID, RRN и полный текст чека.
 
         Параметры:
             self: object
@@ -415,7 +419,8 @@ class System:
                 last_digits = re.search(r'Карта:\s+\*+\s*(\d{4})', load_slip)
                 card_tail = last_digits.group(1) if last_digits else ''
             else:
-                last_digits = re.search(r'Карта:\(?E\d*\)?\s+\*+\s*(\d{4})', load_slip)
+                last_digits = re.search(
+                    r'Карта:\(?E\d*\)?\s+\*+\s*(\d{4})', load_slip)
                 card_tail = last_digits.group(1) if last_digits else ''
             merchant = re.search(r'М:(\d+)', load_slip)
             merchant_id = merchant.group(1) if merchant else ''
@@ -426,8 +431,7 @@ class System:
             card_tail = ''
             merchant_id = ''
             rrn_value = ''
-        return  card_tail, merchant_id, rrn_value, load_slip
-
+        return card_tail, merchant_id, rrn_value, load_slip
 
     def check_db_connection(self) -> bool:
         """Проверка подключения к базе данных."""

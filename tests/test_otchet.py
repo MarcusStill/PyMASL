@@ -21,7 +21,6 @@ sys.modules['reportlab.platypus'] = MagicMock()
 sys.modules['reportlab.platypus'].Table = MagicMock()
 sys.modules['reportlab.platypus'].TableStyle = MagicMock()
 
-import modules.otchet as otchet
 from modules.otchet import (
     get_ticket_type,
     generate_ticket_report_table,
@@ -29,7 +28,8 @@ from modules.otchet import (
     format_date_range,
     process_sales_and_returns,
     process_ticket_stats
-)
+)  # noqa: E402
+import modules.otchet as otchet  # noqa: E402
 
 class TestOtchet(unittest.TestCase):
 
@@ -43,7 +43,7 @@ class TestOtchet(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             get_ticket_type(-1)
-            
+
         with self.assertRaises(ValueError):
             get_ticket_type("invalid")
 
@@ -59,7 +59,8 @@ class TestOtchet(unittest.TestCase):
         self.assertEqual(safe_int("invalid"), 0)
 
     def test_format_date_range(self):
-        dt1, dt2 = format_date_range("2023-10-01 12:00:00", "2023-10-02 15:30:00")
+        dt1, dt2 = format_date_range(
+            "2023-10-01 12:00:00", "2023-10-02 15:30:00")
         self.assertEqual(dt1, "01-10-2023")
         self.assertEqual(dt2, "02-10-2023")
 
@@ -73,8 +74,9 @@ class TestOtchet(unittest.TestCase):
             }
         }
         table = generate_ticket_report_table(summary)
-        
-        self.assertEqual(table[0], ["№\n п/п", "Тип\nбилета", "Цена,\n руб.", "Количество,\n шт.", "Стоимость,\n руб."])
+
+        self.assertEqual(table[0], ["№\n п/п", "Тип\nбилета",
+                         "Цена,\n руб.", "Количество,\n шт.", "Стоимость,\n руб."])
         self.assertIn(["1", "Взрослый, 1 ч.", 250, 2, 500], table)
         self.assertEqual(table[-1][1], "Итого билетов")
         self.assertEqual(table[-1][3], 3)
@@ -113,10 +115,11 @@ class TestOtchet(unittest.TestCase):
     def test_otchet_administratora(self, mock_canvas_class):
         mock_canvas_inst = MagicMock()
         mock_canvas_class.return_value = mock_canvas_inst
-        
+
         values = {"Взрослый, 1 ч.": {250: {"count": 2, "total_price": 500}}}
-        otchet.otchet_administratora("2023-10-01 12:00:00", "2023-10-02 15:30:00", values)
-        
+        otchet.otchet_administratora(
+            "2023-10-01 12:00:00", "2023-10-02 15:30:00", values)
+
         self.assertTrue(mock_canvas_class.called)
         self.assertTrue(mock_canvas_inst.save.called)
 
@@ -124,14 +127,15 @@ class TestOtchet(unittest.TestCase):
     def test_otchet_kassira(self, mock_canvas_class):
         mock_canvas_inst = MagicMock()
         mock_canvas_class.return_value = mock_canvas_inst
-        
+
         val = [1000, 500, 100, 50]
         kassir = MagicMock()
         kassir.last_name = "Иванов"
         kassir.first_name = "Иван"
         kassir.middle_name = "Иванович"
-        
-        otchet.otchet_kassira(val, "2023-10-01 12:00:00", "2023-10-02 15:30:00", kassir)
+
+        otchet.otchet_kassira(val, "2023-10-01 12:00:00",
+                              "2023-10-02 15:30:00", kassir)
         self.assertTrue(mock_canvas_class.called)
         self.assertTrue(mock_canvas_inst.save.called)
 
@@ -140,7 +144,7 @@ class TestOtchet(unittest.TestCase):
     def test_generate_saved_tickets(self, mock_load_coords, mock_canvas_class):
         mock_canvas_inst = MagicMock()
         mock_canvas_class.return_value = mock_canvas_inst
-        
+
         mock_load_coords.return_value = {
             "name": {"x": 10, "y": 20},
             "surname": {"x": 10, "y": 20},
@@ -156,13 +160,14 @@ class TestOtchet(unittest.TestCase):
             "talents": {"x": 10, "y": 20},
             "qr_code": {"x": 10, "y": 20}
         }
-        
+
         values = [
             ("Иванов", "Иван", 1, 500, "-", 1, 10, 3, 50, "2023-10-01")
         ]
         otchet.generate_saved_tickets(values)
         self.assertTrue(mock_canvas_class.called)
         self.assertTrue(mock_canvas_inst.save.called)
+
 
 if __name__ == '__main__':
     unittest.main()

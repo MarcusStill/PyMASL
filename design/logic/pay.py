@@ -1,9 +1,9 @@
 from PySide6.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QGroupBox, QLabel, QPushButton, QCheckBox
+from PySide6.QtWidgets import QCheckBox, QGroupBox, QLabel, QPushButton
 
 
-class Ui_Dialog_Pay(object):
+class Ui_Dialog_Pay:
     def setupUi(self, Dialog_Pay):
         if not Dialog_Pay.objectName():
             Dialog_Pay.setObjectName("Dialog_Pay")
@@ -71,7 +71,8 @@ class Ui_Dialog_Pay(object):
                 "Dialog_Pay", "\u041a \u041e\u041f\u041b\u0410\u0422\u0415:", None
             )
         )
-        self.label_2.setText(QCoreApplication.translate("Dialog_Pay", "0", None))
+        self.label_2.setText(
+            QCoreApplication.translate("Dialog_Pay", "0", None))
         self.pushButton.setText(
             QCoreApplication.translate(
                 "Dialog_Pay",

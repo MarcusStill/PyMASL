@@ -23,7 +23,8 @@ def logger_wraps(
             try:
                 result = func(*args, **kwargs)
                 if exit:
-                    logger_.log(level, "Exiting '{}' (result={})", name, result)
+                    logger_.log(
+                        level, "Exiting '{}' (result={})", name, result)
                 return result
             except Exception as e:
                 if catch_exceptions:

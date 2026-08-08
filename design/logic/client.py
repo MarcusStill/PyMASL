@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class Ui_Dialog_Client(object):
+class Ui_Dialog_Client:
     def setupUi(self, Dialog_Client):
         if not Dialog_Client.objectName():
             Dialog_Client.setObjectName("Dialog_Client")
@@ -180,19 +180,23 @@ class Ui_Dialog_Client(object):
             )
         )
         self.label_2.setText(
-            QCoreApplication.translate("Dialog_Client", "\u0418\u043c\u044f *", None)
+            QCoreApplication.translate(
+                "Dialog_Client", "\u0418\u043c\u044f *", None)
         )
         self.label_4.setText(
-            QCoreApplication.translate("Dialog_Client", "\u041f\u043e\u043b", None)
+            QCoreApplication.translate(
+                "Dialog_Client", "\u041f\u043e\u043b", None)
         )
         self.comboBox.setItemText(
             0, QCoreApplication.translate("Dialog_Client", "-", None)
         )
         self.comboBox.setItemText(
-            1, QCoreApplication.translate("Dialog_Client", "\u043c\u0443\u0436", None)
+            1, QCoreApplication.translate(
+                "Dialog_Client", "\u043c\u0443\u0436", None)
         )
         self.comboBox.setItemText(
-            2, QCoreApplication.translate("Dialog_Client", "\u0436\u0435\u043d", None)
+            2, QCoreApplication.translate(
+                "Dialog_Client", "\u0436\u0435\u043d", None)
         )
 
         self.label.setText(

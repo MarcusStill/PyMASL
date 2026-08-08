@@ -10,8 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def calculate_age(birth_date: date) -> int:
-    """
-    Функция вычисляет возраст посетителя.
+    """Функция вычисляет возраст посетителя.
 
     Параметры:
         born (date): Дата рождения.
@@ -36,8 +35,7 @@ def get_today_date():
 
 
 def calculate_ticket_type(age: int) -> str:
-    """
-    Функция определяет тип входного билета.
+    """Функция определяет тип входного билета.
 
     Параметры:
         age (int): Возраст посетителя.
@@ -57,8 +55,7 @@ def calculate_ticket_type(age: int) -> str:
 
 
 def calculated_ticket_price(type_ticket: str, time: int) -> int:
-    """
-    Функция определяет стоимость входного билета.
+    """Функция определяет стоимость входного билета.
 
     Параметры:
         type_ticket (str): Тип билета.
@@ -84,8 +81,8 @@ def calculated_ticket_price(type_ticket: str, time: int) -> int:
 
 
 def calculate_adult_price() -> int:
-    """
-    Считает цену взрослого билета в зависимости от продолжительности и категорий.
+    """Считает цену взрослого билета в зависимости от продолжительности и
+    категорий.
 
     Параметры:
         None
@@ -122,8 +119,8 @@ def calculate_adult_price() -> int:
 
 
 def calculate_child_price() -> int:
-    """
-    Считает цену взрослого билета в зависимости от продолжительности и категорий.
+    """Считает цену взрослого билета в зависимости от продолжительности и
+    категорий.
 
     Параметры:
         None
@@ -163,15 +160,13 @@ def calculate_child_price() -> int:
 
 
 def calculate_discounted_price(price: int, type_ticket: str):
-    """
-    Рассчитывает итоговую цену с учетом скидок и специальных условий.
+    """Рассчитывает итоговую цену с учетом скидок и специальных условий.
 
-    Параметры:
-        price (int): Цена до применения скидок.
-        type_ticket (str): Тип билета (взрослый или детский).
+    Параметры:     price (int): Цена до применения скидок.
+    type_ticket (str): Тип билета (взрослый или детский).
 
-    Возвращает:
-        tuple[int, bool, str]: Итоговая цена, флаг особой продажи, категория билета.
+    Возвращает:     tuple[int, bool, str]: Итоговая цена, флаг особой
+    продажи, категория билета.
     """
     logger.info("Запуск функции calculate_discounted_price")
     new_price = price
@@ -199,8 +194,7 @@ def calculate_discounted_price(price: int, type_ticket: str):
 
 
 def calculate_discount(value_1, value_2) -> Decimal:
-    """
-    Вычисляет новую цену после применения скидки.
+    """Вычисляет новую цену после применения скидки.
 
     Параметры:
         value_1 (int): Исходная цена.
@@ -217,8 +211,7 @@ def calculate_discount(value_1, value_2) -> Decimal:
 
 
 def calculate_itog() -> int:
-    """
-    Функция рассчитывает итоговую сумму заказа.
+    """Функция рассчитывает итоговую сумму заказа.
 
     Параметры:
         None
@@ -239,35 +232,46 @@ def calculate_itog() -> int:
 
     # Взрослые
     # Взрослые без скидки
-    adults_no_discount = system.sale_dict["kol_adult"] - system.sale_dict["detail"][0]
-    adults_no_discount_sum = adults_no_discount * system.sale_dict["price_adult"]
+    adults_no_discount = system.sale_dict["kol_adult"] - \
+        system.sale_dict["detail"][0]
+    adults_no_discount_sum = adults_no_discount * \
+        system.sale_dict["price_adult"]
 
     # Взрослые со скидкой (detail[0] × detail[1])
-    adults_with_discount_sum = system.sale_dict["detail"][0] * system.sale_dict["detail"][1]
+    adults_with_discount_sum = system.sale_dict["detail"][0] * \
+        system.sale_dict["detail"][1]
 
     adult_total = adults_no_discount_sum + adults_with_discount_sum
 
     # Дети
     # Дети без скидки
-    children_no_discount = system.sale_dict["kol_child"] - system.sale_dict["detail"][2]
-    children_no_discount_sum = children_no_discount * system.sale_dict["price_child"]
+    children_no_discount = system.sale_dict["kol_child"] - \
+        system.sale_dict["detail"][2]
+    children_no_discount_sum = children_no_discount * \
+        system.sale_dict["price_child"]
 
     # Дети со скидкой (detail[2] × detail[3])
-    children_with_discount_sum = system.sale_dict["detail"][2] * system.sale_dict["detail"][3]
+    children_with_discount_sum = system.sale_dict["detail"][2] * \
+        system.sale_dict["detail"][3]
 
     child_total = children_no_discount_sum + children_with_discount_sum
 
     result = adult_total + child_total
 
-    logger.debug(f"Взрослые без скидки: {adults_no_discount} × {system.sale_dict['price_adult']} = {adults_no_discount_sum}")
-    logger.debug(f"Взрослые со скидкой: {system.sale_dict['detail'][0]} × {system.sale_dict['detail'][1]} = {adults_with_discount_sum}")
+    logger.debug(
+        f"Взрослые без скидки: {adults_no_discount} × {system.sale_dict['price_adult']} = {adults_no_discount_sum}")
+    logger.debug(
+        f"Взрослые со скидкой: {system.sale_dict['detail'][0]} × {system.sale_dict['detail'][1]} = {adults_with_discount_sum}")
     logger.debug(f"ИТОГО взрослые: {adult_total}")
 
-    logger.debug(f"Дети без скидки: {children_no_discount} × {system.sale_dict['price_child']} = {children_no_discount_sum}")
-    logger.debug(f"Дети со скидкой: {system.sale_dict['detail'][2]} × {system.sale_dict['detail'][3]} = {children_with_discount_sum}")
+    logger.debug(
+        f"Дети без скидки: {children_no_discount} × {system.sale_dict['price_child']} = {children_no_discount_sum}")
+    logger.debug(
+        f"Дети со скидкой: {system.sale_dict['detail'][2]} × {system.sale_dict['detail'][3]} = {children_with_discount_sum}")
     logger.debug(f"ИТОГО дети: {child_total}")
 
-    logger.debug(f"Расчет итого: {adult_total} (взрослые) + {child_total} (дети) = {result}")
+    logger.debug(
+        f"Расчет итого: {adult_total} (взрослые) + {child_total} (дети) = {result}")
 
     return result
 
@@ -275,11 +279,10 @@ def calculate_itog() -> int:
 def get_talent_based_on_time(time_ticket: int):
     """Возвращает количество талантов в зависимости от времени.
 
-    Параметры:
-        time_ticket (int): Время в часах.
+    Параметры:     time_ticket (int): Время в часах.
 
-    Возвращаемое значение:
-        tuple[int, int]: Количество талантов и соответствующее значение таланта из системы.
+    Возвращаемое значение:     tuple[int, int]: Количество талантов и
+    соответствующее значение таланта из системы.
     """
     logger.info("Запуск функции get_talent_based_on_time")
     if time_ticket == 1:
@@ -292,8 +295,7 @@ def get_talent_based_on_time(time_ticket: int):
 
 
 def update_sale_dict_adult_many_child() -> None:
-    """
-    Обновляет словарь продаж для взрослого с многодетной скидкой.
+    """Обновляет словарь продаж для взрослого с многодетной скидкой.
 
     Параметры:
         None
@@ -309,8 +311,7 @@ def update_sale_dict_adult_many_child() -> None:
 
 
 def update_sale_dict_adult_invalid() -> None:
-    """
-    Обновляет словарь продаж для взрослого с инвалидной скидкой.
+    """Обновляет словарь продаж для взрослого с инвалидной скидкой.
 
     Параметры:
         None
@@ -324,8 +325,7 @@ def update_sale_dict_adult_invalid() -> None:
 
 
 def update_sale_dict_child_many_child() -> None:
-    """
-    Обновляет словарь продаж для ребенка с многодетной скидкой.
+    """Обновляет словарь продаж для ребенка с многодетной скидкой.
 
     Параметры:
         None
@@ -341,8 +341,7 @@ def update_sale_dict_child_many_child() -> None:
 
 
 def update_sale_dict_child_invalid() -> None:
-    """
-    Обновляет словарь продаж для ребенка с инвалидной скидкой.
+    """Обновляет словарь продаж для ребенка с инвалидной скидкой.
 
     Параметры:
         None
@@ -356,8 +355,7 @@ def update_sale_dict_child_invalid() -> None:
 
 
 def update_adult_count() -> None:
-    """
-    Обновляет счетчик взрослых посетителей.
+    """Обновляет счетчик взрослых посетителей.
 
     Параметры:
         None
@@ -371,8 +369,7 @@ def update_adult_count() -> None:
 
 
 def update_child_count() -> None:
-    """
-    Обновляет счетчик детских билетов.
+    """Обновляет счетчик детских билетов.
 
     Параметры:
         None
@@ -386,9 +383,8 @@ def update_child_count() -> None:
 
 
 def convert_sale_dict_values(sale_dict):
-    """
-    Преобразует значения в словаре sale_dict в правильные типы данных (int или float).
-    Применяется в конце расчетов перед записью в базу данных.
+    """Преобразует значения в словаре sale_dict в правильные типы данных (int
+    или float). Применяется в конце расчетов перед записью в базу данных.
 
     :param sale_dict: Словарь с данными продажи.
     :return: Обновленный словарь с корректными типами данных.
@@ -408,7 +404,8 @@ def convert_sale_dict_values(sale_dict):
                     )
                 elif isinstance(value[i], float):
                     # Если значение float целое (например, 10.0), преобразуем в int
-                    value[i] = int(value[i]) if value[i].is_integer() else value[i]
+                    value[i] = int(
+                        value[i]) if value[i].is_integer() else value[i]
         elif isinstance(value, Decimal):
             # Преобразуем Decimal в int или float
             sale_dict[key] = (
@@ -422,8 +419,7 @@ def convert_sale_dict_values(sale_dict):
 
 
 def generating_parts_for_partial_returns(tickets, amount):
-    """
-    Функция формирует список позиций для чека частичного возврата прихода.
+    """Функция формирует список позиций для чека частичного возврата прихода.
 
     Параметры:
         tickets (dict): Словарь с билетами.
@@ -446,7 +442,7 @@ def generating_parts_for_partial_returns(tickets, amount):
         return {}
     try:
         count_tickets = len(tickets)
-        dct: dict = dict(list())
+        dct: dict = {}
         last_element_title = ""
         last_element_price = 0
         # Записываем сумму возврата в сумму остатка
@@ -494,10 +490,10 @@ def generating_parts_for_partial_returns(tickets, amount):
             else:
                 last_element_title = ticket_name + " акция"
                 last_element_price = ticket_price
-        if residue_all != 0:
-            if residue_all < last_element_price:
-                dct[last_element_title] = [residue_all, 1]
+        if residue_all != 0 and residue_all < last_element_price:
+            dct[last_element_title] = [residue_all, 1]
         return dct
     except Exception as e:
-        logger.exception(f"Ошибка в функции generating_parts_for_partial_returns: {e}")
+        logger.exception(
+            f"Ошибка в функции generating_parts_for_partial_returns: {e}")
         return {}
