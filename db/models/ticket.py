@@ -11,11 +11,13 @@ class Ticket(Base):
     __tablename__ = "ticket"
     __tableargs__ = {"comment": "Билеты"}
 
-    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, unique=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True, nullable=False, unique=True)
     id_client: Mapped[int] = mapped_column(
         ForeignKey("client.id"), comment="Id клиента"
     )
-    id_sale: Mapped[int] = mapped_column(ForeignKey("sale.id"), comment="Id продажи")
+    id_sale: Mapped[int] = mapped_column(
+        ForeignKey("sale.id"), comment="Id продажи")
     client_age: Mapped[int | None] = mapped_column(
         SmallInteger, comment="Возраст клиента"
     )
@@ -29,7 +31,8 @@ class Ticket(Base):
         SmallInteger, comment="Количество золотых талантов"
     )
     price: Mapped[int] = mapped_column(Integer, nullable=False, comment="Цена")
-    description: Mapped[str | None] = mapped_column(String(64), comment="Примечание")
+    description: Mapped[str | None] = mapped_column(
+        String(64), comment="Примечание")
     ticket_type: Mapped[int | None] = mapped_column(
         SmallInteger, comment="Тип билета: 0-взрослый, 1 - детский, 2 - бесплатный"
     )

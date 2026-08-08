@@ -3,7 +3,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QFrame, QLabel, QLineEdit, QPushButton
 
 
-class Ui_Dialog(object):
+class Ui_Dialog:
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName("Dialog")
@@ -83,7 +83,8 @@ class Ui_Dialog(object):
                 "Dialog", "\u041f\u0430\u0440\u043e\u043b\u044c:", None
             )
         )
-        self.pushButton.setText(QCoreApplication.translate("Dialog", "Ok", None))
+        self.pushButton.setText(
+            QCoreApplication.translate("Dialog", "Ok", None))
         self.pushButton_2.setText(
             QCoreApplication.translate(
                 "Dialog", "\u041e\u0442\u043c\u0435\u043d\u0430", None
@@ -103,7 +104,8 @@ class Ui_Dialog(object):
                 "Dialog", "\u0412\u0435\u0440\u0441\u0438\u044f \u041f\u041e:", None
             )
         )
-        self.label_7.setText(QCoreApplication.translate("Dialog", "0.0.1", None))
+        self.label_7.setText(
+            QCoreApplication.translate("Dialog", "0.0.1", None))
         self.label_8.setText(
             QCoreApplication.translate("Dialog", "\u0411\u0414:", None)
         )

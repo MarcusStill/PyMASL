@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class Ui_Dialog_Sale(object):
+class Ui_Dialog_Sale:
     def setupUi(self, Dialog_Sale):
         if not Dialog_Sale.objectName():
             Dialog_Sale.setObjectName("Dialog_Sale")
@@ -375,7 +375,8 @@ class Ui_Dialog_Sale(object):
         )
         ___qtablewidgetitem1 = self.tableWidget.horizontalHeaderItem(1)
         ___qtablewidgetitem1.setText(
-            QCoreApplication.translate("Dialog_Sale", "\u0418\u043c\u044f", None)
+            QCoreApplication.translate(
+                "Dialog_Sale", "\u0418\u043c\u044f", None)
         )
         ___qtablewidgetitem2 = self.tableWidget.horizontalHeaderItem(2)
         ___qtablewidgetitem2.setText(
@@ -385,7 +386,8 @@ class Ui_Dialog_Sale(object):
         )
         ___qtablewidgetitem3 = self.tableWidget.horizontalHeaderItem(3)
         ___qtablewidgetitem3.setText(
-            QCoreApplication.translate("Dialog_Sale", "\u0424\u043b\u0430\u0433", None)
+            QCoreApplication.translate(
+                "Dialog_Sale", "\u0424\u043b\u0430\u0433", None)
         )
         ___qtablewidgetitem4 = self.tableWidget.horizontalHeaderItem(4)
         ___qtablewidgetitem4.setText(
@@ -428,7 +430,8 @@ class Ui_Dialog_Sale(object):
         )
         ___qtablewidgetitem7 = self.tableWidget_2.horizontalHeaderItem(1)
         ___qtablewidgetitem7.setText(
-            QCoreApplication.translate("Dialog_Sale", "\u0418\u043c\u044f", None)
+            QCoreApplication.translate(
+                "Dialog_Sale", "\u0418\u043c\u044f", None)
         )
         ___qtablewidgetitem8 = self.tableWidget_2.horizontalHeaderItem(2)
         ___qtablewidgetitem8.setText(
@@ -440,11 +443,13 @@ class Ui_Dialog_Sale(object):
         )
         ___qtablewidgetitem9 = self.tableWidget_2.horizontalHeaderItem(3)
         ___qtablewidgetitem9.setText(
-            QCoreApplication.translate("Dialog_Sale", "\u0426\u0435\u043d\u0430", None)
+            QCoreApplication.translate(
+                "Dialog_Sale", "\u0426\u0435\u043d\u0430", None)
         )
         ___qtablewidgetitem10 = self.tableWidget_2.horizontalHeaderItem(4)
         ___qtablewidgetitem10.setText(
-            QCoreApplication.translate("Dialog_Sale", "\u0424\u043b\u0430\u0433", None)
+            QCoreApplication.translate(
+                "Dialog_Sale", "\u0424\u043b\u0430\u0433", None)
         )
         ___qtablewidgetitem11 = self.tableWidget_2.horizontalHeaderItem(5)
         ___qtablewidgetitem11.setText(
@@ -491,7 +496,8 @@ class Ui_Dialog_Sale(object):
                 None,
             )
         )
-        self.label_5.setText(QCoreApplication.translate("Dialog_Sale", "-", None))
+        self.label_5.setText(
+            QCoreApplication.translate("Dialog_Sale", "-", None))
         self.label_6.setText(
             QCoreApplication.translate(
                 "Dialog_Sale",
@@ -500,8 +506,10 @@ class Ui_Dialog_Sale(object):
                 None,
             )
         )
-        self.label_7.setText(QCoreApplication.translate("Dialog_Sale", "-", None))
-        self.label_8.setText(QCoreApplication.translate("Dialog_Sale", "-", None))
+        self.label_7.setText(
+            QCoreApplication.translate("Dialog_Sale", "-", None))
+        self.label_8.setText(
+            QCoreApplication.translate("Dialog_Sale", "-", None))
         self.label_9.setText(
             QCoreApplication.translate(
                 "Dialog_Sale",
@@ -616,7 +624,8 @@ class Ui_Dialog_Sale(object):
             15, QCoreApplication.translate("Dialog_Sale", "100", None)
         )
 
-        self.label_17.setText(QCoreApplication.translate("Dialog_Sale", "-", None))
+        self.label_17.setText(
+            QCoreApplication.translate("Dialog_Sale", "-", None))
         self.label_18.setText(
             QCoreApplication.translate(
                 "Dialog_Sale",
@@ -625,7 +634,8 @@ class Ui_Dialog_Sale(object):
                 None,
             )
         )
-        self.label_19.setText(QCoreApplication.translate("Dialog_Sale", "-", None))
+        self.label_19.setText(
+            QCoreApplication.translate("Dialog_Sale", "-", None))
         self.label_20.setText(
             QCoreApplication.translate(
                 "Dialog_Sale",
@@ -663,7 +673,8 @@ class Ui_Dialog_Sale(object):
         )
         ___qtablewidgetitem16 = self.tableWidget_3.horizontalHeaderItem(1)
         ___qtablewidgetitem16.setText(
-            QCoreApplication.translate("Dialog_Sale", "\u0418\u043c\u044f", None)
+            QCoreApplication.translate(
+                "Dialog_Sale", "\u0418\u043c\u044f", None)
         )
         ___qtablewidgetitem17 = self.tableWidget_3.horizontalHeaderItem(2)
         ___qtablewidgetitem17.setText(
@@ -673,7 +684,8 @@ class Ui_Dialog_Sale(object):
         )
         ___qtablewidgetitem18 = self.tableWidget_3.horizontalHeaderItem(3)
         ___qtablewidgetitem18.setText(
-            QCoreApplication.translate("Dialog_Sale", "\u0424\u043b\u0430\u0433", None)
+            QCoreApplication.translate(
+                "Dialog_Sale", "\u0424\u043b\u0430\u0433", None)
         )
         ___qtablewidgetitem19 = self.tableWidget_3.horizontalHeaderItem(4)
         ___qtablewidgetitem19.setText(

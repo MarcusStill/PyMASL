@@ -3,7 +3,6 @@ import subprocess
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Optional
 
 from modules import windows
 from modules.config import Config
@@ -17,7 +16,8 @@ try:
     kkt_available = config.get("available") == 'on'
 except (KeyError, ValueError):
     kkt_available = False
-    logger.info("Параметр 'available' не найден в конфигурации, ККТ считается отключенным")
+    logger.info(
+        "Параметр 'available' не найден в конфигурации, ККТ считается отключенным")
 
 # Инициализация драйвера ККТ
 try:
@@ -27,7 +27,7 @@ try:
         fptr = None
         logger.info("ККТ отключен в конфигурации (available ≠ on)")
 except Exception as e:
-    logger.warning(f"Не установлен драйвер ККТ: {str(e)}")
+    logger.warning(f"Не установлен драйвер ККТ: {e!s}")
     kkt_available = False
     fptr = None
 
@@ -111,7 +111,6 @@ TERMINAL_PIN_PAD_ERROR: set[int] = {
     4144,
     4145,
     4146,
-    4146,
     4202,
     4203,
     4208,
@@ -137,7 +136,8 @@ PAYMENT_OFFLINE = 100
 
 @contextmanager
 def fptr_connection(device):
-    """Контекстный менеджер для управления подключением к ККМ (Кассовому аппаратному устройству).
+    """Контекстный менеджер для управления подключением к ККМ (Кассовому
+    аппаратному устройству).
 
     Параметры:
         device (object): Объект устройства (например, кассового аппарата или фискального принтера),
@@ -172,7 +172,7 @@ def fptr_connection(device):
         yield device
 
     except Exception as e:
-        logger.error(f"Ошибка подключения к ККТ: {str(e)}")
+        logger.error(f"Ошибка подключения к ККТ: {e!s}")
         yield None
 
     finally:
@@ -184,8 +184,7 @@ def fptr_connection(device):
 
 
 def run_terminal_command(command_params: str, timeout: int = 300):
-    """
-    Выполняет команду на терминале и возвращает результат выполнения.
+    """Выполняет команду на терминале и возвращает результат выполнения.
 
     Параметры:
         command_params (str): Параметры команды, которую необходимо выполнить.
@@ -217,12 +216,14 @@ def run_terminal_command(command_params: str, timeout: int = 300):
         try:
             stdout, stderr = process.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
-            logger.warning(f"Процесс превысил таймаут {timeout} секунд. Завершается автоматически.")
+            logger.warning(
+                f"Процесс превысил таймаут {timeout} секунд. Завершается автоматически.")
             process.terminate()
             try:
                 stdout, stderr = process.communicate(timeout=5)
             except subprocess.TimeoutExpired:
-                logger.warning("Процесс не завершился после terminate(). Используется kill().")
+                logger.warning(
+                    "Процесс не завершился после terminate(). Используется kill().")
                 process.kill()
                 stdout, stderr = process.communicate()
 
@@ -262,7 +263,8 @@ def check_terminal_file(word: str):
         logger.error(f"Файл {pinpad_file} не найден: {not_found}")
         return False
     except UnicodeDecodeError as decode_error:
-        logger.error(f"Ошибка декодирования файла {pinpad_file}: {decode_error}")
+        logger.error(
+            f"Ошибка декодирования файла {pinpad_file}: {decode_error}")
         return False
 
 
@@ -283,7 +285,8 @@ def process_success_result():
         if check_terminal_file(APPROVE):
             return 1
         else:
-            logger.error("Файл подтверждения транзакции отсутствует или поврежден.")
+            logger.error(
+                "Файл подтверждения транзакции отсутствует или поврежден.")
     except FileNotFoundError as not_found:
         logger.error(f"Файл подтверждения транзакции не найден: {not_found}")
     return 0
@@ -294,17 +297,17 @@ def _safe_handle_error(returncode, title, message, error_callback):
     try:
         handle_error(returncode, title, message, error_callback)
     except Exception as e:
-        logger.exception(f"Ошибка при вызове handle_error для кода {returncode}: {e}")
+        logger.exception(
+            f"Ошибка при вызове handle_error для кода {returncode}: {e}")
+
 
 @logger_wraps()
 def handle_error(code, title, message, error_callback=None):
     """Универсальная обработка ошибок терминала.
 
-    Параметры:
-        code (int): Код ошибки
-        title (str): Заголовок ошибки
-        message (str): Текст ошибки
-        error_callback (callable): Функция для обработки ошибки (title, message, code)
+    Параметры:     code (int): Код ошибки     title (str): Заголовок
+    ошибки     message (str): Текст ошибки     error_callback
+    (callable): Функция для обработки ошибки (title, message, code)
     """
     logger.warning(f"{title}: {message} (Код: {code})")
 
@@ -359,17 +362,17 @@ def process_terminal_error(returncode, error_callback=None):
         ),
         TERMINAL_OPERATION_CANCELED: (
             "Операция отменена",
-            f"Ошибка возникает тогда, когда карту достают из терминала быстрее, чем пройдет оплата. Необходимо повторить операцию.",
+            "Ошибка возникает тогда, когда карту достают из терминала быстрее, чем пройдет оплата. Необходимо повторить операцию.",
         ),
         TERMINAL_QR_ERROR: (
             "Ошибка операции по QR-коду",
-            f"Необходимо провести возврат при помощи банковской карты. Если была попытка проведения операции оплаты, \n"
-            f"то следует обратиться в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}. ",
+            (f"Необходимо провести возврат при помощи банковской карты. Если была попытка проведения операции оплаты, \n"
+            f"то следует обратиться в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}. "),
         ),
         TERMINAL_OPERATION_AMOUNT_ERROR: (
             "Ошибка в сумме операции",
-            f"Сумма не должна превышать 42 млн. \n"
-            f"Проведите операцию на меньшую сумму или уменьшите количество товара. Код возврата: {returncode}. ",
+            (f"Сумма не должна превышать 42 млн. \n"
+            f"Проведите операцию на меньшую сумму или уменьшите количество товара. Код возврата: {returncode}. "),
         ),
     }
 
@@ -377,7 +380,7 @@ def process_terminal_error(returncode, error_callback=None):
         _safe_handle_error(
             returncode,
             "Карта клиента заблокирована",
-            f"Карта клиента заблокирована. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
+            "Карта клиента заблокирована. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
             error_callback
         )
         return 0
@@ -465,7 +468,7 @@ def process_terminal_error(returncode, error_callback=None):
         _safe_handle_error(
             returncode,
             "Недостаточно средств на карте",
-            f"Недостаточно средств на карте. Попробуйте произвести оплату другой картой.",
+            "Недостаточно средств на карте. Попробуйте произвести оплату другой картой.",
             error_callback
         )
         return 0
@@ -506,8 +509,7 @@ def process_terminal_error(returncode, error_callback=None):
 
 @logger_wraps()
 def terminal_oplata(amount: float) -> int:
-    """
-    Выполняет операцию оплаты через терминал.
+    """Выполняет операцию оплаты через терминал.
 
     Параметры:
         amount (float): Сумма операции в рублях.
@@ -520,8 +522,7 @@ def terminal_oplata(amount: float) -> int:
 
 @logger_wraps()
 def process_terminal_transaction(command_code: str, amount: float, operation_name: str, error_callback=None) -> int:
-    """
-    Обрабатывает операцию на банковском терминале.
+    """Обрабатывает операцию на банковском терминале.
 
     Параметры:
         command_code (str): Код команды терминала (например, "1" — оплата, "3" — возврат, "8" — отмена).
@@ -541,14 +542,15 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
     if result is None:
         logger.error(f"Ошибка при выполнении команды терминала: {command}")
         _safe_handle_error(
-            f"Нет ответа от терминала",
+            "Нет ответа от терминала",
             f"{operation_name} не была выполнена. Проверьте устройство.",
             "Код ошибки: отсутствует",
             error_callback=error_callback
         )
         return 0
 
-    logger.info(f"Код возврата от терминала ({operation_name}): {result.returncode}")
+    logger.info(
+        f"Код возврата от терминала ({operation_name}): {result.returncode}")
 
     if result.returncode == TERMINAL_SUCCESS_CODE:
         return process_success_result()
@@ -556,7 +558,8 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
     # Логируем stderr, если есть
     if result.stderr:
         try:
-            err_output = result.stderr.decode("cp1251", errors="ignore").strip()
+            err_output = result.stderr.decode(
+                "cp1251", errors="ignore").strip()
         except Exception:
             err_output = str(result.stderr)
         logger.error(f"Терминал вернул ошибку: {err_output}")
@@ -572,8 +575,7 @@ def universal_terminal_operation(
         progress_signal,
         operation_type: int = 1,
         error_callback=None) -> tuple[int, int]:
-    """
-    Универсальный обработчик терминальных операций для оплаты или возврата.
+    """Универсальный обработчик терминальных операций для оплаты или возврата.
 
     Параметры:
         payment_type (int): Тип оплаты (например, 1 — карта, 3 — оффлайн).
@@ -606,7 +608,8 @@ def universal_terminal_operation(
             logger.error(f"Неподдерживаемый тип операции: {operation_type}")
             if progress_signal is not None:
                 try:
-                    progress_signal.emit("Ошибка: неподдерживаемый тип операции", 100)
+                    progress_signal.emit(
+                        "Ошибка: неподдерживаемый тип операции", 100)
                 except RuntimeError:
                     pass  # На случай, если сигнал уже недоступен
             return 0, 0
@@ -621,7 +624,8 @@ def universal_terminal_operation(
                 except Exception:
                     pass  # Игнорируем ошибки emit
 
-            bank = process_terminal_transaction(command_code, amount, operation_name, error_callback)
+            bank = process_terminal_transaction(
+                command_code, amount, operation_name, error_callback)
             if bank == 1:
                 if progress_signal is not None:
                     try:
@@ -632,18 +636,21 @@ def universal_terminal_operation(
             else:
                 if progress_signal is not None:
                     try:
-                        progress_signal.emit(f"Ошибка {operation_name.lower()}.", 100)
+                        progress_signal.emit(
+                            f"Ошибка {operation_name.lower()}.", 100)
                     except Exception:
                         pass
                 return 0, 1
         elif payment_type == PAYMENT_OFFLINE:
             if operation_type != 1:
-                logger.warning("Оффлайн-режим не поддерживается для возврата или отмены")
+                logger.warning(
+                    "Оффлайн-режим не поддерживается для возврата или отмены")
                 progress_signal.emit("Оффлайн: только оплата", 100)
                 return 0, 0
 
             logger.info("Запускаем offline оплату по банковскому терминалу")
-            progress_signal.emit("Запускаем offline оплату по банковскому терминалу...", 35)
+            progress_signal.emit(
+                "Запускаем offline оплату по банковскому терминалу...", 35)
             return 1, 3  # успех, offline
 
         else:
@@ -652,13 +659,14 @@ def universal_terminal_operation(
             return 0, 0
     except ValueError as ve:
         logger.error(f"Ошибка: {ve}")
-        progress_signal.emit(f"Ошибка: {str(ve)}", 100)
+        progress_signal.emit(f"Ошибка: {ve!s}", 100)
         return 0, 0
     except Exception as exp:
         logger.error(f"Неизвестная ошибка при проведении операции: {exp}")
         if progress_signal is not None:
             try:
-                progress_signal.emit(f"Неизвестная ошибка при проведении операции: {str(exp)}", 100)
+                progress_signal.emit(
+                    f"Неизвестная ошибка при проведении операции: {exp!s}", 100)
             except RuntimeError:
                 pass
         return 0, 0
@@ -706,7 +714,8 @@ def terminal_menu():
 
 
 def terminal_check_itog_window():
-    """Сверка итогов работы банковского терминала с выводом результата в QMessageBox.
+    """Сверка итогов работы банковского терминала с выводом результата в
+    QMessageBox.
 
     Параметры:
         None:
@@ -732,7 +741,8 @@ def terminal_check_itog_window():
         except FileNotFoundError as not_found:
             logger.warning(f"Файл не найден: {not_found}")
             windows.info_window(
-                "Ошибка сверки итогов по банковскому терминалу!", "", str(not_found)
+                "Ошибка сверки итогов по банковскому терминалу!", "", str(
+                    not_found)
             )
     else:
         logger.error(f"Неизвестный код возврата: {result.returncode}")
@@ -823,7 +833,8 @@ def terminal_file_in_window():
         print_pinpad_check(1)
     except FileNotFoundError as not_found:
         logger.warning(f"Файл не найден: {not_found.filename}")
-    windows.info_window("Смотрите подробную информацию.", "FileNotFoundError", "")
+    windows.info_window("Смотрите подробную информацию.",
+                        "FileNotFoundError", "")
 
 
 @logger_wraps()
@@ -908,7 +919,8 @@ def print_slip_check(kol: int = 2):
             # Открытие нефискального документа
             fptr.beginNonfiscalDocument()
             # Перенос строки
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP,
+                          IFptr.LIBFPTR_TW_WORDS)
             fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
             fptr.printText()
             # Отключаем печать подвала
@@ -926,7 +938,8 @@ def print_slip_check(kol: int = 2):
                 # Открытие нефискального документа
                 fptr.beginNonfiscalDocument()
                 # Перенос строки
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP,
+                              IFptr.LIBFPTR_TW_WORDS)
                 fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
                 fptr.printText()
                 # Отключаем печать подвала
@@ -949,18 +962,21 @@ def print_pinpad_check(count: int = 2):
 
     Возвращаемое значение:
         None:
-            Функция не возвращает значений."""
+            Функция не возвращает значений.
+    """
     logger.info("Запуск функции print_pinpad_check")
     while count != 0:
         try:
             # Читаем чек из файла
             line = read_pinpad_file(remove_newline=False)
             if not line:
-                raise ValueError("Файл с чеком пуст или не может быть прочитан.")
+                raise ValueError(
+                    "Файл с чеком пуст или не может быть прочитан.")
             with fptr_connection(fptr):
                 fptr.beginNonfiscalDocument()
                 # Перенос строки
-                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+                fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP,
+                              IFptr.LIBFPTR_TW_WORDS)
                 fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, line)
                 fptr.printText()
                 # Отключаем печать подвала
@@ -979,12 +995,12 @@ def print_pinpad_check(count: int = 2):
 
         count -= 1
 
-def get_info(hide: bool = False) -> Optional[int]:
-    """
-    Запрос информации о ККТ.
-    Запрашивает информацию о кассовом аппарате (модель, наименование и версия ПО).
-    Если параметр `hide` равен `False`, отображает полученную информацию в окне приложения.
-    Возвращает номер модели ККТ или `None`, если не удалось получить информацию.
+
+def get_info(hide: bool = False) -> int | None:
+    """Запрос информации о ККТ. Запрашивает информацию о кассовом аппарате
+    (модель, наименование и версия ПО). Если параметр `hide` равен `False`,
+    отображает полученную информацию в окне приложения. Возвращает номер модели
+    ККТ или `None`, если не удалось получить информацию.
 
     Параметры:
         hide: bool (по умолчанию False)
@@ -1002,11 +1018,13 @@ def get_info(hide: bool = False) -> Optional[int]:
             if not f:
                 logger.warning("Не удалось подключиться к ККТ.")
                 return None
-            f.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_MODEL_INFO)
+            f.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE,
+                       IFptr.LIBFPTR_DT_MODEL_INFO)
             f.queryData()
             model = f.getParamInt(IFptr.LIBFPTR_PARAM_MODEL)
             model_name = f.getParamString(IFptr.LIBFPTR_PARAM_MODEL_NAME)
-            firmware_version = f.getParamString(IFptr.LIBFPTR_PARAM_UNIT_VERSION)
+            firmware_version = f.getParamString(
+                IFptr.LIBFPTR_PARAM_UNIT_VERSION)
 
         if not hide:
             info = f"Номер модели ККТ: {model}.\nНаименование ККТ: {model_name}.\nВерсия ПО ККТ: {firmware_version}"
@@ -1014,18 +1032,20 @@ def get_info(hide: bool = False) -> Optional[int]:
         return model
     except (ConnectionError, AttributeError) as e:
         logger.error(f"Ошибка при получении данных о ККТ: {e}")
-        windows.info_window("Ошибка", "Не удалось получить данные о ККТ.", "Проверьте настройки устройства.")
+        windows.info_window(
+            "Ошибка", "Не удалось получить данные о ККТ.", "Проверьте настройки устройства.")
         return None
     except Exception as e:
         logger.error(f"Неизвестная ошибка: {e}")
-        windows.info_window("Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова.")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова.")
         return None
 
+
 def is_kkt_connected() -> bool:
-    """
-    Проверка физического подключения ККТ.
-    Проверяет, подключен ли кассовый аппарат и доступен ли для взаимодействия.
-    Возвращает `True`, если ККТ подключен, и `False`, если нет.
+    """Проверка физического подключения ККТ. Проверяет, подключен ли кассовый
+    аппарат и доступен ли для взаимодействия. Возвращает `True`, если ККТ
+    подключен, и `False`, если нет.
 
     Параметры:
         None
@@ -1038,13 +1058,15 @@ def is_kkt_connected() -> bool:
     try:
         with fptr_connection(fptr) as f:
             if f:
-                f.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_STATUS)
+                f.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE,
+                           IFptr.LIBFPTR_DT_STATUS)
                 f.queryData()
                 return True
         return False
     except Exception as e:
         logger.error(f"Ошибка при проверке подключения ККТ: {e}")
         return False
+
 
 @logger_wraps()
 def get_last_document(day: int = 7) -> None:
@@ -1074,8 +1096,10 @@ def get_last_document(day: int = 7) -> None:
             "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
         )
 
+
 def get_last_document_datetime() -> datetime:
-    """ Получает дату и время последнего зарегистрированного чека из фискального накопителя.
+    """Получает дату и время последнего зарегистрированного чека из фискального
+    накопителя.
 
     Возвращаемое значение:
         datetime: Дата и время последнего документа в фискальном накопителе.
@@ -1085,23 +1109,26 @@ def get_last_document_datetime() -> datetime:
     """
     logger.info("Запуск функции get_last_document_datetime")
     with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_LAST_DOCUMENT)
+        fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE,
+                      IFptr.LIBFPTR_FNDT_LAST_DOCUMENT)
         fptr.fnQueryData()
-        last_check_datetime: datetime = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+        last_check_datetime: datetime = fptr.getParamDateTime(
+            IFptr.LIBFPTR_PARAM_DATE_TIME)
 
         return last_check_datetime
 
+
 def check_stale_document(last_check: datetime, max_days: int = 7) -> None:
-    """
-    Проверяет, не превышает ли возраст последнего чека заданное количество дней.
+    """Проверяет, не превышает ли возраст последнего чека заданное количество
+    дней.
 
-    Параметры:
-        last_check (datetime): Дата и время последнего зарегистрированного чека.
-        max_days (int): Максимально допустимое количество дней с момента последнего чека (по умолчанию 7).
+    Параметры:     last_check (datetime): Дата и время последнего
+    зарегистрированного чека.     max_days (int): Максимально допустимое
+    количество дней с момента последнего чека (по умолчанию 7).
 
-    Действие:
-        Если разница между текущей датой и датой последнего чека больше max_days,
-        отображается предупреждающее окно с рекомендацией провести сверку итогов.
+    Действие:     Если разница между текущей датой и датой последнего
+    чека больше max_days,     отображается предупреждающее окно с
+    рекомендацией провести сверку итогов.
     """
     logger.info("Запуск функции check_stale_document")
     current_date = datetime.now()
@@ -1137,12 +1164,17 @@ def get_status_obmena():
                 IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_OFD_EXCHANGE_STATUS
             )
             fptr.fnQueryData()
-            exchange_status = fptr.getParamInt(IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS)
-            unsent_count = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT)
-            first_unsent_number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
-            ofd_message_read = fptr.getParamBool(IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ)
+            exchange_status = fptr.getParamInt(
+                IFptr.LIBFPTR_PARAM_OFD_EXCHANGE_STATUS)
+            unsent_count = fptr.getParamInt(
+                IFptr.LIBFPTR_PARAM_DOCUMENTS_COUNT)
+            first_unsent_number = fptr.getParamInt(
+                IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+            ofd_message_read = fptr.getParamBool(
+                IFptr.LIBFPTR_PARAM_OFD_MESSAGE_READ)
             date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
-            okp_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_LAST_SUCCESSFUL_OKP)
+            okp_time = fptr.getParamDateTime(
+                IFptr.LIBFPTR_PARAM_LAST_SUCCESSFUL_OKP)
 
         info = (
             f"Статус информационного обмена с ОФД: {exchange_status}.\n"
@@ -1185,7 +1217,8 @@ def get_time():
     logger.info("Запуск функции get_time")
     try:
         with fptr_connection(fptr):
-            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_DATE_TIME)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE,
+                          IFptr.LIBFPTR_DT_DATE_TIME)
             fptr.queryData()
             # Тип переменной datetime - datetime.datetime
             date_time = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
@@ -1198,7 +1231,8 @@ def get_time():
         )
     except AttributeError as ae:
         logger.error(f"Ошибка при получении данных времени: {ae}")
-        windows.info_window("Ошибка", "Не удалось получить данные времени с ККТ.", "")
+        windows.info_window(
+            "Ошибка", "Не удалось получить данные времени с ККТ.", "")
 
     except Exception as e:
         logger.error(f"Неизвестная ошибка: {e}")
@@ -1222,7 +1256,8 @@ def smena_info():
     logger.info("Запуск функции smena_info")
     try:
         with fptr_connection(fptr):
-            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_SHIFT_STATE)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE,
+                          IFptr.LIBFPTR_DT_SHIFT_STATE)
             fptr.queryData()
             state = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_STATE)
             number = fptr.getParamInt(IFptr.LIBFPTR_PARAM_SHIFT_NUMBER)
@@ -1402,7 +1437,8 @@ def kassir_reg(user):
     try:
         with fptr_connection(fptr):
             # Параметры для регистрации кассира
-            fptr.setParam(1021, f"{user.last_name} {user.first_name} {user.middle_name}")
+            fptr.setParam(
+                1021, f"{user.last_name} {user.first_name} {user.middle_name}")
             fptr.setParam(1203, user.inn)
             fptr.operatorLogin()
         logger.info(
@@ -1446,7 +1482,8 @@ def deposit_of_money(amount):
         logger.error(
             f"Некорректная сумма для внесения: {amount}. Сумма должна быть положительной."
         )
-        windows.info_window("Ошибка", "Сумма внесения должна быть положительной.")
+        windows.info_window(
+            "Ошибка", "Сумма внесения должна быть положительной.")
         return
     try:
         with fptr_connection(fptr):
@@ -1491,7 +1528,8 @@ def payment(amount):
         logger.error(
             f"Некорректная сумма для выплаты: {amount}. Сумма должна быть положительной."
         )
-        windows.info_window("Ошибка", "Сумма выплаты должна быть положительной.", "")
+        windows.info_window(
+            "Ошибка", "Сумма выплаты должна быть положительной.", "")
         return
     try:
         with fptr_connection(fptr):
@@ -1536,16 +1574,19 @@ def balance_check():
     try:
         with fptr_connection(fptr):
             # Запрос баланса наличных денег
-            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_CASH_SUM)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE,
+                          IFptr.LIBFPTR_DT_CASH_SUM)
             fptr.queryData()
             # Получаем баланс
             cashSum = fptr.getParamDouble(IFptr.LIBFPTR_PARAM_SUM)
             logger.info(f"Баланс наличных денег в кассе: {cashSum}")
             # Печать баланса
             fptr.beginNonfiscalDocument()
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT, f"Баланс наличных денег: {cashSum}")
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT,
+                          f"Баланс наличных денег: {cashSum}")
             fptr.printText()
-            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP, IFptr.LIBFPTR_TW_WORDS)
+            fptr.setParam(IFptr.LIBFPTR_PARAM_TEXT_WRAP,
+                          IFptr.LIBFPTR_TW_WORDS)
             fptr.printText()  # Промотка на одну строку
             # Отключаем печать подвала
             fptr.setParam(IFptr.LIBFPTR_PARAM_PRINT_FOOTER, False)
@@ -1575,7 +1616,8 @@ def balance_check():
 
 
 def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT22):
-    """Функция регистрирует товар в чеке с помощью переданных параметров: название, цена, количество и тип налога.
+    """Функция регистрирует товар в чеке с помощью переданных параметров:
+    название, цена, количество и тип налога.
 
     Параметры:
         device (object): Объект устройства, поддерживающий метод `setParam()` для настройки параметров чека.
@@ -1590,17 +1632,18 @@ def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT2
     logger.info("Запуск функции register_item")
     logger.info(f"В функцию переданы параметры: {name}, {price}, {quantity}")
     device.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
-    logger.info(f"name: {name}") # TODO: убрать
+    logger.info(f"name: {name}")  # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
-    logger.info(f"price: {price}") # TODO: убрать
+    logger.info(f"price: {price}")  # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, quantity)
-    logger.info(f"quantity: {quantity}") # TODO: убрать
+    logger.info(f"quantity: {quantity}")  # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, tax_type)
     device.registration()
 
 
 def setup_fptr(device, user, type_operation, print_check):
-    """Функция настраивает параметры устройства для выполнения операции, включая данные оператора и тип чека.
+    """Функция настраивает параметры устройства для выполнения операции,
+    включая данные оператора и тип чека.
 
     Параметры:
         device (object): Объект устройства, поддерживающий метод `setParam()` для настройки параметров чека.
@@ -1610,7 +1653,6 @@ def setup_fptr(device, user, type_operation, print_check):
 
     Возвращаемое значение:
         None: Функция не возвращает значений, но выполняет настройку параметров устройства для проведения операции.
-
     """
     logger.info("Запуск функции setup_fptr")
     device.setParam(1021, f"{user.last_name} {user.first_name}")
@@ -1621,14 +1663,16 @@ def setup_fptr(device, user, type_operation, print_check):
         2: IFptr.LIBFPTR_RT_SELL_RETURN,
         3: IFptr.LIBFPTR_RT_SELL_RETURN,
     }
-    device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, receipt_types.get(type_operation))
+    device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE,
+                    receipt_types.get(type_operation))
     if print_check == 0:
         device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_ELECTRONICALLY, True)
         device.setParam(1008, EMAIL)
 
 
 def register_tickets(device, sale_dict, type_operation):
-    """Функция регистрирует различные типы билетов (взрослые, детские, с акцией и без) в чеке на основе переданных данных.
+    """Функция регистрирует различные типы билетов (взрослые, детские, с акцией
+    и без) в чеке на основе переданных данных.
 
     Параметры:
         device (object): Объект устройства, поддерживающий метод `setParam()` для настройки параметров чека.
@@ -1639,7 +1683,8 @@ def register_tickets(device, sale_dict, type_operation):
         None: Функция не возвращает значений, но выполняет регистрацию билетов в чеке.
     """
     logger.info("Запуск функции register_tickets")
-    logger.debug(f"В функцию переданы: device = {device}, sale_dict = {sale_dict}, type_operation = {type_operation}")
+    logger.debug(
+        f"В функцию переданы: device = {device}, sale_dict = {sale_dict}, type_operation = {type_operation}")
 
     if type_operation == 1:
         count_adult_with_discount = sale_dict["detail"][0]
@@ -1652,12 +1697,16 @@ def register_tickets(device, sale_dict, type_operation):
         # Взрослые билеты
 
         # Взрослые без акции
-        count_adult_no_discount = sale_dict["kol_adult"] - count_adult_with_discount
-        logger.debug(f"Взрослые без акции: kol_adult={sale_dict['kol_adult']}, price_adult= {sale_dict['price_adult']}")
+        count_adult_no_discount = sale_dict["kol_adult"] - \
+            count_adult_with_discount
+        logger.debug(
+            f"Взрослые без акции: kol_adult={sale_dict['kol_adult']}, price_adult= {sale_dict['price_adult']}")
 
         if count_adult_no_discount > 0:
-            adults_no_discount_sum = count_adult_no_discount * sale_dict["price_adult"]
-            logger.info(f"Регистрируем взрослых без акции: {count_adult_no_discount} шт × {sale_dict['price_adult']} = {adults_no_discount_sum} руб")
+            adults_no_discount_sum = count_adult_no_discount * \
+                sale_dict["price_adult"]
+            logger.info(
+                f"Регистрируем взрослых без акции: {count_adult_no_discount} шт × {sale_dict['price_adult']} = {adults_no_discount_sum} руб")
             # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
@@ -1666,16 +1715,19 @@ def register_tickets(device, sale_dict, type_operation):
                 count_adult_no_discount,
             )
         else:
-            logger.debug("Взрослые без акции: не регистрируем (количество = 0)")
+            logger.debug(
+                "Взрослые без акции: не регистрируем (количество = 0)")
 
         # Взрослые с акцией
-        logger.debug(f"Взрослые С акцией: count_adult_with_discount={count_adult_with_discount}, price_adult_with_discount={price_adult_with_discount}, discount={price_adult_with_discount}")
+        logger.debug(
+            f"Взрослые С акцией: count_adult_with_discount={count_adult_with_discount}, price_adult_with_discount={price_adult_with_discount}, discount={price_adult_with_discount}")
 
         if (count_adult_with_discount > 0
                 and price_adult_with_discount > 0
                 and discount > 0):
             adults_with_discount_sum = count_adult_with_discount * price_adult_with_discount
-            logger.info(f"Регистрируем взрослых с акцией: {count_adult_with_discount} шт × {price_adult_with_discount} = {adults_with_discount_sum} руб")
+            logger.info(
+                f"Регистрируем взрослых с акцией: {count_adult_with_discount} шт × {price_adult_with_discount} = {adults_with_discount_sum} руб")
             # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
@@ -1684,17 +1736,22 @@ def register_tickets(device, sale_dict, type_operation):
                 count_adult_with_discount,
             )
         else:
-            logger.debug("Взрослые с акцией: не регистрируем (условия не выполнены)")
+            logger.debug(
+                "Взрослые с акцией: не регистрируем (условия не выполнены)")
 
         # Детские билеты
 
         # Дети без акции
-        count_child_no_discount = sale_dict["kol_child"] - count_child_with_discount
-        logger.debug(f"Дети без акции: kol_child={sale_dict['kol_child']}, count_child_with_discount={count_child_with_discount}, result={count_child_no_discount}")
+        count_child_no_discount = sale_dict["kol_child"] - \
+            count_child_with_discount
+        logger.debug(
+            f"Дети без акции: kol_child={sale_dict['kol_child']}, count_child_with_discount={count_child_with_discount}, result={count_child_no_discount}")
 
         if count_child_no_discount > 0:
-            children_no_discount_sum = count_child_no_discount * sale_dict["price_child"]
-            logger.info(f"Регистрируем детей без акции: {count_child_no_discount} шт × {sale_dict['price_child']} = {children_no_discount_sum} руб")
+            children_no_discount_sum = count_child_no_discount * \
+                sale_dict["price_child"]
+            logger.info(
+                f"Регистрируем детей без акции: {count_child_no_discount} шт × {sale_dict['price_child']} = {children_no_discount_sum} руб")
             # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
@@ -1706,13 +1763,15 @@ def register_tickets(device, sale_dict, type_operation):
             logger.debug("Дети без акции: не регистрируем (количество = 0)")
 
         # Дети с акцией
-        logger.debug(f"Дети с акцией: count_child_with_discount={count_child_with_discount}, price_child_with_discount={price_child_with_discount}, discount={price_adult_with_discount}")
+        logger.debug(
+            f"Дети с акцией: count_child_with_discount={count_child_with_discount}, price_child_with_discount={price_child_with_discount}, discount={price_adult_with_discount}")
 
         if (count_child_with_discount > 0
                 and price_child_with_discount > 0
                 and discount > 0):
             children_with_discount_sum = count_child_with_discount * price_child_with_discount
-            logger.info(f"Регистрируем детей с акцией: {count_child_with_discount} шт × {price_child_with_discount} = {children_with_discount_sum} руб")
+            logger.info(
+                f"Регистрируем детей с акцией: {count_child_with_discount} шт × {price_child_with_discount} = {children_with_discount_sum} руб")
             # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
@@ -1721,22 +1780,25 @@ def register_tickets(device, sale_dict, type_operation):
                 count_child_with_discount,
             )
         else:
-            logger.debug("Дети с акцией: не регистрируем (условия не выполнены)")
+            logger.debug(
+                "Дети с акцией: не регистрируем (условия не выполнены)")
     else:
         # Для других типов операций
-        logger.error(f"Другие типы операций.")
+        logger.error("Другие типы операций.")
         for item_name, item_data in sale_dict.items():
             if (isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0):
                 # Проверяем наличие количества и цены
-                logger.debug(f"item_name ={item_name}, item_data[0]={item_data[0]}, item_data[1]={item_data[1]}")
+                logger.debug(
+                    f"item_name ={item_name}, item_data[0]={item_data[0]}, item_data[1]={item_data[1]}")
                 register_item(device, item_name, item_data[0], item_data[1])
             else:
                 # Обработка других типов данных
-                logger.error(f"Ошибка типа данных. Item_data - не список.")
+                logger.error("Ошибка типа данных. Item_data - не список.")
 
 
 def process_payment(device, payment_type, bank_status, sale_dict, _):
-    """Функция обрабатывает оплату чека, в зависимости от типа оплаты (наличными, картой или оффлайн).
+    """Функция обрабатывает оплату чека, в зависимости от типа оплаты
+    (наличными, картой или оффлайн).
 
      Параметры:
         device (object): Объект устройства, поддерживающий метод `setParam()` для настройки параметров чека.
@@ -1748,11 +1810,13 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
         bool: Возвращает `True`, если оплата прошла успешно, иначе — `False`.
     """
     logger.info("Запуск функции process_payment")
-    logger.debug(f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {_}")
+    logger.debug(
+        f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {_}")
     try:
         # Проверка payment_type
         if not isinstance(payment_type, int):
-            logger.error(f"Некорректный тип payment_type: {type(payment_type)}, значение: {payment_type}")
+            logger.error(
+                f"Некорректный тип payment_type: {type(payment_type)}, значение: {payment_type}")
             return False
 
         # Определение суммы
@@ -1763,7 +1827,8 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
             try:
                 payment_amount = sale_dict["detail"][7]
                 if isinstance(payment_amount, (int, float)) and payment_amount > 0:
-                    logger.debug(f"Сумма получена из sale_dict['detail'][7]: {payment_amount}")
+                    logger.debug(
+                        f"Сумма получена из sale_dict['detail'][7]: {payment_amount}")
             except (IndexError, TypeError):
                 pass
 
@@ -1782,7 +1847,8 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
                 payment_amount = total
                 logger.debug(f"Сумма рассчитана по позициям: {payment_amount}")
             else:
-                logger.error("Не удалось определить сумму из sale_dict: нет данных")
+                logger.error(
+                    "Не удалось определить сумму из sale_dict: нет данных")
                 return False
 
         if not isinstance(payment_amount, (int, float)) or payment_amount <= 0:
@@ -1796,7 +1862,8 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
 
         if payment_type == PAYMENT_CASH:
             logger.info("Оплата наличными")
-            device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE, IFptr.LIBFPTR_PT_CASH)
+            device.setParam(IFptr.LIBFPTR_PARAM_PAYMENT_TYPE,
+                            IFptr.LIBFPTR_PT_CASH)
         elif payment_type == PAYMENT_ELECTRONIC:
             if bank_status != 1:
                 logger.error("Отсутствует подтверждение банковской операции")
@@ -1820,7 +1887,8 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
         if result < 0:
             code = device.errorCode()
             desc = device.errorDescription()
-            logger.error(f"Ошибка закрытия чека (closeReceipt): [{code}] {desc}")
+            logger.error(
+                f"Ошибка закрытия чека (closeReceipt): [{code}] {desc}")
 
             return False
 
@@ -1832,7 +1900,8 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
 
 
 def handle_document_errors(device, retry_count, max_retries, on_error=None):
-    """Функция пытается закрыть документ, повторяя попытки в случае ошибки до достижения максимального числа попыток.
+    """Функция пытается закрыть документ, повторяя попытки в случае ошибки до
+    достижения максимального числа попыток.
 
     Параметры:
         device (object): Объект устройства для работы с чеками.
@@ -1846,15 +1915,17 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
     logger.info("Запуск функции handle_document_errors")
     # Проверяем, закрыт ли документ
     while device.checkDocumentClosed() < 0:
-        logger.warning(f"Не удалось проверить состояние документа: {device.errorDescription()}")
+        logger.warning(
+            f"Не удалось проверить состояние документа: {device.errorDescription()}")
         if retry_count >= max_retries - 1:
             if on_error:
                 on_error("Ошибка ККТ", f"Не удалось проверить состояние документа после {max_retries} попыток. "
-                                       f"Проверьте соединение с ККТ и не выключайте ПК.")
+                         f"Проверьте соединение с ККТ и не выключайте ПК.")
             return False
 
         if on_error:
-            on_error("Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
+            on_error(
+                "Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
 
         retry_count += 1
         time.sleep(5)
@@ -1868,12 +1939,14 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
         except Exception as e:
             logger.critical(f"Ошибка при отмене чека: {e}")
             if on_error:
-                on_error("Критическая ошибка", "Не удалось отменить чек. Требуется перезагрузка ККТ.")
+                on_error("Критическая ошибка",
+                         "Не удалось отменить чек. Требуется перезагрузка ККТ.")
             # Пробрасываем исключение наверх
             raise
 
         if on_error:
-            on_error("Документ не закрыт", "Чек отменен. Требуется сформировать его заново.")
+            on_error("Документ не закрыт",
+                     "Чек отменен. Требуется сформировать его заново.")
         return False
 
     # Если документ не напечатан — попробовать допечатать
@@ -1884,12 +1957,15 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
                 logger.info("Документ успешно допечатан")
                 return True
 
-            logger.warning(f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}")
+            logger.warning(
+                f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}")
             if on_error:
-                on_error("Ошибка печати", f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.")
+                on_error(
+                    "Ошибка печати", f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.")
             time.sleep(3)
 
-        logger.error("Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции.")
+        logger.error(
+            "Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции.")
         # Документ закрыт, но не допечатан — допустимо.
         # Документ будет автоматически допечатан при следующей печатной операции.
 
@@ -1902,8 +1978,7 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
 
 
 def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_status, on_error=None):
-    """
-    Проведение операции оплаты.
+    """Проведение операции оплаты.
 
     Параметры:
         sale_dict (dict): Словарь с данными о продаже.
@@ -1941,12 +2016,16 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_
             setup_fptr(device, user, type_operation, print_check)
 
             # Проверка состояния чека
-            device.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_RECEIPT_STATE)
+            device.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE,
+                            IFptr.LIBFPTR_DT_RECEIPT_STATE)
             device.queryData()
-            receipt_number   = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_NUMBER)
-            document_number  = device.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+            receipt_number = device.getParamInt(
+                IFptr.LIBFPTR_PARAM_RECEIPT_NUMBER)
+            document_number = device.getParamInt(
+                IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
             receipt_type = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE)
-            logger.debug(f"receipt_type: {receipt_type}, receipt_number: {receipt_number}, document_number: {document_number}")
+            logger.debug(
+                f"receipt_type: {receipt_type}, receipt_number: {receipt_number}, document_number: {document_number}")
             if receipt_type != IFptr.LIBFPTR_RT_CLOSED:
                 logger.error(f"Чек уже открыт! Тип: {receipt_type}")
                 if on_error:
@@ -1955,9 +2034,11 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_
 
             # Установка типа чека
             if type_operation == 1:
-                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)      # Продажа
+                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE,
+                                IFptr.LIBFPTR_RT_SELL)      # Продажа
             elif type_operation == 2:
-                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)    # Возврат
+                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE,
+                                IFptr.LIBFPTR_RT_SELL_RETURN)    # Возврат
             else:
                 logger.error(f"Неизвестный тип операции: {type_operation}")
                 return False
@@ -1980,10 +2061,11 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_
         return 1
 
     except Exception as e:
-        logger.error(f"Критическая ошибка в check_open: {str(e)}")
+        logger.error(f"Критическая ошибка в check_open: {e!s}")
         if on_error:
-            on_error("Ошибка ККТ", f"Критическая ошибка: {str(e)}")
+            on_error("Ошибка ККТ", f"Критическая ошибка: {e!s}")
         return 0
+
 
 @logger_wraps()
 def smena_close(user):
@@ -2011,7 +2093,8 @@ def smena_close(user):
                 try:
                     if result == 1:
                         with fptr_connection(fptr):
-                            fptr.setParam(1021, f"{user.last_name} {user.first_name}")
+                            fptr.setParam(
+                                1021, f"{user.last_name} {user.first_name}")
                             fptr.setParam(1203, user.inn)
                             fptr.operatorLogin()
                             fptr.setParam(
@@ -2039,7 +2122,8 @@ def smena_close(user):
                     )
                 except Exception as e:
                     # Обработка других ошибок при работе с фискальным принтером
-                    logger.error(f"Ошибка при выполнении отчета о закрытии смены: {e}")
+                    logger.error(
+                        f"Ошибка при выполнении отчета о закрытии смены: {e}")
                     windows.info_window(
                         "Произошла ошибка при закрытии смены.",
                         "Пожалуйста, попробуйте позже.",

@@ -15,14 +15,14 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QStatusBar,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QWidget,
 )
 
 
-class Ui_MainWindow(object):
+class Ui_MainWindow:
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName("MainWindow")
@@ -507,7 +507,8 @@ class Ui_MainWindow(object):
         )
         ___qtablewidgetitem1 = self.tableWidget.horizontalHeaderItem(1)
         ___qtablewidgetitem1.setText(
-            QCoreApplication.translate("MainWindow", "\u0418\u043c\u044f", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u0418\u043c\u044f", None)
         )
         ___qtablewidgetitem2 = self.tableWidget.horizontalHeaderItem(2)
         ___qtablewidgetitem2.setText(
@@ -523,7 +524,8 @@ class Ui_MainWindow(object):
         )
         ___qtablewidgetitem4 = self.tableWidget.horizontalHeaderItem(4)
         ___qtablewidgetitem4.setText(
-            QCoreApplication.translate("MainWindow", "\u041f\u043e\u043b", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u041f\u043e\u043b", None)
         )
         ___qtablewidgetitem5 = self.tableWidget.horizontalHeaderItem(5)
         ___qtablewidgetitem5.setText(
@@ -537,7 +539,8 @@ class Ui_MainWindow(object):
         )
         ___qtablewidgetitem7 = self.tableWidget.horizontalHeaderItem(7)
         ___qtablewidgetitem7.setText(
-            QCoreApplication.translate("MainWindow", "\u0424\u043b\u0430\u0433", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u0424\u043b\u0430\u0433", None)
         )
         ___qtablewidgetitem8 = self.tableWidget.horizontalHeaderItem(8)
         ___qtablewidgetitem8.setText(
@@ -567,11 +570,13 @@ class Ui_MainWindow(object):
         )
         ___qtablewidgetitem11 = self.tableWidget_2.horizontalHeaderItem(2)
         ___qtablewidgetitem11.setText(
-            QCoreApplication.translate("MainWindow", "\u0426\u0435\u043d\u0430", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u0426\u0435\u043d\u0430", None)
         )
         ___qtablewidgetitem12 = self.tableWidget_2.horizontalHeaderItem(3)
         ___qtablewidgetitem12.setText(
-            QCoreApplication.translate("MainWindow", "\u0414\u0430\u0442\u0430", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u0414\u0430\u0442\u0430", None)
         )
         ___qtablewidgetitem13 = self.tableWidget_2.horizontalHeaderItem(4)
         ___qtablewidgetitem13.setText(
@@ -612,10 +617,12 @@ class Ui_MainWindow(object):
             )
         )
         self.radioButton_2.setText(
-            QCoreApplication.translate("MainWindow", "3 \u0434\u043d\u044f", None)
+            QCoreApplication.translate(
+                "MainWindow", "3 \u0434\u043d\u044f", None)
         )
         self.radioButton_3.setText(
-            QCoreApplication.translate("MainWindow", "7 \u0434\u043d\u0435\u0439", None)
+            QCoreApplication.translate(
+                "MainWindow", "7 \u0434\u043d\u0435\u0439", None)
         )
         self.pushButton_13.setText(
             QCoreApplication.translate(
@@ -623,7 +630,8 @@ class Ui_MainWindow(object):
             )
         )
         self.radioButton_7.setText(
-            QCoreApplication.translate("MainWindow", "\u0434\u0430\u0442\u0430", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u0434\u0430\u0442\u0430", None)
         )
         self.checkBox.setText(
             QCoreApplication.translate(
@@ -654,10 +662,12 @@ class Ui_MainWindow(object):
             )
         )
         self.radioButton_5.setText(
-            QCoreApplication.translate("MainWindow", "3 \u0434\u043d\u044f", None)
+            QCoreApplication.translate(
+                "MainWindow", "3 \u0434\u043d\u044f", None)
         )
         self.radioButton_6.setText(
-            QCoreApplication.translate("MainWindow", "7 \u0434\u043d\u0435\u0439", None)
+            QCoreApplication.translate(
+                "MainWindow", "7 \u0434\u043d\u0435\u0439", None)
         )
         self.pushButton_14.setText(
             QCoreApplication.translate(
@@ -678,11 +688,13 @@ class Ui_MainWindow(object):
         )
         ___qtablewidgetitem19 = self.tableWidget_5.horizontalHeaderItem(2)
         ___qtablewidgetitem19.setText(
-            QCoreApplication.translate("MainWindow", "\u0426\u0435\u043d\u0430", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u0426\u0435\u043d\u0430", None)
         )
         ___qtablewidgetitem20 = self.tableWidget_5.horizontalHeaderItem(3)
         ___qtablewidgetitem20.setText(
-            QCoreApplication.translate("MainWindow", "\u0414\u0430\u0442\u0430", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u0414\u0430\u0442\u0430", None)
         )
         ___qtablewidgetitem21 = self.tableWidget_5.horizontalHeaderItem(4)
         ___qtablewidgetitem21.setText(
@@ -1032,7 +1044,8 @@ class Ui_MainWindow(object):
             ),
         )
         self.menu.setTitle(
-            QCoreApplication.translate("MainWindow", "\u041c\u0435\u043d\u044e", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u041c\u0435\u043d\u044e", None)
         )
 
     # retranslateUi

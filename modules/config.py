@@ -2,11 +2,10 @@ import logging
 import os
 from configparser import (
     ConfigParser,
-    NoSectionError,
-    NoOptionError,
     MissingSectionHeaderError,
+    NoOptionError,
+    NoSectionError,
 )
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +17,8 @@ class Config:
         # Инициализируем список ПК
         self.pcs = self._get_pc_list()
 
-    def _get_pc_list(self) -> List[str]:
-        """Возвращает список имен ПК из конфигурации"""
+    def _get_pc_list(self) -> list[str]:
+        """Возвращает список имен ПК из конфигурации."""
         pc_count = int(self.get("kol"))
         pc_list = []
         for i in range(pc_count):
@@ -103,11 +102,13 @@ class Config:
             for i in range(pc_count):
                 pc_key = f"pc_{i+1}"
                 if not config.has_option("PC", pc_key):
-                    raise ValueError(f"Отсутствует параметр '{pc_key}' в секции 'PC'")
+                    raise ValueError(
+                        f"Отсутствует параметр '{pc_key}' в секции 'PC'")
 
                 pc_name = config.get("PC", pc_key)
                 if not pc_name.strip():  # Проверяем, что имя не пустое
-                    raise ValueError(f"Пустое значение для '{pc_key}' в секции 'PC'")
+                    raise ValueError(
+                        f"Пустое значение для '{pc_key}' в секции 'PC'")
 
                 config_data[pc_key] = pc_name
 
@@ -122,20 +123,21 @@ class Config:
                     )
                 config_data[key] = config.get(section, key)
 
-
             return config_data
         except (NoSectionError, NoOptionError) as e:
             logger.error(f"Ошибка в конфигурационном файле: {e}")
             raise ValueError(f"Ошибка в файле конфигурации: {e}")
         except MissingSectionHeaderError:
-            logger.error("Отсутствует заголовок секции в конфигурационном файле.")
+            logger.error(
+                "Отсутствует заголовок секции в конфигурационном файле.")
             raise ValueError(
                 "Ошибка: отсутствует заголовок секции в файле конфигурации."
             )
         except Exception as e:
-            logger.error(f"Неизвестная ошибка при чтении файла конфигурации: {e}")
+            logger.error(
+                f"Неизвестная ошибка при чтении файла конфигурации: {e}")
             raise RuntimeError(f"Неизвестная ошибка: {e}")
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         value = self.config_data.get(key)
         return value

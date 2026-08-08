@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QMessageBox
 
 
 def info_window(text, infotext, detailed_text):
-    """Показ информационного окна"""
+    """Показ информационного окна."""
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Information)
     msg.setWindowTitle("Информационное окно")
@@ -14,7 +14,7 @@ def info_window(text, infotext, detailed_text):
 
 
 def info_dialog_window(title, text):
-    """Показ диалогового окна"""
+    """Показ диалогового окна."""
     box = QMessageBox()
     box.setIcon(QMessageBox.Question)
     box.setWindowTitle(title)

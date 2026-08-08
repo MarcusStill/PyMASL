@@ -10,7 +10,8 @@ class Sale(Base):
     __tablename__ = "sale"
     __tableargs__ = {"comment": "Продажи"}
 
-    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, unique=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True, nullable=False, unique=True)
     id_client: Mapped[int] = mapped_column(
         ForeignKey("client.id"), comment="Id клиента"
     )
@@ -24,20 +25,24 @@ class Sale(Base):
         default=datetime.utcnow,
         comment="Дата и время продажи",
     )
-    discount: Mapped[int | None] = mapped_column(SmallInteger, comment="Скидка")
-    status: Mapped[int | None] = mapped_column(SmallInteger, comment="Статус продажи")
-    pc_name: Mapped[str | None] = mapped_column(String(16), comment="NetBIOS Name PC")
+    discount: Mapped[int | None] = mapped_column(
+        SmallInteger, comment="Скидка")
+    status: Mapped[int | None] = mapped_column(
+        SmallInteger, comment="Статус продажи")
+    pc_name: Mapped[str | None] = mapped_column(
+        String(16), comment="NetBIOS Name PC")
     payment_type: Mapped[int | None] = mapped_column(
         SmallInteger, comment="Валюта оплаты"
     )
-    bank_pay: Mapped[str | None] = mapped_column(Text, comment="Банковский чек оплаты")
+    bank_pay: Mapped[str | None] = mapped_column(
+        Text, comment="Банковский чек оплаты")
     user_return: Mapped[int | None] = mapped_column(
         SmallInteger, comment="Id пользователя, оформившего возврат"
     )
     datetime_return: Mapped[DateTime | None] = mapped_column(
         DateTime, comment="Дата и время возврата продажи"
     )
-    bank_return: Mapped[str | None | None] = mapped_column(
+    bank_return: Mapped[str | None] = mapped_column(
         Text, comment="Банковский чек возврата"
     )
     partial_return: Mapped[int] = mapped_column(

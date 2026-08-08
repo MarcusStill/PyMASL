@@ -1,5 +1,4 @@
-from PySide6.QtCore import QPropertyAnimation, QEasingCurve
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
 from PySide6.QtWidgets import QDialog
 
 from design.logic.progress_dialog import Ui_ProgressDialog
@@ -28,11 +27,10 @@ class ProgressWindow(QDialog):
         self.animation.setEasingCurve(QEasingCurve.OutQuad)
         # 0.5 секунды на анимацию
         self.animation.setDuration(500)
-
         # Стилизация окна и прогрессбара
         self.setWindowTitle("Оформление продажи")
-
-        self.setStyleSheet("""
+        self.setStyleSheet(\
+                           """
             QDialog {
                 background-color: #f0f0f0;
                 border-radius: 10px;
@@ -71,11 +69,12 @@ class ProgressWindow(QDialog):
             QPushButton:hover {
                 background-color: #0056b3;
             }
-        """)
+        """
+
+           )
 
     def update_status(self, step_text: str, progress_percent: int):
-        """
-        Обновляет статус выполнения процесса, отображая текст и прогресс.
+        """Обновляет статус выполнения процесса, отображая текст и прогресс.
 
         Параметры:
             step_text (str): Текст, который будет отображен в статусной метке.
@@ -113,11 +112,15 @@ class ProgressWindow(QDialog):
                 QProgressBar::chunk {
                     background-color: #f44336;
                 }
-            """)
+            """
+
+               )
 
     def set_normal_style(self):
-        self.ui.progressBar.setStyleSheet("""
+        self.ui.progressBar.setStyleSheet(\
+                                          """
                 QProgressBar::chunk {
                     background-color: #4caf50;
                 }
-            """)
+            """
+               )
