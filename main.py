@@ -55,7 +55,19 @@ from modules.worker import TransactionWorker
 
 system = System()
 config_data = system.config
-logger.add(system.log_file, rotation="1 MB")
+logger.add(system.log_file, rotation="1 MB", enqueue=True)
+
+
+def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
+    """Глобальный обработчик неперехваченных исключений"""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logger.opt(exception=(exc_type, exc_value, exc_traceback)).error(
+        "Неперехваченное исключение"
+    )
+
+sys.excepthook = handle_uncaught_exception
 
 
 class AuthForm(QDialog):
@@ -1669,57 +1681,72 @@ class SaleForm(QDialog):
         """
         logger.info("Запуск функции save_sale")
         logger.debug(f"Статус сохраняемой продажи: {system.sale_status}")
+
         # Если продажа особенная - сохраним ее статус оплаченной
         if system.sale_special == 1:
             system.sale_status = 1
-        # Проверка: есть ли взрослый В продаже (учтенный или исключенный)
-        if system.sale_dict["kol_adult"] >= 1 or system.exclude_from_sale == 1:
-            add_sale: Sale = Sale(
-                price=system.sale_dict["detail"][7],
-                id_user=system.user.id,
-                id_client=system.sale_dict["detail"][5],
-                status=system.sale_status,
-                discount=system.sale_dict["detail"][4],
-                pc_name=system.pc_name,
-                datetime=dt.datetime.now(),
-            )
-            logger.debug(f"Получена продажа: {add_sale}")
-            # Сохраняем продажу
-            with Session(system.engine) as session:
-                session.add(add_sale)
-                session.commit()
-                # Запоминаем номер сохраненной продажи
-                system.sale_id = add_sale.id
-            # Сохраняем билеты
-            type_ticket: int | None = None
-            for i in range(len(system.sale_tickets)):
-                # Считаем количество начисленных талантов
-                if system.sale_tickets[i][2] == "взрослый":
-                    type_ticket = 0
-                elif system.sale_tickets[i][2] == "детский":
-                    type_ticket = 1
-                elif system.sale_tickets[i][2] == "бесплатный":
-                    type_ticket = 2
-                add_ticket = Ticket(
-                    id_client=system.sale_tickets[i][5],
-                    id_sale=int(system.sale_id),
-                    arrival_time=system.sale_tickets[i][7],
-                    talent=system.sale_tickets[i][8],
-                    price=system.sale_tickets[i][3],
-                    description=system.sale_tickets[i][4],
-                    ticket_type=type_ticket,
-                    client_age=system.sale_tickets[i][6],
+
+        try:
+            # Проверка: есть ли взрослый в продаже (учтенный или исключенный)
+            if system.sale_dict["kol_adult"] >= 1 or system.exclude_from_sale == 1:
+                add_sale = Sale(
+                    price=system.sale_dict["detail"][7],
+                    id_user=system.user.id,
+                    id_client=system.sale_dict["detail"][5],
+                    status=system.sale_status,
+                    discount=system.sale_dict["detail"][4],
+                    pc_name=system.pc_name,
+                    datetime=dt.datetime.now(),
                 )
+                logger.debug(f"Объект Sale создан")
+
                 with Session(system.engine) as session:
-                    session.add(add_ticket)
+                    session.add(add_sale)
+                    session.flush()
+                    system.sale_id = add_sale.id
+                    logger.debug(f"Продажа создана с ID: {system.sale_id}")
+
+                    # Сохраняем билеты
+                    for ticket_data in system.sale_tickets:
+                        # Определяем тип билета
+                        if ticket_data[2] == "взрослый":
+                            type_ticket = 0
+                        elif ticket_data[2] == "детский":
+                            type_ticket = 1
+                        elif ticket_data[2] == "бесплатный":
+                            type_ticket = 2
+                        else:
+                            type_ticket = None
+
+                        add_ticket = Ticket(
+                            id_client=ticket_data[5],
+                            id_sale=system.sale_id,
+                            arrival_time=ticket_data[7],
+                            talent=ticket_data[8],
+                            price=ticket_data[3],
+                            description=ticket_data[4],
+                            ticket_type=type_ticket,
+                            client_age=ticket_data[6],
+                        )
+                        session.add(add_ticket)
+
                     session.commit()
-            self.close()
-        else:
-            # Нет взрослых вообще
+                    logger.info(f"Продажа {system.sale_id} и все билеты успешно сохранены")
+
+                self.close()
+            else:
+                windows.info_window(
+                    "Ошибка при сохранении продажи",
+                    "Необходимо добавить в нее взрослого",
+                    "",
+                )
+        except Exception as e:
+            logger.warning(f"Ошибка сохранения продажи: {e}")
+            system.sale_id = None
             windows.info_window(
-                "Ошибка при сохранении продажи",
-                "Необходимо добавить в нее взрослого",
-                "",
+                "Ошибка базы данных",
+                "Не удалось сохранить продажу",
+                f"Ошибка: {e}"
             )
 
     @logger.catch()
@@ -1754,7 +1781,7 @@ class SaleForm(QDialog):
         # Подключение сигналов
         self.worker.progress_updated.connect(self.progress_window.update_status)
         self.worker.finished.connect(self.on_transaction_finished)
-        self.worker.save_sale_signal.connect(self.save_sale)
+        self.worker.save_sale_signal.connect(self.save_sale, Qt.BlockingQueuedConnection)
         self.worker.error_signal.connect(self.handle_error)  # Обработка ошибок
         self.worker.info_signal.connect(self.handle_info)
         self.worker.print_ticket_signal.connect(self.print_saved_tickets)
@@ -2371,7 +2398,7 @@ class SaleForm(QDialog):
             self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Offline:
             # Offline только для не фискализированных продаж
-            if system.sale_status != 9:
+            if system.sale_status in (0, 9):
                 windows.info_window(
                     "Внимание",
                     "Оплата картой доступна только для новых продаж.",
@@ -3528,7 +3555,7 @@ class Payment:
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-
+    app.setStyle("Fusion")
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
