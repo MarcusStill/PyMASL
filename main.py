@@ -3529,6 +3529,83 @@ class Payment:
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
 
+    app.setStyle("Fusion")
+
+    qss = """
+    QWidget {
+        font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-size: 10pt;
+    }
+    QMainWindow, QDialog {
+        background-color: #f3f3f3;
+    }
+    QPushButton {
+        background-color: #e1e1e1;
+        border: 1px solid #adadad;
+        border-radius: 4px;
+        padding: 5px 15px;
+        color: #000000;
+    }
+    QPushButton:hover {
+        background-color: #e5f1fb;
+        border: 1px solid #0078d7;
+    }
+    QPushButton:pressed {
+        background-color: #cce4f7;
+        border: 1px solid #005499;
+    }
+    QPushButton:disabled {
+        background-color: #f0f0f0;
+        border: 1px solid #cccccc;
+        color: #838383;
+    }
+    QLineEdit, QComboBox, QDateEdit {
+        background-color: #ffffff;
+        border: 1px solid #cccccc;
+        border-radius: 4px;
+        padding: 4px;
+        selection-background-color: #0078d7;
+    }
+    QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
+        border: 1px solid #0078d7;
+    }
+    QTableWidget {
+        background-color: #ffffff;
+        alternate-background-color: #f9f9f9;
+        gridline-color: #e0e0e0;
+        selection-background-color: #0078d7;
+        selection-color: #ffffff;
+        border: 1px solid #cccccc;
+        border-radius: 4px;
+    }
+    QHeaderView::section {
+        background-color: #f0f0f0;
+        padding: 4px;
+        border: 1px solid #e0e0e0;
+    }
+    QTabWidget::pane {
+        border: 1px solid #cccccc;
+        background: #ffffff;
+        border-radius: 4px;
+    }
+    QTabBar::tab {
+        background: #e1e1e1;
+        border: 1px solid #cccccc;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        padding: 6px 12px;
+        margin-right: 2px;
+    }
+    QTabBar::tab:selected {
+        background: #ffffff;
+        border-bottom-color: #ffffff;
+    }
+    QTabBar::tab:hover:!selected {
+        background: #e5f1fb;
+    }
+    """
+    app.setStyleSheet(qss)
+
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
