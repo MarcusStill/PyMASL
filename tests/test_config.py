@@ -8,7 +8,7 @@ class TestConfig(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.config_path = os.path.join(self.temp_dir.name, "config.ini")
-        
+
         # Valid config content
         self.valid_config_content = """
 [DATABASE]
@@ -44,12 +44,12 @@ available = on
 
     def test_load_valid_config(self):
         config = Config(config_file=self.config_path)
-        
+
         self.assertEqual(config.get("host"), "127.0.0.1")
         self.assertEqual(config.get("kol"), "2")
         self.assertEqual(config.get("pc_1"), "Workstation-1")
         self.assertEqual(config.get("ticket"), "on")
-        
+
         self.assertEqual(len(config.pcs), 2)
         self.assertEqual(config.pcs[0], "Workstation-1")
         self.assertEqual(config.pcs[1], "Workstation-2")
@@ -83,7 +83,7 @@ pinpad_path = /opt/pinpad
 """
         with open(self.config_path, "w") as f:
             f.write(invalid_content)
-            
+
         with self.assertRaises(RuntimeError) as context:
             Config(config_file=self.config_path)
         self.assertIn("Неизвестная ошибка: Отсутствует секция:", str(context.exception))
@@ -117,7 +117,7 @@ available = on
 """
         with open(self.config_path, "w") as f:
             f.write(invalid_content)
-            
+
         with self.assertRaises(RuntimeError) as context:
             Config(config_file=self.config_path)
         self.assertIn("Неизвестная ошибка: Отсутствует параметр 'pc_2'", str(context.exception))
@@ -137,7 +137,7 @@ ticket_coordinates_file = coords.json
 
 [PC]
 kol = 1
-pc_1 =  
+pc_1 =
 
 [TERMINAL]
 pinpad_path = /opt/pinpad
@@ -150,7 +150,7 @@ available = on
 """
         with open(self.config_path, "w") as f:
             f.write(invalid_content)
-            
+
         with self.assertRaises(RuntimeError) as context:
             Config(config_file=self.config_path)
         self.assertIn("Неизвестная ошибка: Пустое значение", str(context.exception))
@@ -174,7 +174,7 @@ ticket_coordinates_file = coords.json
 
 [PC]
 kol = 1
-pc_1 = 
+pc_1 =
 
 [TERMINAL]
 pinpad_path = /opt/pinpad
@@ -187,7 +187,7 @@ available = on
 """
         with open(self.config_path, "w") as f:
             f.write(invalid_content)
-        
+
         with self.assertRaises(RuntimeError):
             Config(config_file=self.config_path)
 
@@ -195,7 +195,7 @@ available = on
         invalid_content = "this is not a valid ini file"
         with open(self.config_path, "w") as f:
             f.write(invalid_content)
-            
+
         with self.assertRaises(RuntimeError):
             Config(config_file=self.config_path)
 

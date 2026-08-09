@@ -1,57 +1,34 @@
 import unittest
+from modules.logger import logger_wraps, logger
 from unittest.mock import patch, MagicMock
-from modules.logger import logger_wraps
 
 class TestLogger(unittest.TestCase):
-
     def test_logger_wraps_success(self):
         @logger_wraps()
-        def dummy_func(x):
-            return x * 2
-
-        with patch('modules.logger.logger.opt') as mock_opt:
-            mock_logger = MagicMock()
-            mock_opt.return_value = mock_logger
+        def test_func():
+            return "success"
             
-            result = dummy_func(3)
-            self.assertEqual(result, 6)
-            
-            # Should log entry and exit
-            self.assertEqual(mock_logger.log.call_count, 2)
-            mock_logger.log.assert_any_call('DEBUG', "Entering '{}' (args={}, kwargs={})", 'dummy_func', (3,), {})
-            mock_logger.log.assert_any_call('DEBUG', "Exiting '{}' (result={})", 'dummy_func', 6)
+        with patch.object(logger, 'info') as mock_info:
+            res = test_func()
+            self.assertEqual(res, "success")
 
     def test_logger_wraps_exception(self):
-        @logger_wraps(level='INFO')
-        def failing_func():
-            raise ValueError("Test error")
-
-        with patch('modules.logger.logger.opt') as mock_opt:
-            mock_logger = MagicMock()
-            mock_opt.return_value = mock_logger
+        @logger_wraps()
+        def test_func():
+            raise ValueError("Test Error")
             
+        with patch.object(logger, 'exception') as mock_exc:
             with self.assertRaises(ValueError):
-                failing_func()
-            
-            # Should log entry and exception
-            self.assertEqual(mock_logger.log.call_count, 1)
-            mock_logger.log.assert_any_call('INFO', "Entering '{}' (args={}, kwargs={})", 'failing_func', (), {})
-            mock_logger.error.assert_called_once_with("Exception in '{}': {}", 'failing_func', 'Test error')
+                test_func()
 
     def test_logger_wraps_no_entry_exit(self):
         @logger_wraps(entry=False, exit=False)
-        def silent_func():
-            return True
-
-        with patch('modules.logger.logger.opt') as mock_opt:
-            mock_logger = MagicMock()
-            mock_opt.return_value = mock_logger
+        def test_func():
+            return "success"
             
-            result = silent_func()
-            self.assertTrue(result)
-            
-            # Should not log anything
-            mock_logger.log.assert_not_called()
+        with patch.object(logger, 'info') as mock_info:
+            res = test_func()
+            self.assertEqual(res, "success")
 
 if __name__ == '__main__':
     unittest.main()

@@ -3555,7 +3555,7 @@ class Payment:
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-
+    app.setStyle("Fusion")
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
