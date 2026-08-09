@@ -4,46 +4,43 @@ import subprocess
 import sys
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Optional, Type
+from typing import Any
 
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtCore import Qt
-from PySide6.QtCore import Signal, QThread
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
+    QDialog,
     QHBoxLayout,
+    QMessageBox,
     QTableWidgetItem,
+    QWidget,
 )
-from PySide6.QtWidgets import QDialog, QWidget
-from PySide6.QtWidgets import QMessageBox
-from sqlalchemy import and_, select, update, desc
+from sqlalchemy import and_, desc, select, update
 from sqlalchemy.orm import Session
 
-from db.models import Client
-from db.models import Sale
-from db.models import Ticket
+from db.models import Client, Sale, Ticket
 from design.logic.authorization import Ui_Dialog
 from design.logic.client import Ui_Dialog_Client
 from design.logic.main_form import Ui_MainWindow
 from design.logic.pay import Ui_Dialog_Pay
 from design.logic.sale import Ui_Dialog_Sale
 from design.logic.slip import Ui_Dialog_Slip
-from modules import otchet
+from modules import otchet, windows
 from modules import payment_equipment as pq
-from modules import windows
 from modules.auth_logic import perform_pre_sale_checks
 from modules.logger import logger, logger_wraps
 from modules.progress_window import ProgressWindow
 from modules.sale_logic import (
+    calculate_adult_price,
     calculate_age,
+    calculate_child_price,
+    calculate_discount,
+    calculate_discounted_price,
+    calculate_itog,
     calculate_ticket_type,
     calculated_ticket_price,
-    calculate_adult_price,
-    calculate_child_price,
-    calculate_discounted_price,
-    calculate_discount,
-    calculate_itog,
     convert_sale_dict_values,
     generating_parts_for_partial_returns,
     get_talent_based_on_time,
@@ -66,6 +63,7 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
     logger.opt(exception=(exc_type, exc_value, exc_traceback)).error(
         "Неперехваченное исключение"
     )
+
 
 sys.excepthook = handle_uncaught_exception
 
@@ -101,7 +99,7 @@ class AuthForm(QDialog):
             windows.info_window(
                 "База данных недоступна",
                 "Не удалось подключиться к серверу базы данных.\n Приложение будет закрыто.",
-                ""
+                "",
             )
             sys.exit(1)
         login: str = self.ui.lineEdit.text()
@@ -134,8 +132,11 @@ class AuthForm(QDialog):
             auth.close()
             return True
         else:
-            windows.info_window("Пользователь не найден", "Проверьте правильность ввода логина и пароля.",
-                                "Убедитесь, что используете правильный логин и пароль для входа в систему.")
+            windows.info_window(
+                "Пользователь не найден",
+                "Проверьте правильность ввода логина и пароля.",
+                "Убедитесь, что используете правильный логин и пароль для входа в систему.",
+            )
             return False
 
     def check_kkt_connection(self):
@@ -168,15 +169,21 @@ class AuthForm(QDialog):
                             break
 
                     except (ConnectionError, TimeoutError, Exception) as e:
-                        error_type = "сетевая" if isinstance(e, (ConnectionError, TimeoutError)) else "неизвестная"
-                        logger.warning(f"Попытка {attempt} из 3: {error_type} ошибка при подключении к ККТ: {e}")
+                        error_type = (
+                            "сетевая"
+                            if isinstance(e, (ConnectionError, TimeoutError))
+                            else "неизвестная"
+                        )
+                        logger.warning(
+                            f"Попытка {attempt} из 3: {error_type} ошибка при подключении к ККТ: {e}"
+                        )
 
                 if not connected:
                     logger.error("Все 3 попытки подключения к ККТ не удались")
                     windows.info_window(
                         "Внимание",
                         "Кассовый аппарат не подключен",
-                        "Программа продолжит работу без фискальных операций."
+                        "Программа продолжит работу без фискальных операций.",
                     )
         except (ConnectionError, TimeoutError) as e:
             logger.error(f"Ошибка при проверке подключения к ККТ: {e}")
@@ -222,8 +229,7 @@ class AuthForm(QDialog):
             f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
         )
         window.main_button_all_sales()
-        window.exec_()
-
+        window.show()
 
 
 class ClientForm(QDialog):
@@ -320,7 +326,7 @@ class ClientForm(QDialog):
                             gender=str(self.ui.comboBox.currentText()),
                             phone=self.ui.lineEdit_4.text(),
                             email=self.ui.lineEdit_5.text(),
-                            privilege=str((self.ui.comboBox_2.currentText())),
+                            privilege=str(self.ui.comboBox_2.currentText()),
                         )
                     )
                     session.commit()
@@ -396,7 +402,7 @@ class SaleForm(QDialog):
         client_id: str = self.ui.tableWidget.item(row_number, 5).text()
         # При типизации указываем, что search_client может быть либо экземпляром Client, либо None
         with Session(system.engine) as session:
-            search_client: Optional[Client] = (
+            search_client: Client | None = (
                 session.query(Client).filter_by(id=client_id).first()
             )
         # Проверяем, найден ли клиент
@@ -508,9 +514,10 @@ class SaleForm(QDialog):
             None
         """
         logger.info("Запуск функции tracking_button_pressing")
-        if event.key() == QtCore.Qt.Key_Delete:
-            self.deleting_selected_record()
-        elif event.key() == QtCore.Qt.Key_Backspace:
+        if (
+            event.key() == QtCore.Qt.Key_Delete
+            or event.key() == QtCore.Qt.Key_Backspace
+        ):
             self.deleting_selected_record()
 
     def deleting_selected_record(self) -> None:
@@ -533,23 +540,33 @@ class SaleForm(QDialog):
                 if current_row == system.sale_checkbox_row:
                     # Удаляется исключенный взрослый
                     logger.debug(f"Удаляется исключенный взрослый row={current_row}")
-                    logger.debug(f"ДО сброса: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
+                    logger.debug(
+                        f"ДО сброса: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}"
+                    )
 
                     # Сбросить флаги
                     system.sale_checkbox_row = None
                     system.exclude_from_sale = 0
                     system.sale_dict["detail"][4] = 0
 
-                    logger.debug(f"ПОСЛЕ сброса: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
+                    logger.debug(
+                        f"ПОСЛЕ сброса: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}"
+                    )
                 elif current_row < system.sale_checkbox_row:
                     # Удаляется строка выше исключенного
-                    logger.debug(f"Удаляется строка row={current_row} ВЫШЕ исключенного row={system.sale_checkbox_row}")
-                    logger.debug(f"ДО корректировки: sale_checkbox_row={system.sale_checkbox_row}")
+                    logger.debug(
+                        f"Удаляется строка row={current_row} ВЫШЕ исключенного row={system.sale_checkbox_row}"
+                    )
+                    logger.debug(
+                        f"ДО корректировки: sale_checkbox_row={system.sale_checkbox_row}"
+                    )
 
                     # Уменьшить индекс
                     system.sale_checkbox_row -= 1
 
-                    logger.debug(f"ПОСЛЕ корректировки: sale_checkbox_row={system.sale_checkbox_row}")
+                    logger.debug(
+                        f"ПОСЛЕ корректировки: sale_checkbox_row={system.sale_checkbox_row}"
+                    )
 
             # Удалить строку
             self.ui.tableWidget_2.removeRow(current_row)
@@ -775,7 +792,7 @@ class SaleForm(QDialog):
             query: str = "%" + self.ui.lineEdit.text() + "%"
             self.ui.tableWidget.setRowCount(0)
             with Session(system.engine) as session:
-                search: list[Type[Client]] = (
+                search: list[type[Client]] = (
                     session.query(Client).filter(Client.last_name.ilike(query)).all()
                 )
             for client in search:
@@ -791,12 +808,12 @@ class SaleForm(QDialog):
         elif index == 0:
             # Поиск по фамилии и имени
             self.ui.tableWidget.setRowCount(0)
-            search: list[Type[Client]] = self.ui.lineEdit.text().title()
+            search: list[type[Client]] = self.ui.lineEdit.text().title()
             # Разбиваем поисковую фразу на две
             lst: Any = search.split()
             if len(lst) == 2:
                 with Session(system.engine) as session:
-                    search: list[Type[Client]] = (
+                    search: list[type[Client]] = (
                         session.query(Client)
                         .filter(
                             and_(
@@ -826,7 +843,7 @@ class SaleForm(QDialog):
             # Поиск инвалидов
             self.ui.tableWidget.setRowCount(0)
             with Session(system.engine) as session:
-                search: list[Type[Client]] = (
+                search: list[type[Client]] = (
                     session.query(Client)
                     .filter(Client.privilege.ilike("%" + "и"))
                     .all()
@@ -845,7 +862,7 @@ class SaleForm(QDialog):
             # Поиск многодетных
             self.ui.tableWidget.setRowCount(0)
             with Session(system.engine) as session:
-                search: list[Type[Client]] = (
+                search: list[type[Client]] = (
                     session.query(Client)
                     .filter(Client.privilege.ilike("%" + "м"))
                     .all()
@@ -897,11 +914,11 @@ class SaleForm(QDialog):
         self.ui.tableWidget_3.setColumnWidth(3, 7)
         # Если продажа новая - обновляем статус
         system.sale_status = 0
-        logger.warning(f"Статус продажи - новая")
+        logger.warning("Статус продажи - новая")
         row_number: int = self.ui.tableWidget.currentRow()
         res: str = self.ui.tableWidget.item(row_number, 5).text()
         with Session(system.engine) as session:
-            search_client: Type[Client] = (
+            search_client: type[Client] = (
                 session.query(Client).filter_by(id=res).first()
             )
         # Вычисляем возраст клиента
@@ -1141,12 +1158,16 @@ class SaleForm(QDialog):
 
         # Рассчитываем цену со скидкой
         if adult_with_discount_count > 0:
-            price_adult_with_discount = int(system.sale_dict["price_adult"] * (1 - system.sale_discount / 100))
+            price_adult_with_discount = int(
+                system.sale_dict["price_adult"] * (1 - system.sale_discount / 100)
+            )
         else:
             price_adult_with_discount = 0
 
         if child_with_discount_count > 0:
-            price_child_with_discount = int(system.sale_dict["price_child"] * (1 - system.sale_discount / 100))
+            price_child_with_discount = int(
+                system.sale_dict["price_child"] * (1 - system.sale_discount / 100)
+            )
         else:
             price_child_with_discount = 0
 
@@ -1166,8 +1187,12 @@ class SaleForm(QDialog):
             )
 
         logger.debug(f"detail ИТОГО: {system.sale_dict['detail']}")
-        logger.debug(f"Взрослых со скидкой: {adult_with_discount_count}, цена 1 билета: {price_adult_with_discount}")
-        logger.debug(f"Детей со скидкой: {child_with_discount_count}, цена 1 билета: {price_child_with_discount}")
+        logger.debug(
+            f"Взрослых со скидкой: {adult_with_discount_count}, цена 1 билета: {price_adult_with_discount}"
+        )
+        logger.debug(
+            f"Детей со скидкой: {child_with_discount_count}, цена 1 билета: {price_child_with_discount}"
+        )
 
         # Считаем без исключённых взрослых
         adult_count_in_sale = 0
@@ -1186,7 +1211,9 @@ class SaleForm(QDialog):
 
         # Синхронизируем
         system.sale_dict["kol_adult"] = adult_count_in_sale
-        logger.debug(f"Синхронизация: kol_adult={adult_count_in_sale}, kol_child={system.sale_dict['kol_child']}")
+        logger.debug(
+            f"Синхронизация: kol_adult={adult_count_in_sale}, kol_child={system.sale_dict['kol_child']}"
+        )
 
         # Считаем итог
         itog: int = calculate_itog()
@@ -1225,7 +1252,7 @@ class SaleForm(QDialog):
         system.sale_tickets = tickets
 
         # Проверяем есть ли в продаже взрослый
-        if system.sale_dict['kol_adult'] >= 1 or system.exclude_from_sale == 1:
+        if system.sale_dict["kol_adult"] >= 1 or system.exclude_from_sale == 1:
             self.ui.pushButton_5.setEnabled(True)
         else:
             self.ui.pushButton_5.setEnabled(False)
@@ -1244,15 +1271,18 @@ class SaleForm(QDialog):
                             # Если есть исключённый
                             if row == system.sale_checkbox_row:
                                 checkbox.setEnabled(True)
-                                logger.debug(f"Checkbox row={row} enabled (исключенный)")
+                                logger.debug(
+                                    f"Checkbox row={row} enabled (исключенный)"
+                                )
                             else:
                                 checkbox.setEnabled(False)
                                 logger.debug(f"Checkbox row={row} disabled")
                         else:
                             # Нет исключённых - все доступны
                             checkbox.setEnabled(True)
-                            logger.debug(f"Checkbox row={row} enabled (нет исключенных)")
-
+                            logger.debug(
+                                f"Checkbox row={row} enabled (нет исключенных)"
+                            )
 
     def apply_discounts(self, row: int, price: int, type_ticket: str) -> None:
         """
@@ -1288,7 +1318,9 @@ class SaleForm(QDialog):
         if type_ticket == "взрослый" and system.exclude_from_sale == 1:
             checkbox = self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox)
             if checkbox.isChecked() and row == system.sale_checkbox_row:
-                logger.info(f"Взрослый в строке {row} исключен из продажи, пропускаем применение дополнительных скидок")
+                logger.info(
+                    f"Взрослый в строке {row} исключен из продажи, пропускаем применение дополнительных скидок"
+                )
                 return  # НЕ применяем скидки из checkBox_2!
 
         # Иначе проверяем активен ли checkbox со скидкой и размер > 0
@@ -1299,9 +1331,11 @@ class SaleForm(QDialog):
                     # Используем другое имя переменной для цены по акции
                     promo_price = calculate_discount(price, system.sale_discount)
                     # Если checkbox в акт - применяем к этой строке скидку
-                    if (self.ui.tableWidget_2.cellWidget(row, 7)
-                            .findChild(QCheckBox)
-                            .isChecked()):  # Если False → применить скидку
+                    if (
+                        self.ui.tableWidget_2.cellWidget(row, 7)
+                        .findChild(QCheckBox)
+                        .isChecked()
+                    ):  # Если False → применить скидку
                         # Применяем скидку ТОЛЬКО если checkbox НЕ активен
                         if type_ticket == "взрослый":
                             system.count_number_of_visitors["kol_sale_adult"] += 1
@@ -1481,7 +1515,7 @@ class SaleForm(QDialog):
         self.ui.checkBox_2.setChecked(True)
         self.ui.comboBox_2.setCurrentIndex(10)
         # Добавляем информацию о скидке
-        system.sale_dict['detail'][4] = 50
+        system.sale_dict["detail"][4] = 50
         # Разрешаем выбор времени посещения
         self.ui.comboBox.setEnabled(True)
 
@@ -1544,7 +1578,9 @@ class SaleForm(QDialog):
             None
         """
         logger.info("Запуск функции adult_exclusion")
-        logger.debug(f"Входные параметры: row={row}, sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
+        logger.debug(
+            f"Входные параметры: row={row}, sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}"
+        )
 
         # Получаем checkbox для проверки
         checkbox = self.ui.tableWidget_2.cellWidget(row, 8).findChild(QCheckBox)
@@ -1577,14 +1613,16 @@ class SaleForm(QDialog):
 
                 # Проверка - единственный взрослый?
                 if adult_count == 1 and child_count == 0:
-                    logger.warning("Невозможно исключить единственного взрослого в продаже!")
+                    logger.warning(
+                        "Невозможно исключить единственного взрослого в продаже!"
+                    )
 
                     QMessageBox.warning(
                         self,
                         "Невозможно исключить взрослого",
                         "В продаже только один взрослый!\n"
                         "Нельзя исключить единственного взрослого из продажи.\n"
-                        "Добавьте ребенка или других взрослых."
+                        "Добавьте ребенка или других взрослых.",
                     )
 
                     checkbox.blockSignals(True)
@@ -1596,24 +1634,30 @@ class SaleForm(QDialog):
 
                 # Первое исключение взрослого
                 logger.info("Исключаем взрослого из продажи")
-                system.sale_dict["detail"][4] = system.sale_discount if system.sale_discount else 0
-                logger.debug(f"Установлен флаг исключения: detail[4] = 100")
+                system.sale_dict["detail"][4] = (
+                    system.sale_discount if system.sale_discount else 0
+                )
+                logger.debug("Установлен флаг исключения: detail[4] = 100")
                 system.sale_checkbox_row = row
                 system.exclude_from_sale = 1
                 self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("н"))
-                logger.debug(f"Установлены флаги: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
+                logger.debug(
+                    f"Установлены флаги: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}"
+                )
 
             elif system.sale_checkbox_row == row:
                 logger.debug(f"Взрослый row={row} уже исключен, пропускаем")
                 return
 
             else:
-                logger.warning(f"Попытка исключить второго взрослого row={row}, уже исключен row={system.sale_checkbox_row}")
+                logger.warning(
+                    f"Попытка исключить второго взрослого row={row}, уже исключен row={system.sale_checkbox_row}"
+                )
                 QMessageBox.warning(
                     self,
                     "Невозможно исключить взрослого",
                     f"В продаже уже есть исключенный взрослый (строка {system.sale_checkbox_row})!\n"
-                    "Можно исключить только одного взрослого."
+                    "Можно исключить только одного взрослого.",
                 )
 
                 # СНЯТЬ checkbox
@@ -1629,19 +1673,27 @@ class SaleForm(QDialog):
                 if row == system.sale_checkbox_row:
                     # Это действительно исключенный взрослый - возвращаем
                     logger.info(f"Возвращаем взрослого row={row} в продажу")
-                    logger.debug(f"ДО возврата: detail[0]={system.sale_dict['detail'][0]}, detail[1]={system.sale_dict['detail'][1]}, detail[4]={system.sale_dict['detail'][4]}")
+                    logger.debug(
+                        f"ДО возврата: detail[0]={system.sale_dict['detail'][0]}, detail[1]={system.sale_dict['detail'][1]}, detail[4]={system.sale_dict['detail'][4]}"
+                    )
                     self.ui.tableWidget_2.setItem(row, 4, QTableWidgetItem("-"))
                     if self.ui.checkBox_2.isChecked():
                         system.sale_dict["detail"][4] = system.sale_discount
                     else:
                         system.sale_dict["detail"][4] = 0
-                    logger.debug(f"ПОСЛЕ возврата: detail[4]={system.sale_dict['detail'][4]}")
+                    logger.debug(
+                        f"ПОСЛЕ возврата: detail[4]={system.sale_dict['detail'][4]}"
+                    )
                     system.sale_checkbox_row = None
                     system.exclude_from_sale = 0
-                    logger.debug(f"Сброшены флаги: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}")
+                    logger.debug(
+                        f"Сброшены флаги: sale_checkbox_row={system.sale_checkbox_row}, exclude_from_sale={system.exclude_from_sale}"
+                    )
                 else:
                     # Это другая строка, не исключенный взрослый
-                    logger.debug(f"row={row} != sale_checkbox_row={system.sale_checkbox_row}, пропускаем")
+                    logger.debug(
+                        f"row={row} != sale_checkbox_row={system.sale_checkbox_row}, пропускаем"
+                    )
 
     def generate_ticket_list(
         self,
@@ -1698,7 +1750,7 @@ class SaleForm(QDialog):
                     pc_name=system.pc_name,
                     datetime=dt.datetime.now(),
                 )
-                logger.debug(f"Объект Sale создан")
+                logger.debug("Объект Sale создан")
 
                 with Session(system.engine) as session:
                     session.add(add_sale)
@@ -1731,7 +1783,9 @@ class SaleForm(QDialog):
                         session.add(add_ticket)
 
                     session.commit()
-                    logger.info(f"Продажа {system.sale_id} и все билеты успешно сохранены")
+                    logger.info(
+                        f"Продажа {system.sale_id} и все билеты успешно сохранены"
+                    )
 
                 self.close()
             else:
@@ -1744,9 +1798,7 @@ class SaleForm(QDialog):
             logger.warning(f"Ошибка сохранения продажи: {e}")
             system.sale_id = None
             windows.info_window(
-                "Ошибка базы данных",
-                "Не удалось сохранить продажу",
-                f"Ошибка: {e}"
+                "Ошибка базы данных", "Не удалось сохранить продажу", f"Ошибка: {e}"
             )
 
     @logger.catch()
@@ -1775,17 +1827,19 @@ class SaleForm(QDialog):
             system,
             pq,
             Session,
-            self  # передаем self, чтобы вызвать print_saved_tickets
+            self,  # передаем self, чтобы вызвать print_saved_tickets
         )
 
         # Подключение сигналов
         self.worker.progress_updated.connect(self.progress_window.update_status)
         self.worker.finished.connect(self.on_transaction_finished)
-        self.worker.save_sale_signal.connect(self.save_sale, Qt.BlockingQueuedConnection)
+        self.worker.save_sale_signal.connect(
+            self.save_sale, Qt.BlockingQueuedConnection
+        )
         self.worker.error_signal.connect(self.handle_error)  # Обработка ошибок
         self.worker.info_signal.connect(self.handle_info)
         self.worker.print_ticket_signal.connect(self.print_saved_tickets)
-        #self.worker.close_window_signal.connect(self.close)
+        # self.worker.close_window_signal.connect(self.close)
         self.worker.close_window_signal.connect(self.progress_window.close)
 
         # Поток
@@ -1798,7 +1852,6 @@ class SaleForm(QDialog):
         self.thread.finished.connect(self.thread.deleteLater)
 
         self.thread.start()
-
 
     def handle_error(self, title: str, text: str, details: str):
         """
@@ -1813,7 +1866,7 @@ class SaleForm(QDialog):
             None: Функция ничего не возвращает, но закрывает окно прогресса и отображает сообщение об ошибке.
         """
         # Закрытие окна прогресса перед отображением ошибки
-        if hasattr(self, 'progress_window') and self.progress_window:
+        if hasattr(self, "progress_window") and self.progress_window:
             self.progress_window.close()
 
         # Создание окна с ошибкой
@@ -1848,18 +1901,17 @@ class SaleForm(QDialog):
             None: Эта функция ничего не возвращает, но закрывает окно прогресса и логирует завершение транзакции.
         """
         logger.info("Запуск функции on_transaction_finished")
-        if hasattr(self, '_transaction_finished') and self._transaction_finished:
+        if hasattr(self, "_transaction_finished") and self._transaction_finished:
             return
         self._transaction_finished = True
         logger.info("Завершение транзакции")
         # Закрываем окно прогресса
-        if hasattr(self, 'progress_window') and self.progress_window:
+        if hasattr(self, "progress_window") and self.progress_window:
             self.progress_window.close()
             self.progress_window = None
 
         if self.main_window:
             self.main_window.main_button_all_sales()
-
 
     @logger.catch()
     def sale_return(self):
@@ -1893,7 +1945,9 @@ class SaleForm(QDialog):
         if sale.status == 5:
             logger.debug("Требуется частичный возврат.")
             partial_return: int = int(sale.partial_return)
-            new_tickets: dict | dict = generating_parts_for_partial_returns(tickets, partial_return)
+            new_tickets: dict = generating_parts_for_partial_returns(
+                tickets, partial_return
+            )
             logger.debug(f"Список билетов: {new_tickets}")
         # 1 - карта, 2 - наличные
         if sale.payment_type == 1:
@@ -1917,7 +1971,7 @@ class SaleForm(QDialog):
                 logger.debug("Продажа оплачена. Запускаем возврат")
                 if payment_type == 102:
                     state_check = pq.check_open(
-                        tickets, payment_type, system.user, 2, 1,None
+                        tickets, payment_type, system.user, 2, 1, None
                     )
                 elif payment_type == 101:
                     logger.debug(
@@ -1932,7 +1986,9 @@ class SaleForm(QDialog):
                                 amount=price,
                                 progress_signal=None,
                                 operation_type=2,  # возврат
-                                error_callback=lambda title, msg, code: windows.info_window(title, msg, str(code))
+                                error_callback=lambda title, msg, code: windows.info_window(
+                                    title, msg, str(code)
+                                ),
                             )
                         elif sale.status == 5:
                             bank, payment = pq.universal_terminal_operation(
@@ -1940,7 +1996,9 @@ class SaleForm(QDialog):
                                 amount=partial_return,
                                 progress_signal=None,
                                 operation_type=2,  # возврат
-                                error_callback=lambda title, msg, code: windows.info_window(title, msg, str(code))
+                                error_callback=lambda title, msg, code: windows.info_window(
+                                    title, msg, str(code)
+                                ),
                             )
                         if bank == 1:
                             check = pq.read_pinpad_file(remove_newline=False)
@@ -2026,7 +2084,9 @@ class SaleForm(QDialog):
                     amount=price,
                     progress_signal=None,
                     operation_type=2,  # возврат
-                    error_callback=lambda title, msg, code: windows.info_window(title, msg, str(code))
+                    error_callback=lambda title, msg, code: windows.info_window(
+                        title, msg, str(code)
+                    ),
                 )
 
                 if bank == 1:
@@ -2102,7 +2162,9 @@ class SaleForm(QDialog):
                             amount=price,
                             progress_signal=None,
                             operation_type=3,  # отмена
-                            error_callback=lambda title, msg, code: windows.info_window(title, msg, str(code))
+                            error_callback=lambda title, msg, code: windows.info_window(
+                                title, msg, str(code)
+                            ),
                         )
                         if bank == 1:
                             check = pq.read_pinpad_file(remove_newline=False)
@@ -2287,7 +2349,7 @@ class SaleForm(QDialog):
                   Во всех остальных случаях возвращает False.
         """
         # Проверяем наличие атрибута и что он не None
-        if not hasattr(system, 'ticket_print') or system.ticket_print is None:
+        if not hasattr(system, "ticket_print") or system.ticket_print is None:
             return False
 
         # Приводим к строке и сравниваем с 'on'
@@ -2300,7 +2362,9 @@ class SaleForm(QDialog):
         """
         logger.info("Запуск функции print_saved_tickets")
         if not self.is_printing_enabled():
-            logger.info("Печать билетов отключена (параметр 'ticket' не равен 'on' или отсутствует)")
+            logger.info(
+                "Печать билетов отключена (параметр 'ticket' не равен 'on' или отсутствует)"
+            )
             return
         try:
             self.sale_generate_saved_tickets()
@@ -2361,9 +2425,7 @@ class SaleForm(QDialog):
             # Оплата только для новых продаж
             if system.sale_status != 0:
                 windows.info_window(
-                    "Внимание",
-                    "Оплата картой доступна только для новых продаж.",
-                    ""
+                    "Внимание", "Оплата картой доступна только для новых продаж.", ""
                 )
                 return
 
@@ -2371,8 +2433,7 @@ class SaleForm(QDialog):
                 logger.info("РЕЖИМ ОТЛАДКИ: Имитация оплаты картой")
                 # Создаем тестовый слип-чек
                 slip = "DEBUG_SLIP\nДата: {}\nСумма: {}\nОдобрено".format(
-                    dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
-                    txt
+                    dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S"), txt
                 )
                 # Сохраняем тестовые данные
                 self.save_debug_payment(Payment.Card, slip)
@@ -2388,9 +2449,7 @@ class SaleForm(QDialog):
             # Оплата только для новых продаж
             if system.sale_status != 0:
                 windows.info_window(
-                    "Внимание",
-                    "Оплата картой доступна только для новых продаж.",
-                    ""
+                    "Внимание", "Оплата картой доступна только для новых продаж.", ""
                 )
                 return
             logger.info("Оплата наличными")
@@ -2400,16 +2459,13 @@ class SaleForm(QDialog):
             # Offline только для не фискализированных продаж
             if system.sale_status in (0, 9):
                 windows.info_window(
-                    "Внимание",
-                    "Оплата картой доступна только для новых продаж.",
-                    ""
+                    "Внимание", "Оплата картой доступна только для новых продаж.", ""
                 )
                 return
             if dev_mode:
                 logger.info("РЕЖИМ ОТЛАДКИ: Имитация offline оплаты")
                 slip = "DEBUG_SLIP_OFFLINE\nДата: {}\nСумма: {}\nОффлайн".format(
-                    dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
-                    txt
+                    dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S"), txt
                 )
                 self.save_debug_payment(Payment.Offline, slip)
                 self.accept()
@@ -2417,12 +2473,12 @@ class SaleForm(QDialog):
 
             user_choice = windows.info_dialog_window(
                 "Подтверждение",
-                f"Вы точно хотите фискализировать операцию?\n\n"
-                f"Это надо делать ТОЛЬКО после успешной проверки проведения операции по банковскому терминалу!\n\n"
-                f"Для этого выполните: Касса -> Операции с банковским терминалом -> Печать ранее подготовленного документа.\n\n"
-                f"Операция считается успешной, если в банковском слип-чеке:\n"
-                f" - сумма, дата и время проведения операции операции совпадают с данными из заказа;\n"
-                f" - указано слово 'ОДОБРЕНО'.",
+                "Вы точно хотите фискализировать операцию?\n\n"
+                "Это надо делать ТОЛЬКО после успешной проверки проведения операции по банковскому терминалу!\n\n"
+                "Для этого выполните: Касса -> Операции с банковским терминалом -> Печать ранее подготовленного документа.\n\n"
+                "Операция считается успешной, если в банковском слип-чеке:\n"
+                " - сумма, дата и время проведения операции операции совпадают с данными из заказа;\n"
+                " - указано слово 'ОДОБРЕНО'.",
             )
             if user_choice == 1:
                 logger.info("Оплата банковской картой offline")
@@ -2435,10 +2491,12 @@ class SaleForm(QDialog):
     def save_debug_payment(payment_type, slip_text):
         """Сохранение тестового платежа в режиме отладки"""
         try:
-            logger.debug(f"Сохранение тестового платежа: payment_type = {payment_type}, slip = {slip_text}")
+            logger.debug(
+                f"Сохранение тестового платежа: payment_type = {payment_type}, slip = {slip_text}"
+            )
             # ... код для сохранения в БД ...
         except Exception as e:
-            logger.error(f"Ошибка сохранения тестового платежа: {str(e)}")
+            logger.error(f"Ошибка сохранения тестового платежа: {e!s}")
 
 
 class PayForm(QDialog):
@@ -2515,7 +2573,9 @@ class SlipForm(QDialog):
             None: Функция не возвращает значений, отображает данные слип-чека в форме.
         """
         logger.info("Запуск функции get_slip")
-        card_tail, merchant_id, rrn_value, load_slip = system.get_slip_data(system.sale_id)
+        card_tail, merchant_id, rrn_value, load_slip = system.get_slip_data(
+            system.sale_id
+        )
 
         slip: SlipForm = SlipForm()
         slip.ui.label_5.setText(card_tail)
@@ -2663,7 +2723,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Поиск по номеру телефона
             self.ui.tableWidget.setRowCount(0)
             with Session(system.engine) as session:
-                search: list[Type[Client]] = (
+                search: list[type[Client]] = (
                     session.query(Client).filter(Client.phone.ilike(user_filter)).all()
                 )
             for client in search:
@@ -2682,7 +2742,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Поиск по фамилии
             self.ui.tableWidget.setRowCount(0)
             with Session(system.engine) as session:
-                search: list[Type[Client]] = (
+                search: list[type[Client]] = (
                     session.query(Client)
                     .filter(Client.last_name.ilike(user_filter))
                     .all()
@@ -2706,10 +2766,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Разбиваем поисковую фразу на две
             lst: Any = user_filter.split()
             # Инициализация переменной search пустым списком, чтобы избежать ошибки
-            search: list[Type[Client]] = []
+            search: list[type[Client]] = []
             if len(lst) == 2:
                 with Session(system.engine) as session:
-                    search: list[Type[Client]] = (
+                    search: list[type[Client]] = (
                         session.query(Client)
                         .filter(
                             and_(
@@ -2741,7 +2801,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Поиск инвалидов
             self.ui.tableWidget.setRowCount(0)
             with Session(system.engine) as session:
-                search: list[Type[Client]] = (
+                search: list[type[Client]] = (
                     session.query(Client)
                     .filter(Client.privilege.ilike("%" + "и"))
                     .all()
@@ -2762,7 +2822,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # Поиск многодетных
             self.ui.tableWidget.setRowCount(0)
             with Session(system.engine) as session:
-                search: list[Type[Client]] = (
+                search: list[type[Client]] = (
                     session.query(Client)
                     .filter(Client.privilege.ilike("%" + "м"))
                     .all()
@@ -2804,7 +2864,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             logger.error("Ячейка пуста или не существует.")
             return
         with Session(system.engine) as session:
-            search_client: Type[Client] = (
+            search_client: type[Client] = (
                 session.query(Client).filter_by(id=client_id).first()
             )
             if search_client is None:
@@ -2834,7 +2894,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         client.show()
         # Сохраняем параметры данных об уже существующем клиенте
         system.client_update = 1
-        logger.info(f"Обновляем информацию о клиенте")
+        logger.info("Обновляем информацию о клиенте")
         client.exec_()
 
     def main_filter_clear(self) -> None:
@@ -2972,7 +3032,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
             # Если продажа требует повторный возврат по банковскому терминалу
-            elif sale_status == 3:
+            elif sale_status == 3 or sale_status == 5:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
                 # Кнопка оплатить
@@ -2987,37 +3047,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 sale.ui.pushButton_7.setEnabled(False)
                 sale.ui.pushButton_8.setEnabled(False)
             # Если продажа требует частичный возврат
-            elif sale_status == 5:
-                # Кнопка сохранить
-                sale.ui.pushButton_3.setEnabled(False)
-                # Кнопка оплатить
-                sale.ui.pushButton_5.setEnabled(False)
-                # Кнопка обновить
-                sale.ui.pushButton_10.setEnabled(False)
-                # Кнопка возврат
-                sale.ui.pushButton_6.setEnabled(True)
-                # Кнопка отмены платежа по банковской карте
-                sale.ui.pushButton_14.setEnabled(False)
-                # Кнопки просмотра и печати билетов
-                sale.ui.pushButton_7.setEnabled(False)
-                sale.ui.pushButton_8.setEnabled(False)
-            # Если продажа требует частичный возврат
-            elif sale_status == 7:
-                # Кнопка сохранить
-                sale.ui.pushButton_3.setEnabled(False)
-                # Кнопка оплатить
-                sale.ui.pushButton_5.setEnabled(False)
-                # Кнопка обновить
-                sale.ui.pushButton_10.setEnabled(False)
-                # Кнопка возврат
-                sale.ui.pushButton_6.setEnabled(False)
-                # Кнопка отмены платежа по банковской карте
-                sale.ui.pushButton_14.setEnabled(False)
-                # Кнопки просмотра и печати билетов
-                sale.ui.pushButton_7.setEnabled(False)
-                sale.ui.pushButton_8.setEnabled(False)
-            # Если продажа отменена
-            elif sale_status == 8:
+            elif sale_status == 7 or sale_status == 8:
                 # Кнопка сохранить
                 sale.ui.pushButton_3.setEnabled(False)
                 # Кнопка оплатить
@@ -3159,16 +3189,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             # Определение периода для 1, 3 и 7 дней без учета времени
             if self.ui.radioButton.isChecked():
-                filter_start = dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
-                filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
+                filter_start = dt.datetime.today().replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                filter_end = dt.datetime.today().replace(
+                    hour=23, minute=59, second=59, microsecond=999999
+                )
             elif self.ui.radioButton_2.isChecked():
-                filter_start = (dt.datetime.today() - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
-                filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
+                filter_start = (dt.datetime.today() - timedelta(days=3)).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                filter_end = dt.datetime.today().replace(
+                    hour=23, minute=59, second=59, microsecond=999999
+                )
             elif self.ui.radioButton_3.isChecked():
-                filter_start = (dt.datetime.today() - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
-                filter_end = dt.datetime.today().replace(hour=23, minute=59, second=59, microsecond=999999)
+                filter_start = (dt.datetime.today() - timedelta(days=7)).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                filter_end = dt.datetime.today().replace(
+                    hour=23, minute=59, second=59, microsecond=999999
+                )
         # Определяем, какие статусы фильтровать
-        sale_status_filter = [2, 3, 4, 5, 6, 8, 9] if self.ui.checkBox.isChecked() else []
+        sale_status_filter = (
+            [2, 3, 4, 5, 6, 8, 9] if self.ui.checkBox.isChecked() else []
+        )
 
         # Генерация запроса
         with Session(system.engine) as session:
@@ -3314,7 +3358,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         system.sale_dict.update(sale_initial_values)
         # сбрасываем id и статус продажи
         system.sale_id = None
-        system.sale_status = 0 # Т.е. новая продажа
+        system.sale_status = 0  # Т.е. новая продажа
         system.sale_tickets = None
         sale.exec_()
 
@@ -3389,29 +3433,35 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logger.info("Запуск функции fetch_stat_data")
         with Session(system.engine) as session:
             sales = session.execute(
-                select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status)
-                .where(and_(Sale.status == "1", Sale.datetime.between(dt1, dt2)))
+                select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status).where(
+                    and_(Sale.status == "1", Sale.datetime.between(dt1, dt2))
+                )
             ).all()
             sales_return = session.execute(
-                select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status)
-                .where(and_(
-                    Sale.datetime_return.between(dt1, dt2),
-                    Sale.status.in_([2, 3, 4, 5, 6])
-                ))
+                select(Sale.pc_name, Sale.payment_type, Sale.price, Sale.status).where(
+                    and_(
+                        Sale.datetime_return.between(dt1, dt2),
+                        Sale.status.in_([2, 3, 4, 5, 6]),
+                    )
+                )
             ).all()
             tickets = session.execute(
                 select(
-                    Ticket.ticket_type, Ticket.arrival_time, Ticket.description, Sale.status, Sale.id, Ticket.price
+                    Ticket.ticket_type,
+                    Ticket.arrival_time,
+                    Ticket.description,
+                    Sale.status,
+                    Sale.id,
+                    Ticket.price,
                 ).where(
                     and_(
                         Sale.id == Ticket.id_sale,
                         Sale.status == "1",
                         Ticket.datetime.between(dt1, dt2),
-                        )
+                    )
                 )
             ).all()
         return sales, sales_return, tickets
-
 
     def fill_sales_table(self, data):
         """
@@ -3431,9 +3481,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         for row, row_data in enumerate(data):
             for col, value in enumerate(row_data):
                 if value is not None:
-                    self.ui.tableWidget_4.setItem(row, col, QTableWidgetItem(str(value)))
-
-
+                    self.ui.tableWidget_4.setItem(
+                        row, col, QTableWidgetItem(str(value))
+                    )
 
     def fill_ticket_table(self, data):
         """
@@ -3506,7 +3556,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if os.path.exists(path):
             os.remove(path)
         # Проверяем, есть ли данные о продажах в system.sales_data_summary
-        if not hasattr(system, 'sales_data_summary') or not system.sales_data_summary:
+        if not hasattr(system, "sales_data_summary") or not system.sales_data_summary:
             logger.error("Нет данных о продажах для отчета кассира")
             return
         # Получаем имя текущего компьютера
@@ -3529,14 +3579,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             str(total_sales_card),
             str(total_sales_cash),
             str(total_returns_card),
-            str(total_returns_cash)
+            str(total_returns_cash),
         ]
 
         # Получаем даты для отчета
         dt1, dt2 = self.get_date_range_from_ui()
 
         # Получаем информацию о кассире
-        kassir = system.user  # Предполагаем, что данные о кассире хранятся в system.user
+        kassir = (
+            system.user
+        )  # Предполагаем, что данные о кассире хранятся в system.user
 
         # Вызываем функцию для формирования отчета
         otchet.otchet_kassira(values, dt1, dt2, kassir)

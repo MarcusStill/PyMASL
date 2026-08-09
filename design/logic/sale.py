@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class Ui_Dialog_Sale(object):
+class Ui_Dialog_Sale:
     def setupUi(self, Dialog_Sale):
         if not Dialog_Sale.objectName():
             Dialog_Sale.setObjectName("Dialog_Sale")

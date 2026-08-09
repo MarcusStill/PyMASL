@@ -1,7 +1,15 @@
 import datetime as dt
 from functools import wraps
 
-from PySide6.QtCore import QElapsedTimer, QObject, Signal, QMetaObject, Qt, QTimer, QEventLoop
+from PySide6.QtCore import (
+    QElapsedTimer,
+    QEventLoop,
+    QMetaObject,
+    QObject,
+    Qt,
+    QTimer,
+    Signal,
+)
 from sqlalchemy import update
 
 from db.models import Sale
@@ -10,16 +18,19 @@ from modules.logger import logger
 
 def with_timer(func):
     """Декоратор для автоматического создания QElapsedTimer"""
+
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         timer = QElapsedTimer()
         timer.start()
         return func(self, timer, *args, **kwargs)
+
     return wrapper
 
 
 class BaseWorker(QObject):
     """Базовый класс с общими методами"""
+
     DEFAULT_DELAY_MS = 15
 
     progress_updated = Signal(str, int)
@@ -35,9 +46,10 @@ class BaseWorker(QObject):
         elapsed = timer.elapsed()
         logger.debug(f"[TIMER] {step_name} — {elapsed} ms")
 
-    def delayed_progress_update(self, step_text: str, progress_percent: int, delay_ms: int = DEFAULT_DELAY_MS):
-        if delay_ms < 0:
-            delay_ms = 0
+    def delayed_progress_update(
+        self, step_text: str, progress_percent: int, delay_ms: int = DEFAULT_DELAY_MS
+    ):
+        delay_ms = max(delay_ms, 0)
         if delay_ms > 0:
             # Создаем локальный таймер для обеспечения задержки
             timer = QTimer(self)
@@ -58,9 +70,15 @@ class BaseWorker(QObject):
             Qt.QueuedConnection,
         )
 
-    def emit_error_and_finish(self, title: str, message: str, code: str = "",
-        timer: QElapsedTimer = None, step_name: str = "",
-        close_window: bool = True):
+    def emit_error_and_finish(
+        self,
+        title: str,
+        message: str,
+        code: str = "",
+        timer: QElapsedTimer = None,
+        step_name: str = "",
+        close_window: bool = True,
+    ):
         """
         Универсальный метод обработки ошибок
         :param title: Заголовок ошибки
@@ -87,11 +105,13 @@ class BaseWorker(QObject):
                 logger.warning("Попытка emit после удаления объекта — игнорируем")
             else:
                 raise
-        except Exception as e:
+        except Exception:
             logger.exception("Неожиданная ошибка в emit_error_and_finish")
+
 
 class PaymentHandler:
     """Обработчик банковских платежей"""
+
     def __init__(self, worker, pq, payment_type, amount, dev_mode=False):
         self.worker = worker
         self.pq = pq
@@ -107,7 +127,9 @@ class PaymentHandler:
 
         if self.dev_mode:
             self.worker.logger.info("РЕЖИМ ОТЛАДКИ: Имитация оплаты картой")
-            self.worker.logger.debug(f"Сумма: {self.amount}, Тип оплаты: {self.payment_type}")
+            self.worker.logger.debug(
+                f"Сумма: {self.amount}, Тип оплаты: {self.payment_type}"
+            )
             return True, 1  # (success, payment_type)
 
         try:
@@ -116,7 +138,7 @@ class PaymentHandler:
                 self.payment_type,
                 self.amount,
                 self.worker.progress_updated,
-                error_callback=self._handle_terminal_error_callback
+                error_callback=self._handle_terminal_error_callback,
             )
             self.worker.log_step(timer, "pq.universal_terminal_operation finished")
 
@@ -134,19 +156,21 @@ class PaymentHandler:
     def get_mock_slip(self):
         """Генерация тестового слип-чека для режима отладки"""
         from datetime import datetime
-        return (f"DEBUG_SLIP\n"
-                f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
-                f"Сумма: {self.amount} руб.\n"
-                f"Тип: {'Онлайн' if self.payment_type == 101 else 'Оффлайн'}\n"
-                f"СТАНДАРТНЫЙ ЧЕК ДЛЯ ТЕСТИРОВАНИЯ")
 
-    def _handle_terminal_error_callback(self, title: str, message: str, code: int) -> None:
+        return (
+            f"DEBUG_SLIP\n"
+            f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
+            f"Сумма: {self.amount} руб.\n"
+            f"Тип: {'Онлайн' if self.payment_type == 101 else 'Оффлайн'}\n"
+            f"СТАНДАРТНЫЙ ЧЕК ДЛЯ ТЕСТИРОВАНИЯ"
+        )
+
+    def _handle_terminal_error_callback(
+        self, title: str, message: str, code: int
+    ) -> None:
         """Callback для обработки ошибок от терминала"""
         self.worker.emit_error_and_finish(
-            title=title,
-            message=message,
-            code=str(code),
-            step_name="terminal_error"
+            title=title, message=message, code=str(code), step_name="terminal_error"
         )
 
     def _handle_payment_failed(self, timer):
@@ -155,7 +179,7 @@ class PaymentHandler:
             title="Ошибка",
             message="Операция оплаты не удалась. Повторите попытку.",
             timer=timer,
-            step_name="payment_failed"
+            step_name="payment_failed",
         )
 
     def _handle_payment_exception(self, timer, exception):
@@ -165,12 +189,13 @@ class PaymentHandler:
             message="Не удалось выполнить операцию на терминале.",
             code=str(exception),
             timer=timer,
-            step_name="payment_exception"
+            step_name="payment_exception",
         )
 
 
 class CheckHandler:
     """Обработчик печати чеков"""
+
     def __init__(self, worker, pq):
         self.worker = worker
         self.pq = pq
@@ -184,25 +209,28 @@ class CheckHandler:
             type_operation=1,
             print_check=print_check,
             bank_status=bank_data,
-            on_error=self.handle_check_error
+            on_error=self.handle_check_error,
         )
 
         return state_check == 1
 
-    def handle_check_error(self, title="Неизвестная ошибка", text="Произошла неизвестная ошибка"):
+    def handle_check_error(
+        self, title="Неизвестная ошибка", text="Произошла неизвестная ошибка"
+    ):
         """Обработчик ошибок печати чека"""
         logger.error(f"handle_check_error вызван с title={title}, text={text}")
         self.worker.emit_error_and_finish(
             title="Ошибка ККМ",
             message="Документ не закрылся после 5 попыток. Отмена кассового чека.",
             code="critical",
-            step_name="check_error"
+            step_name="check_error",
         )
         # raise Exception(f"{title}: {text}")
 
 
 class DatabaseHandler:
     """Обработчик работы с базой данных"""
+
     def __init__(self, Session, engine):
         self.Session = Session
         self.engine = engine
@@ -211,7 +239,9 @@ class DatabaseHandler:
         """Проверяет существование продажи по ID"""
         try:
             with self.Session(self.engine) as session:
-                return session.query(Sale).filter(Sale.id == sale_id).first() is not None
+                return (
+                    session.query(Sale).filter(Sale.id == sale_id).first() is not None
+                )
         except Exception as e:
             logger.error(f"Ошибка проверки существования продажи {sale_id}: {e}")
             return False
@@ -219,17 +249,16 @@ class DatabaseHandler:
     def update_sale(self, sale_id, **values):
         """Общее сохранение данных о продаже"""
         with self.Session(self.engine) as session:
-            session.execute(
-                update(Sale)
-                .where(Sale.id == sale_id)
-                .values(**values)
-            )
+            session.execute(update(Sale).where(Sale.id == sale_id).values(**values))
             session.commit()
 
 
 class TransactionWorker(BaseWorker):
     """Основной класс обработки транзакций"""
-    def __init__(self, payment_type, print_check, system, pq, Session, main_window, parent=None):
+
+    def __init__(
+        self, payment_type, print_check, system, pq, Session, main_window, parent=None
+    ):
         super().__init__(parent)
         self.payment_type = payment_type
         self.print_check = print_check
@@ -238,7 +267,9 @@ class TransactionWorker(BaseWorker):
         self.Session = Session
         self.main_window = main_window
         # Флаг режима отладки
-        self.dev_mode = getattr(main_window, 'dev_mode', False) if main_window else False
+        self.dev_mode = (
+            getattr(main_window, "dev_mode", False) if main_window else False
+        )
         # Флаг cleanup
         self._is_cleaned = False
 
@@ -262,14 +293,16 @@ class TransactionWorker(BaseWorker):
     @with_timer
     def process_special_sale(self, timer: QElapsedTimer, progress_percent: int):
         """Обработка специальной продажи"""
-        self.delayed_progress_update("Печатаем билеты (особая продажа)...", progress_percent)
+        self.delayed_progress_update(
+            "Печатаем билеты (особая продажа)...", progress_percent
+        )
         self.invoke_main_window_method("print_saved_tickets")
         self.log_step(timer, "print_saved_tickets finished")
         self.system.sale_status = 0
 
     def process_payment(self, timer: QElapsedTimer):
         """Обработка платежа"""
-        payment = 2 # по умолчанию наличные
+        payment = 2  # по умолчанию наличные
         bank_status = 0
 
         # Проверяем, что sale_id существует
@@ -278,17 +311,19 @@ class TransactionWorker(BaseWorker):
             self.emit_error_and_finish(
                 title="Критическая ошибка",
                 message="Продажа не была создана в БД",
-                code="SALE_ID_NONE"
+                code="SALE_ID_NONE",
             )
             return None, None
 
         # Проверяем существует ли продажа в БД?
         if not self.db_handler.sale_exists(self.system.sale_id):
-            logger.warning(f"Продажа {self.system.sale_id} есть в памяти, но отсутствует в БД!")
+            logger.warning(
+                f"Продажа {self.system.sale_id} есть в памяти, но отсутствует в БД!"
+            )
             self.emit_error_and_finish(
                 title="Критическая ошибка",
                 message="Продажа не найдена в БД после сохранения",
-                code="SALE_NOT_IN_DB"
+                code="SALE_NOT_IN_DB",
             )
             return None, None
 
@@ -335,7 +370,9 @@ class TransactionWorker(BaseWorker):
         self.delayed_progress_update("Печатаем кассовый чек...", 60)
 
         logger.debug(f"ДО check_open: sale_dict = {self.system.sale_dict}")
-        logger.debug(f"exclude_from_sale={self.system.exclude_from_sale}, sale_checkbox_row={self.system.sale_checkbox_row}")
+        logger.debug(
+            f"exclude_from_sale={self.system.exclude_from_sale}, sale_checkbox_row={self.system.sale_checkbox_row}"
+        )
 
         try:
             if not self.check_handler.print_check(
@@ -344,7 +381,7 @@ class TransactionWorker(BaseWorker):
                 self.system.user,
                 self.print_check,
                 self.system.sale_dict["detail"][7],
-                bank_data
+                bank_data,
             ):
                 # В случае ошибки внутри print_check должен быть вызван on_error
                 return False
@@ -394,7 +431,7 @@ class TransactionWorker(BaseWorker):
             code=str(error),
             timer=timer,
             step_name="transaction_error",
-            close_window=True
+            close_window=True,
         )
         self.system.sale_status = 0
 
