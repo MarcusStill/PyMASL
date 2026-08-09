@@ -25,3 +25,9 @@ __pycache__/
 /ticket.pdf
 /platforms/
 /db/alembic/
+
+# Тесты
+/pytest.ini
+/htmlcov/
+/.coveragerc
+/.coverage
