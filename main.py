@@ -2389,7 +2389,7 @@ class SaleForm(QDialog):
             if system.sale_status != 0:
                 windows.info_window(
                     "Внимание",
-                    "Оплата картой доступна только для новых продаж.",
+                    "Оплата наличными доступна только для новых продаж.",
                     ""
                 )
                 return
@@ -2398,10 +2398,10 @@ class SaleForm(QDialog):
             self.sale_transaction(payment_type, system.print_check)
         elif res == Payment.Offline:
             # Offline только для не фискализированных продаж
-            if system.sale_status in (0, 9):
+            if system.sale_status not in (0, 9):
                 windows.info_window(
                     "Внимание",
-                    "Оплата картой доступна только для новых продаж.",
+                    "Оплата картой доступна только для новых или не фискализированных продаж.",
                     ""
                 )
                 return
