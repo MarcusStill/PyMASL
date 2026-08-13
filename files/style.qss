@@ -1,0 +1,126 @@
+/* Windows 10/11 Light Theme for PySide6 */
+* {
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+    color: #333333;
+}
+
+QMainWindow, QDialog {
+    background-color: #F3F3F3;
+}
+
+QWidget {
+    background-color: #F3F3F3;
+}
+
+/* Avoid overriding checkbox and radio indicators */
+
+QPushButton {
+    background-color: #0078D4;
+    color: white;
+    border: 1px solid #0078D4;
+    border-radius: 4px;
+    padding: 6px 16px;
+    min-height: 24px;
+}
+
+QPushButton:hover {
+    background-color: #005A9E;
+    border-color: #005A9E;
+}
+
+QPushButton:pressed {
+    background-color: #004578;
+    border-color: #004578;
+}
+
+QPushButton:disabled {
+    background-color: #CCCCCC;
+    color: #888888;
+    border-color: #CCCCCC;
+}
+
+QLineEdit, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 4px 8px;
+    min-height: 24px;
+    selection-background-color: #0078D4;
+}
+
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
+    border: 1px solid #0078D4;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left-width: 1px;
+    border-left-color: #CCCCCC;
+    border-left-style: solid;
+}
+
+QTableWidget {
+    background-color: #FFFFFF;
+    alternate-background-color: #F9F9F9;
+    border: 1px solid #CCCCCC;
+    gridline-color: #EEEEEE;
+    selection-background-color: #0078D4;
+    selection-color: white;
+}
+
+QHeaderView::section {
+    background-color: #E6E6E6;
+    color: #333333;
+    padding: 4px;
+    border: 1px solid #CCCCCC;
+    font-weight: bold;
+}
+
+QScrollBar:vertical {
+    border: none;
+    background: #F3F3F3;
+    width: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #CDCDCD;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #A6A6A6;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #F3F3F3;
+    height: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #CDCDCD;
+    min-width: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #A6A6A6;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+QLabel {
+    background-color: transparent;
+}
