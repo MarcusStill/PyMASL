@@ -318,7 +318,7 @@ class TransactionWorker(BaseWorker):
                     bank_status = 1
                     # Обязательно сохраняем банковский слип-чек
                     try:
-                        self.db_handler.update_sale(self.system.sale_id, bank_pay=check)
+                        self.db_handler.update_sale(self.system.sale_id, bank_pay=check, status=9)
                     except Exception as e:
                         logger.warning(f"Ошибка сохранения банковского чека: {e}")
             self.log_step(timer, "save in db finished")
