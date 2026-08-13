@@ -2362,7 +2362,7 @@ class SaleForm(QDialog):
             if system.sale_status != 0:
                 windows.info_window(
                     "Внимание",
-                    "Оплата наличными доступна только для новых продаж.",
+                    "Оплата картой доступна только для новых продаж.",
                     ""
                 )
                 return
@@ -2389,7 +2389,7 @@ class SaleForm(QDialog):
             if system.sale_status != 0:
                 windows.info_window(
                     "Внимание",
-                    "Оплата картой доступна только для новых продаж.",
+                    "Оплата наличными доступна только для новых продаж.",
                     ""
                 )
                 return
