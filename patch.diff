@@ -1,0 +1,134 @@
+diff --git a/main.py b/main.py
+index 13b3d4c..930c2db 100644
+--- a/main.py
++++ b/main.py
+@@ -55,7 +55,7 @@ from modules.worker import TransactionWorker
+
+ system = System()
+ config_data = system.config
+-logger.add(system.log_file, rotation="1 MB", enqueue=True)
++logger.add(system.log_file, rotation="1 MB")
+
+
+ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
+@@ -222,7 +222,7 @@ class AuthForm(QDialog):
+             f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
+         )
+         window.main_button_all_sales()
+-        window.exec_()
++
+
+
+
+@@ -429,7 +429,7 @@ class SaleForm(QDialog):
+         # Сохраняем параметры данных об уже существующем клиенте
+         system.client_update = 1
+         logger.info(f"Обновляем инф. клиента {system.client_id}")
+-        client.exec_()
++        client.exec()
+
+     def adding_new_client_to_sale(self) -> None:
+         """
+@@ -791,12 +791,13 @@ class SaleForm(QDialog):
+         elif index == 0:
+             # Поиск по фамилии и имени
+             self.ui.tableWidget.setRowCount(0)
+-            search: list[Type[Client]] = self.ui.lineEdit.text().title()
++            search_text = self.ui.lineEdit.text().title()
+             # Разбиваем поисковую фразу на две
+-            lst: Any = search.split()
++            lst: Any = search_text.split()
++            search = []
+             if len(lst) == 2:
+                 with Session(system.engine) as session:
+-                    search: list[Type[Client]] = (
++                    search = (
+                         session.query(Client)
+                         .filter(
+                             and_(
+@@ -2344,7 +2345,7 @@ class SaleForm(QDialog):
+         # Передаем текст в форму PayForm
+         pay.setText(txt)
+
+-        res: int = pay.exec_()
++        res: int = pay.exec()
+         # если пользователь нажал крестик или кнопку Escape,
+         # то по-умолчанию возвращается QDialog.Rejected
+         if res == QDialog.Rejected:
+@@ -2523,7 +2524,7 @@ class SlipForm(QDialog):
+         slip.ui.lineEdit.setText(rrn_value)
+         slip.ui.textEdit.setText(load_slip)
+         slip.show()
+-        slip.exec_()
++        slip.exec()
+
+
+ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+@@ -2835,7 +2836,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+         # Сохраняем параметры данных об уже существующем клиенте
+         system.client_update = 1
+         logger.info(f"Обновляем информацию о клиенте")
+-        client.exec_()
++        client.exec()
+
+     def main_filter_clear(self) -> None:
+         """
+@@ -3130,7 +3131,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+             system.sale_id = int(sale_number)
+             system.sale_tickets = client_in_sale
+             logger.debug(f"Билеты сохраненной продажи: {system.sale_tickets}")
+-            sale.exec_()
++            sale.exec()
+
+     @logger_wraps(entry=True, exit=True, level="DEBUG")
+     def main_button_all_sales(self) -> None:
+@@ -3316,7 +3317,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+         system.sale_id = None
+         system.sale_status = 0 # Т.е. новая продажа
+         system.sale_tickets = None
+-        sale.exec_()
++        sale.exec()
+
+     def main_get_statistic(self) -> None:
+         """
+diff --git a/modules/system.py b/modules/system.py
+index 34c8fdf..9a7a6f7 100644
+--- a/modules/system.py
++++ b/modules/system.py
+@@ -51,7 +51,9 @@ class System:
+             raise ValueError("Переменная окружения DB_PASSWORD не установлена!")
+
+         self.engine = create_engine(
+-            f"postgresql+psycopg2://{self.user}:{pswrd}@{self.host}:{self.port}/{self.database}"
++            f"postgresql+psycopg2://{self.user}:{pswrd}@{self.host}:{self.port}/{self.database}",
++            pool_pre_ping=True,
++            pool_recycle=3600
+         )
+
+         # Инициализация данных
+diff --git a/modules/windows.py b/modules/windows.py
+index bef3e4d..74c4a80 100644
+--- a/modules/windows.py
++++ b/modules/windows.py
+@@ -26,7 +26,7 @@ def info_dialog_window(title, text):
+     buttonN.setText("Нет")
+     # Отображаем окно поверх всех
+     box.setWindowFlags(box.windowFlags() | Qt.WindowStaysOnTopHint)
+-    box.exec_()
++    box.exec()
+
+     if box.clickedButton() == buttonY:
+         return 1
+diff --git a/tests/test_windows.py b/tests/test_windows.py
+index b9f29fa..0244a4b 100644
+--- a/tests/test_windows.py
++++ b/tests/test_windows.py
+@@ -38,7 +38,7 @@ class TestWindows(unittest.TestCase):
+
+         mock_msgbox_inst.setWindowTitle.assert_called_with("Title")
+         mock_msgbox_inst.setText.assert_called_with("Text")
+-        self.assertTrue(mock_msgbox_inst.exec_.called)
++        self.assertTrue(mock_msgbox_inst.exec.called)
+         self.assertEqual(result, 1)
+
+     @patch('modules.windows.QMessageBox')

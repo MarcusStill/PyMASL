@@ -51,7 +51,9 @@ class System:
             raise ValueError("Переменная окружения DB_PASSWORD не установлена!")
 
         self.engine = create_engine(
-            f"postgresql+psycopg2://{self.user}:{pswrd}@{self.host}:{self.port}/{self.database}"
+            f"postgresql+psycopg2://{self.user}:{pswrd}@{self.host}:{self.port}/{self.database}",
+            pool_pre_ping=True,
+            pool_recycle=3600
         )
 
         # Инициализация данных

@@ -38,7 +38,7 @@ class TestWindows(unittest.TestCase):
 
         mock_msgbox_inst.setWindowTitle.assert_called_with("Title")
         mock_msgbox_inst.setText.assert_called_with("Text")
-        self.assertTrue(mock_msgbox_inst.exec_.called)
+        self.assertTrue(mock_msgbox_inst.exec.called)
         self.assertEqual(result, 1)
 
     @patch('modules.windows.QMessageBox')
