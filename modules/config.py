@@ -122,6 +122,8 @@ class Config:
                     )
                 config_data[key] = config.get(section, key)
 
+            config_data["log_level"] = config.get("OTHER", "log_level", fallback="DEBUG")
+
 
             return config_data
         except (NoSectionError, NoOptionError) as e:
