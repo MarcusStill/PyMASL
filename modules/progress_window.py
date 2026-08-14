@@ -9,8 +9,8 @@ from modules.logger import logger
 class ProgressWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Блокируем только родительское окно
-        # self.setModal(True)
+        # Блокируем все окна приложения
+        self.setModal(True)
         # Установка размеров окна (ширина, высота)
         self.setMinimumSize(370, 145)
         self.resize(370, 145)
