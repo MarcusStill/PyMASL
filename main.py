@@ -55,7 +55,7 @@ from modules.worker import TransactionWorker
 
 system = System()
 config_data = system.config
-logger.add(system.log_file, rotation="1 MB", enqueue=True)
+logger.add(system.log_file, rotation="1 MB", enqueue=True, level=system.log_level.upper())
 
 
 def handle_uncaught_exception(exc_type, exc_value, exc_traceback):

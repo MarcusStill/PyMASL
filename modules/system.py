@@ -38,6 +38,7 @@ class System:
         self.user = self.config.get("user")
         self.software_version = self.config.get("version")
         self.log_file = self.config.get("log_file")
+        self.log_level = self.config.get("log_level") or "DEBUG"
         # Информация о РМ
         self.kol_pc = int(self.config.get("kol"))
         self.pcs = self.config.pcs  # список рабочих станций
