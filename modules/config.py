@@ -1,4 +1,3 @@
-import logging
 import os
 from configparser import (
     ConfigParser,
@@ -8,7 +7,7 @@ from configparser import (
 )
 from typing import List, Optional
 
-logger = logging.getLogger(__name__)
+from modules.logger import logger
 
 
 class Config:
@@ -122,6 +121,11 @@ class Config:
                     )
                 config_data[key] = config.get(section, key)
 
+            # Optional parameters
+            if config.has_option("OTHER", "log_level"):
+                config_data["log_level"] = config.get("OTHER", "log_level")
+            else:
+                config_data["log_level"] = "DEBUG"
 
             return config_data
         except (NoSectionError, NoOptionError) as e:

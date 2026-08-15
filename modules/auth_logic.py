@@ -1,9 +1,7 @@
 import datetime as dt
-import logging
 
 from modules.system import System
-
-logger = logging.getLogger(__name__)
+from modules.logger import logger
 
 system = System()
 

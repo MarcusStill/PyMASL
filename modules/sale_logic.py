@@ -1,12 +1,10 @@
-import logging
 from datetime import date
 from decimal import Decimal
 
 from modules.system import System
+from modules.logger import logger
 
 system = System()
-
-logger = logging.getLogger(__name__)
 
 
 def calculate_age(birth_date: date) -> int:
