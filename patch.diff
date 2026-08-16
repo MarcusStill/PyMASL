@@ -1,0 +1,175 @@
+diff --git a/files/style.qss b/files/style.qss
+new file mode 100644
+index 0000000..1a7f446
+--- /dev/null
++++ b/files/style.qss
+@@ -0,0 +1,149 @@
++/* Windows 10/11 Light Theme Style */
++* {
++    font-family: "Segoe UI", "Helvetica Neue", sans-serif;
++    font-size: 10pt;
++}
++
++QWidget {
++    background-color: #F3F3F3;
++    color: #000000;
++}
++
++/* Primary buttons */
++QPushButton {
++    background-color: #E1E1E1;
++    border: 1px solid #CCCCCC;
++    border-radius: 4px;
++    padding: 6px 16px;
++    color: #000000;
++}
++
++QPushButton:hover {
++    background-color: #E5F1FB;
++    border: 1px solid #0078D4;
++}
++
++QPushButton:pressed {
++    background-color: #CCE4F7;
++    border: 1px solid #005499;
++}
++
++QPushButton:disabled {
++    background-color: #F0F0F0;
++    color: #A0A0A0;
++    border: 1px solid #E0E0E0;
++}
++
++/* Inputs */
++QLineEdit, QComboBox, QDateEdit, QSpinBox, QDoubleSpinBox {
++    background-color: #FFFFFF;
++    border: 1px solid #CCCCCC;
++    border-radius: 4px;
++    padding: 4px;
++    color: #000000;
++}
++
++QLineEdit:hover, QComboBox:hover, QDateEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover {
++    border: 1px solid #808080;
++}
++
++QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
++    border: 1px solid #0078D4;
++    border-bottom: 2px solid #0078D4;
++}
++
++QLineEdit:disabled, QComboBox:disabled, QDateEdit:disabled {
++    background-color: #F0F0F0;
++    color: #A0A0A0;
++    border: 1px solid #E0E0E0;
++}
++
++/* Tables */
++QTableWidget, QTableView {
++    background-color: #FFFFFF;
++    alternate-background-color: #FAFAFA;
++    border: 1px solid #CCCCCC;
++    gridline-color: #E0E0E0;
++}
++
++QHeaderView::section {
++    background-color: #FFFFFF;
++    border: none;
++    border-right: 1px solid #E0E0E0;
++    border-bottom: 1px solid #E0E0E0;
++    padding: 4px;
++    font-weight: 600;
++}
++
++QTableView::item:selected {
++    background-color: #CCE4F7;
++    color: #000000;
++}
++
++/* Scrollbars */
++QScrollBar:vertical {
++    border: none;
++    background: #F3F3F3;
++    width: 12px;
++    margin: 0px 0px 0px 0px;
++}
++QScrollBar::handle:vertical {
++    background: #CDCDCD;
++    min-height: 20px;
++    border-radius: 6px;
++}
++QScrollBar::handle:vertical:hover {
++    background: #A6A6A6;
++}
++QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
++    border: none;
++    background: none;
++}
++
++QScrollBar:horizontal {
++    border: none;
++    background: #F3F3F3;
++    height: 12px;
++    margin: 0px 0px 0px 0px;
++}
++QScrollBar::handle:horizontal {
++    background: #CDCDCD;
++    min-width: 20px;
++    border-radius: 6px;
++}
++QScrollBar::handle:horizontal:hover {
++    background: #A6A6A6;
++}
++QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
++    border: none;
++    background: none;
++}
++
++/* Tabs */
++QTabWidget::pane {
++    border: 1px solid #CCCCCC;
++    background-color: #FFFFFF;
++}
++
++QTabBar::tab {
++    background-color: #F3F3F3;
++    border: 1px solid transparent;
++    border-bottom: 1px solid #CCCCCC;
++    padding: 6px 16px;
++    margin-right: 2px;
++}
++
++QTabBar::tab:selected {
++    background-color: #FFFFFF;
++    border: 1px solid #CCCCCC;
++    border-bottom: 1px solid #FFFFFF;
++}
++
++QTabBar::tab:hover:!selected {
++    background-color: #EAEAEA;
++}
++
++/* Dialogs */
++QDialog {
++    background-color: #F3F3F3;
++}
+diff --git a/main.py b/main.py
+index c7f54d0..5a61cbd 100644
+--- a/main.py
++++ b/main.py
+@@ -3556,6 +3556,15 @@ class Payment:
+ if __name__ == "__main__":
+     app = QtWidgets.QApplication(sys.argv)
+     app.setStyle("Fusion")
++
++    # Load custom QSS style
++    qss_path = Path(__file__).parent / "files" / "style.qss"
++    if qss_path.exists():
++        with open(qss_path, "r", encoding="utf-8") as f:
++            app.setStyleSheet(f.read())
++    else:
++        logger.warning(f"Style file not found at {qss_path}")
++
+     auth = AuthForm()
+     auth.show()
+     auth.ui.label_9.setText(system.database)
