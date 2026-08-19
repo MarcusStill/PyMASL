@@ -1,0 +1,173 @@
+/* Windows 10/11 Light Theme Aesthetic */
+
+QWidget {
+    font-family: "Segoe UI", "San Francisco", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10pt;
+    color: #000000;
+    background-color: #F3F3F3;
+}
+
+QMainWindow, QDialog, QAbstractScrollArea {
+    background-color: #FFFFFF;
+}
+
+QTableWidget, QTableView, QListView, QTreeView {
+    background-color: #FFFFFF;
+    gridline-color: #E0E0E0;
+    border: 1px solid #CCCCCC;
+    selection-background-color: #CCE8FF;
+    selection-color: #000000;
+}
+
+QHeaderView::section {
+    background-color: #F3F3F3;
+    color: #333333;
+    padding: 4px;
+    border: 1px solid #CCCCCC;
+    border-top: none;
+    border-left: none;
+}
+
+QPushButton {
+    background-color: #E1E1E1;
+    border: 1px solid #ADADAD;
+    padding: 6px 12px;
+    border-radius: 4px;
+}
+
+QPushButton:hover {
+    background-color: #E5F1FB;
+    border-color: #0078D4;
+}
+
+QPushButton:pressed {
+    background-color: #CCE4F7;
+    border-color: #005499;
+}
+
+/* Primary Accent Button Example (can be assigned via objectName or subclass if needed) */
+QPushButton#primaryButton {
+    background-color: #0078D4;
+    color: #FFFFFF;
+    border: 1px solid #005A9E;
+}
+
+QPushButton#primaryButton:hover {
+    background-color: #005A9E;
+    border-color: #004578;
+}
+
+QPushButton#primaryButton:pressed {
+    background-color: #004578;
+    border-color: #004578;
+}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {
+    border-color: #0078D4;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left-width: 1px;
+    border-left-color: #CCCCCC;
+    border-left-style: solid;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+QScrollBar:vertical {
+    border: none;
+    background: #F3F3F3;
+    width: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #CDCDCD;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #A6A6A6;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #F3F3F3;
+    height: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #CDCDCD;
+    min-width: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #A6A6A6;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+QTabWidget::pane {
+    border: 1px solid #CCCCCC;
+    background-color: #FFFFFF;
+}
+
+QTabBar::tab {
+    background-color: #F3F3F3;
+    border: 1px solid #CCCCCC;
+    padding: 6px 12px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+QTabBar::tab:selected {
+    background-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #E1E1E1;
+}
+
+QGroupBox {
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    margin-top: 2ex;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 3px;
+}
+
+QProgressBar {
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    text-align: center;
+    background-color: #E6E6E6;
+}
+
+QProgressBar::chunk {
+    background-color: #0078D4;
+    width: 1px;
+}
