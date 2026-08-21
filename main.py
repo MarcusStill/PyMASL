@@ -66,6 +66,7 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
     logger.opt(exception=(exc_type, exc_value, exc_traceback)).error(
         "Неперехваченное исключение"
     )
+    logger.complete()
 
 sys.excepthook = handle_uncaught_exception
 
@@ -103,6 +104,7 @@ class AuthForm(QDialog):
                 "Не удалось подключиться к серверу базы данных.\n Приложение будет закрыто.",
                 ""
             )
+            logger.complete()
             sys.exit(1)
         login: str = self.ui.lineEdit.text()
         password: str = self.ui.lineEdit_2.text()
@@ -3559,4 +3561,6 @@ if __name__ == "__main__":
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
-    sys.exit(app.exec())
+    ret = app.exec()
+    logger.complete()
+    sys.exit(ret)
