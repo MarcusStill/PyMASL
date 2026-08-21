@@ -1,0 +1,186 @@
+/* General Styling */
+QWidget {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    color: #333333;
+}
+
+QMainWindow, QDialog, QWidget {
+    background-color: #F3F3F3;
+}
+
+/* QPushButton Styling */
+QPushButton {
+    background-color: #E1E1E1;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 6px 16px;
+    color: #000000;
+}
+
+QPushButton:hover {
+    background-color: #E5F1FB;
+    border: 1px solid #0078D4;
+}
+
+QPushButton:pressed {
+    background-color: #CCE4F7;
+    border: 1px solid #005499;
+}
+
+QPushButton:disabled {
+    background-color: #F0F0F0;
+    color: #A0A0A0;
+    border: 1px solid #E0E0E0;
+}
+
+/* Primary/Action Button Option (can be applied via specific object names if desired) */
+/*
+QPushButton#primaryButton {
+    background-color: #0078D4;
+    color: white;
+    border: 1px solid #005A9E;
+}
+QPushButton#primaryButton:hover {
+    background-color: #106EBE;
+}
+QPushButton#primaryButton:pressed {
+    background-color: #005A9E;
+}
+*/
+
+/* QLineEdit Styling */
+QLineEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 4px 8px;
+    selection-background-color: #0078D4;
+    selection-color: #FFFFFF;
+}
+
+QLineEdit:focus {
+    border: 1px solid #0078D4;
+    border-bottom: 2px solid #0078D4;
+}
+
+QLineEdit:disabled {
+    background-color: #F0F0F0;
+    color: #A0A0A0;
+}
+
+/* QTableWidget / QTableView Styling */
+QTableWidget, QTableView {
+    background-color: #FFFFFF;
+    border: 1px solid #D1D1D1;
+    gridline-color: #E0E0E0;
+    selection-background-color: #CCE4F7;
+    selection-color: #000000;
+    alternate-background-color: #F9F9F9;
+}
+
+QHeaderView::section {
+    background-color: #F0F0F0;
+    border: none;
+    border-right: 1px solid #D1D1D1;
+    border-bottom: 1px solid #D1D1D1;
+    padding: 4px;
+    font-weight: bold;
+}
+
+QHeaderView::section:hover {
+    background-color: #E1E1E1;
+}
+
+/* QTabWidget Styling */
+QTabWidget::pane {
+    border: 1px solid #CCCCCC;
+    background-color: #FFFFFF;
+    border-radius: 4px;
+    margin-top: -1px;
+}
+
+QTabBar::tab {
+    background-color: #E1E1E1;
+    border: 1px solid #CCCCCC;
+    border-bottom-color: #CCCCCC; /* Same as the pane color */
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    min-width: 8ex;
+    padding: 6px 12px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: #FFFFFF;
+    border-bottom-color: #FFFFFF; /* Makes it blend with the pane */
+    color: #0078D4;
+    font-weight: bold;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #E5F1FB;
+}
+
+/* QGroupBox Styling */
+QGroupBox {
+    border: 1px solid #D1D1D1;
+    border-radius: 4px;
+    margin-top: 20px;
+    background-color: #FFFFFF;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 5px;
+    color: #0078D4;
+    font-weight: bold;
+}
+
+/* Scrollbar Styling */
+QScrollBar:vertical {
+    border: none;
+    background: #F0F0F0;
+    width: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #CDCDCD;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #A6A6A6;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #F0F0F0;
+    height: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #CDCDCD;
+    min-width: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #A6A6A6;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+}
