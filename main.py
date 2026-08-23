@@ -3556,6 +3556,13 @@ class Payment:
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle("Fusion")
+
+    # Apply modern Windows 10/11 QSS style
+    style_path = Path(__file__).parent / "files" / "style.qss"
+    if style_path.exists():
+        with open(style_path, "r", encoding="utf-8") as style_file:
+            app.setStyleSheet(style_file.read())
+
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
