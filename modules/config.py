@@ -122,6 +122,7 @@ class Config:
                     )
                 config_data[key] = config.get(section, key)
 
+            config_data["log_level"] = config.get("OTHER", "log_level", fallback="INFO")
 
             return config_data
         except (NoSectionError, NoOptionError) as e:
@@ -136,6 +137,6 @@ class Config:
             logger.error(f"Неизвестная ошибка при чтении файла конфигурации: {e}")
             raise RuntimeError(f"Неизвестная ошибка: {e}")
 
-    def get(self, key: str) -> Optional[str]:
-        value = self.config_data.get(key)
+    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        value = self.config_data.get(key, default)
         return value
