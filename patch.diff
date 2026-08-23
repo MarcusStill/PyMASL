@@ -1,0 +1,61 @@
+diff --git a/main.py b/main.py
+index c7f54d0..641590c 100644
+--- a/main.py
++++ b/main.py
+@@ -55,7 +55,8 @@ from modules.worker import TransactionWorker
+
+ system = System()
+ config_data = system.config
+-logger.add(system.log_file, rotation="1 MB", enqueue=True)
++log_level = config_data.get("log_level", "INFO").upper()
++logger.add(system.log_file, rotation="1 MB", enqueue=True, buffering=1, level=log_level)
+
+
+ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
+@@ -66,6 +67,7 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
+     logger.opt(exception=(exc_type, exc_value, exc_traceback)).error(
+         "Неперехваченное исключение"
+     )
++    logger.complete()
+
+ sys.excepthook = handle_uncaught_exception
+
+@@ -103,6 +105,7 @@ class AuthForm(QDialog):
+                 "Не удалось подключиться к серверу базы данных.\n Приложение будет закрыто.",
+                 ""
+             )
++            logger.complete()
+             sys.exit(1)
+         login: str = self.ui.lineEdit.text()
+         password: str = self.ui.lineEdit_2.text()
+@@ -3559,4 +3562,6 @@ if __name__ == "__main__":
+     auth = AuthForm()
+     auth.show()
+     auth.ui.label_9.setText(system.database)
+-    sys.exit(app.exec())
++    exit_code = app.exec()
++    logger.complete()
++    sys.exit(exit_code)
+diff --git a/modules/config.py b/modules/config.py
+index 3cb0a17..1083752 100644
+--- a/modules/config.py
++++ b/modules/config.py
+@@ -121,7 +121,8 @@ class Config:
+                         f"Отсутствует параметр '{key}' в секции '{section}'"
+                     )
+                 config_data[key] = config.get(section, key)
+-
++
++            config_data["log_level"] = config.get("OTHER", "log_level", fallback="INFO")
+
+             return config_data
+         except (NoSectionError, NoOptionError) as e:
+@@ -136,6 +137,6 @@ class Config:
+             logger.error(f"Неизвестная ошибка при чтении файла конфигурации: {e}")
+             raise RuntimeError(f"Неизвестная ошибка: {e}")
+
+-    def get(self, key: str) -> Optional[str]:
+-        value = self.config_data.get(key)
++    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
++        value = self.config_data.get(key, default)
+         return value
