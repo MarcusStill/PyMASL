@@ -1,3 +1,5 @@
+# CI/CD pipeline configuration for GitHub Actions
+
 name: CI
 
 on:
