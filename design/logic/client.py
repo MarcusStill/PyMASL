@@ -1,16 +1,7 @@
 from PySide6.QtCore import QCoreApplication, QMetaObject, QRect, Qt
-from PySide6.QtWidgets import (
-    QComboBox,
-    QDateEdit,
-    QFormLayout,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QToolBox,
-    QWidget,
-)
+from PySide6.QtWidgets import (QComboBox, QDateEdit, QFormLayout, QGridLayout,
+                               QHBoxLayout, QLabel, QLineEdit, QPushButton,
+                               QToolBox, QWidget)
 
 
 class Ui_Dialog_Client(object):

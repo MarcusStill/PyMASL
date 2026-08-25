@@ -1,25 +1,10 @@
 from PySide6.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide6.QtGui import QAction, QFont
-from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QCheckBox,
-    QComboBox,
-    QDateEdit,
-    QFrame,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMenu,
-    QMenuBar,
-    QPushButton,
-    QRadioButton,
-    QStatusBar,
-    QTabWidget,
-    QTableWidget,
-    QTableWidgetItem,
-    QWidget,
-)
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
+                               QDateEdit, QFrame, QGroupBox, QHBoxLayout,
+                               QLabel, QLineEdit, QMenu, QMenuBar, QPushButton,
+                               QRadioButton, QStatusBar, QTableWidget,
+                               QTableWidgetItem, QTabWidget, QWidget)
 
 
 class Ui_MainWindow(object):
