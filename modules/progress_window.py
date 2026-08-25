@@ -1,5 +1,4 @@
-from PySide6.QtCore import QPropertyAnimation, QEasingCurve
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
 from PySide6.QtWidgets import QDialog
 
 from design.logic.progress_dialog import Ui_ProgressDialog

@@ -1,18 +1,8 @@
 from PySide6.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QCheckBox,
-    QComboBox,
-    QDateEdit,
-    QFrame,
-    QGroupBox,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-)
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
+                               QDateEdit, QFrame, QGroupBox, QLabel, QLineEdit,
+                               QPushButton, QTableWidget, QTableWidgetItem)
 
 
 class Ui_Dialog_Sale(object):
