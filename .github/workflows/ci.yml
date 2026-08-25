@@ -44,4 +44,5 @@ jobs:
           DB_NAME: dummy
           DB_HOST: dummy
         run: |
+          # Запуск тестов через xvfb, так как PySide6 требует наличия дисплея
           xvfb-run -a python -m pytest -p no:pytest-qt tests/
