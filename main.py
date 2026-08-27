@@ -55,7 +55,13 @@ from modules.worker import TransactionWorker
 
 system = System()
 config_data = system.config
-logger.add(system.log_file, rotation="1 MB", enqueue=True)
+logger.add(
+    system.log_file,
+    rotation="1 MB",
+    enqueue=True,
+    buffering=1,
+    level=(config_data.get("log_level") or "DEBUG").upper(),
+)
 
 
 def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
@@ -3559,4 +3565,5 @@ if __name__ == "__main__":
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
-    sys.exit(app.exec())
+    exit_code = app.exec()
+    sys.exit(exit_code)

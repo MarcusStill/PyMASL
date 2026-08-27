@@ -50,6 +50,7 @@ class Config:
             [OTHER]
             version (str): Версия программного обеспечения
             log_file (str): Путь к файлу журнала (лог-файлу)
+            log_level (str): Уровень логирования
             ticket_coordinates_file (str): Путь к JSON-файлу с координатами билета
 
             [PC]
@@ -122,6 +123,10 @@ class Config:
                     )
                 config_data[key] = config.get(section, key)
 
+            if config.has_option("OTHER", "log_level"):
+                config_data["log_level"] = config.get("OTHER", "log_level")
+            else:
+                config_data["log_level"] = "DEBUG"
 
             return config_data
         except (NoSectionError, NoOptionError) as e:

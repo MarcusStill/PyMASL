@@ -20,6 +20,7 @@ user = myuser
 [OTHER]
 version = 1.0.0
 log_file = app.log
+log_level = DEBUG
 ticket_coordinates_file = coords.json
 
 [PC]
@@ -70,6 +71,7 @@ user = myuser
 [OTHER]
 version = 1.0.0
 log_file = app.log
+log_level = DEBUG
 ticket_coordinates_file = coords.json
 
 [PC]
