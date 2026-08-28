@@ -1,0 +1,210 @@
+/*
+    PyMASL Windows 10/11 Flat Design QSS Theme
+    Font: Segoe UI
+    Accent Color: #0078D4
+*/
+
+* {
+    font-family: "Segoe UI", "San Francisco", "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    color: #1a1a1a;
+}
+
+QMainWindow, QDialog, QWidget {
+    background-color: #f3f3f3;
+}
+
+/* Button */
+QPushButton {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #1a1a1a;
+}
+
+QPushButton:hover {
+    background-color: #e5e5e5;
+    border-color: #b3b3b3;
+}
+
+QPushButton:pressed {
+    background-color: #cccccc;
+    border-color: #999999;
+}
+
+QPushButton:disabled {
+    background-color: #f9f9f9;
+    color: #a0a0a0;
+    border-color: #e0e0e0;
+}
+
+/* Primary/Accent Button behavior can be set via custom properties if needed,
+   but globally we give them a subtle clean look. */
+
+/* LineEdit / TextEdit / DateEdit / ComboBox */
+QLineEdit, QTextEdit, QPlainTextEdit, QDateEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    padding: 4px;
+    color: #1a1a1a;
+}
+
+QLineEdit:focus, QTextEdit:focus, QDateEdit:focus, QComboBox:focus, QSpinBox:focus {
+    border: 1px solid #0078D4;
+}
+
+QLineEdit:disabled, QDateEdit:disabled, QComboBox:disabled {
+    background-color: #f0f0f0;
+    color: #8c8c8c;
+}
+
+/* ComboBox Dropdown */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid transparent;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    selection-background-color: #0078D4;
+    selection-color: #ffffff;
+}
+
+/* Table */
+QTableWidget, QTableView {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    gridline-color: #e0e0e0;
+    selection-background-color: #0078D4;
+    selection-color: #ffffff;
+}
+
+QHeaderView::section {
+    background-color: #f9f9f9;
+    padding: 4px;
+    border: none;
+    border-right: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+    font-weight: bold;
+}
+
+/* Scrollbars */
+QScrollBar:vertical {
+    border: none;
+    background-color: #f3f3f3;
+    width: 12px;
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar::handle:vertical {
+    background-color: #c1c1c1;
+    min-height: 20px;
+    border-radius: 6px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #a8a8a8;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background-color: #f3f3f3;
+    height: 12px;
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar::handle:horizontal {
+    background-color: #c1c1c1;
+    min-width: 20px;
+    border-radius: 6px;
+    margin: 2px;
+}
+QScrollBar::handle:horizontal:hover {
+    background-color: #a8a8a8;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+}
+
+/* CheckBox and RadioButton - intentionally leaving indicators native */
+QCheckBox, QRadioButton {
+    spacing: 5px;
+}
+
+/* GroupBox */
+QGroupBox {
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 3px;
+    left: 10px;
+    color: #0078D4;
+}
+
+/* TabWidget */
+QTabWidget::pane {
+    border: 1px solid #cccccc;
+    background-color: #ffffff;
+}
+QTabBar::tab {
+    background-color: #e5e5e5;
+    border: 1px solid #cccccc;
+    border-bottom: none;
+    padding: 6px 15px;
+    margin-right: 2px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+QTabBar::tab:selected {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-bottom: 1px solid #ffffff;
+}
+QTabBar::tab:hover:!selected {
+    background-color: #dcdcdc;
+}
+
+/* MenuBar */
+QMenuBar {
+    background-color: #f3f3f3;
+}
+QMenuBar::item {
+    padding: 4px 10px;
+}
+QMenuBar::item:selected {
+    background-color: #e5e5e5;
+}
+QMenu {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+}
+QMenu::item {
+    padding: 6px 20px 6px 20px;
+}
+QMenu::item:selected {
+    background-color: #0078D4;
+    color: #ffffff;
+}
+
+/* Status Bar */
+QStatusBar {
+    background-color: #f3f3f3;
+    border-top: 1px solid #cccccc;
+}
+QStatusBar::item {
+    border: none;
+}
