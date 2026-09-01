@@ -15,9 +15,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QStatusBar,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QWidget,
 )
 

@@ -230,10 +230,10 @@ def calculate_itog() -> int:
 
     # Проверка на корректность данных
     if (
-            system.sale_dict["detail"][0] < 0
-            or system.sale_dict["detail"][2] < 0
-            or system.sale_dict["detail"][1] < 0
-            or system.sale_dict["detail"][3] < 0
+        system.sale_dict["detail"][0] < 0
+        or system.sale_dict["detail"][2] < 0
+        or system.sale_dict["detail"][1] < 0
+        or system.sale_dict["detail"][3] < 0
     ):
         raise ValueError("Некорректные данные для расчета итоговой суммы")
 
@@ -243,7 +243,9 @@ def calculate_itog() -> int:
     adults_no_discount_sum = adults_no_discount * system.sale_dict["price_adult"]
 
     # Взрослые со скидкой (detail[0] × detail[1])
-    adults_with_discount_sum = system.sale_dict["detail"][0] * system.sale_dict["detail"][1]
+    adults_with_discount_sum = (
+        system.sale_dict["detail"][0] * system.sale_dict["detail"][1]
+    )
 
     adult_total = adults_no_discount_sum + adults_with_discount_sum
 
@@ -253,21 +255,33 @@ def calculate_itog() -> int:
     children_no_discount_sum = children_no_discount * system.sale_dict["price_child"]
 
     # Дети со скидкой (detail[2] × detail[3])
-    children_with_discount_sum = system.sale_dict["detail"][2] * system.sale_dict["detail"][3]
+    children_with_discount_sum = (
+        system.sale_dict["detail"][2] * system.sale_dict["detail"][3]
+    )
 
     child_total = children_no_discount_sum + children_with_discount_sum
 
     result = adult_total + child_total
 
-    logger.debug(f"Взрослые без скидки: {adults_no_discount} × {system.sale_dict['price_adult']} = {adults_no_discount_sum}")
-    logger.debug(f"Взрослые со скидкой: {system.sale_dict['detail'][0]} × {system.sale_dict['detail'][1]} = {adults_with_discount_sum}")
+    logger.debug(
+        f"Взрослые без скидки: {adults_no_discount} × {system.sale_dict['price_adult']} = {adults_no_discount_sum}"
+    )
+    logger.debug(
+        f"Взрослые со скидкой: {system.sale_dict['detail'][0]} × {system.sale_dict['detail'][1]} = {adults_with_discount_sum}"
+    )
     logger.debug(f"ИТОГО взрослые: {adult_total}")
 
-    logger.debug(f"Дети без скидки: {children_no_discount} × {system.sale_dict['price_child']} = {children_no_discount_sum}")
-    logger.debug(f"Дети со скидкой: {system.sale_dict['detail'][2]} × {system.sale_dict['detail'][3]} = {children_with_discount_sum}")
+    logger.debug(
+        f"Дети без скидки: {children_no_discount} × {system.sale_dict['price_child']} = {children_no_discount_sum}"
+    )
+    logger.debug(
+        f"Дети со скидкой: {system.sale_dict['detail'][2]} × {system.sale_dict['detail'][3]} = {children_with_discount_sum}"
+    )
     logger.debug(f"ИТОГО дети: {child_total}")
 
-    logger.debug(f"Расчет итого: {adult_total} (взрослые) + {child_total} (дети) = {result}")
+    logger.debug(
+        f"Расчет итого: {adult_total} (взрослые) + {child_total} (дети) = {result}"
+    )
 
     return result
 
