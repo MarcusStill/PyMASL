@@ -3556,7 +3556,24 @@ class Payment:
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle("Fusion")
+
+    # Load and apply QSS style
+    style_path = Path(__file__).parent / "files" / "style.qss"
+    try:
+        if style_path.exists():
+            with open(style_path, "r", encoding="utf-8") as style_file:
+                app.setStyleSheet(style_file.read())
+                logger.info(f"Loaded stylesheet from {style_path}")
+        else:
+            logger.warning(f"Stylesheet not found at {style_path}")
+    except Exception as e:
+        logger.error(f"Error loading stylesheet: {e}")
+
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
-    sys.exit(app.exec())
+
+    try:
+        sys.exit(app.exec())
+    finally:
+        logger.complete()
