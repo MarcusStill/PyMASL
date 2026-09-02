@@ -1,0 +1,143 @@
+/* files/style.qss - Modern Windows 10/11 Aesthetic */
+
+/* Base font and general widget styling */
+QWidget {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    color: #333333;
+}
+
+/* Background for main windows and dialogs (avoid global transparent background) */
+QMainWindow, QDialog {
+    background-color: #F3F3F3;
+}
+
+/* Push Buttons */
+QPushButton {
+    background-color: #0078D4; /* Windows Accent Color */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+QPushButton:hover {
+    background-color: #106EBE;
+}
+
+QPushButton:pressed {
+    background-color: #005A9E;
+}
+
+QPushButton:disabled {
+    background-color: #CCCCCC;
+    color: #888888;
+}
+
+/* Line Edits, Text Edits, and Combo Boxes */
+QLineEdit, QTextEdit, QComboBox, QDateEdit {
+    background-color: white;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: #333333;
+}
+
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QDateEdit:focus {
+    border: 1px solid #0078D4;
+}
+
+QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled, QDateEdit:disabled {
+    background-color: #F0F0F0;
+    color: #A0A0A0;
+}
+
+/* Combo Box Dropdown */
+QComboBox::drop-down {
+    border-left: 1px solid #CCCCCC;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    border: 1px solid #0078D4;
+    background-color: white;
+    selection-background-color: #E1F0FA;
+    selection-color: #333333;
+}
+
+/* Tables */
+QTableWidget, QTableView {
+    background-color: white;
+    border: 1px solid #CCCCCC;
+    gridline-color: #E0E0E0;
+    selection-background-color: #E1F0FA;
+    selection-color: #333333;
+    alternate-background-color: #F9F9F9;
+}
+
+QHeaderView::section {
+    background-color: #F3F3F3;
+    color: #333333;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #CCCCCC;
+    border-right: 1px solid #E0E0E0;
+    font-weight: bold;
+}
+
+/* Checkboxes and Radio Buttons text styling */
+/* Intentionally not styling indicators to preserve native rendering */
+QCheckBox, QRadioButton {
+    spacing: 8px;
+}
+
+QCheckBox:disabled, QRadioButton:disabled {
+    color: #A0A0A0;
+}
+
+/* Group Boxes */
+QGroupBox {
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    margin-top: 16px;
+    font-weight: bold;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 4px;
+    color: #0078D4;
+}
+
+/* Tab Widgets */
+QTabWidget::pane {
+    border: 1px solid #CCCCCC;
+    background-color: white;
+}
+
+QTabBar::tab {
+    background-color: #E0E0E0;
+    color: #333333;
+    padding: 8px 16px;
+    border: 1px solid #CCCCCC;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: white;
+    border-bottom: 1px solid white;
+    font-weight: bold;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #E8E8E8;
+}
+
+/* Labels */
+QLabel {
+    color: #333333;
+}
