@@ -1,0 +1,85 @@
+/* Стили в духе Windows 10/11 */
+
+QMainWindow, QDialog {
+    background-color: #F3F3F3;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+    color: #000000;
+}
+
+QWidget {
+    font-family: "Segoe UI", sans-serif;
+}
+
+QPushButton {
+    background-color: #E1E1E1;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-family: "Segoe UI";
+    font-size: 14px;
+}
+
+QPushButton:hover {
+    background-color: #E5F1FB;
+    border-color: #0078D4;
+}
+
+QPushButton:pressed {
+    background-color: #CCE4F7;
+    border-color: #005499;
+}
+
+QPushButton:disabled {
+    background-color: #F0F0F0;
+    color: #A0A0A0;
+    border-color: #E0E0E0;
+}
+
+QLineEdit, QComboBox, QDateEdit, QTimeEdit, QSpinBox {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 4px;
+    font-family: "Segoe UI";
+}
+
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTimeEdit:focus, QSpinBox:focus {
+    border: 1px solid #0078D4;
+}
+
+QTabWidget::pane {
+    border: 1px solid #CCCCCC;
+    background-color: #FFFFFF;
+}
+
+QTabBar::tab {
+    background-color: #F3F3F3;
+    border: 1px solid #CCCCCC;
+    padding: 8px 16px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #E5F1FB;
+}
+
+QTableWidget, QTableView {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    gridline-color: #E0E0E0;
+}
+
+QHeaderView::section {
+    background-color: #F3F3F3;
+    border: none;
+    border-right: 1px solid #CCCCCC;
+    border-bottom: 1px solid #CCCCCC;
+    padding: 4px;
+    font-weight: bold;
+}
