@@ -55,7 +55,17 @@ from modules.worker import TransactionWorker
 
 system = System()
 config_data = system.config
-logger.add(system.log_file, rotation="1 MB", enqueue=True)
+
+log_level = config_data.get("log_level")
+log_level = log_level.upper() if log_level else "DEBUG"
+
+logger.add(
+    system.log_file,
+    level=log_level,
+    rotation="1 MB",
+    enqueue=True,
+    buffering=1,
+)
 
 
 def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
@@ -66,6 +76,10 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
     logger.opt(exception=(exc_type, exc_value, exc_traceback)).error(
         "Неперехваченное исключение"
     )
+    # logger.complete() - асинхронный метод.
+    # Для синхронной очистки логов нужно вызвать catch_exceptions/удалить обработчик
+    # logger.remove() синхронно сбрасывает все логи из очереди (enqueue=True) в файл.
+    logger.remove()
 
 sys.excepthook = handle_uncaught_exception
 
@@ -3559,4 +3573,6 @@ if __name__ == "__main__":
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
-    sys.exit(app.exec())
+    ret = app.exec()
+    logger.remove()
+    sys.exit(ret)
