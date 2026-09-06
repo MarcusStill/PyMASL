@@ -1,0 +1,217 @@
+/* Стилизация для Windows 10/11 - QSS */
+/* Базовые настройки для всего приложения */
+QWidget {
+    font-family: "Segoe UI", "San Francisco", "Helvetica Neue", "Arial", sans-serif;
+    font-size: 10pt;
+    color: #1A1A1A;
+}
+
+/* Явно задаем фон для главных окон и диалогов */
+QMainWindow, QDialog {
+    background-color: #F3F3F3;
+}
+
+/* Кнопки */
+QPushButton {
+    background-color: #0078D4; /* Акцентный цвет Windows 11 */
+    color: white;
+    border: 1px solid #0078D4;
+    border-radius: 4px;
+    padding: 6px 16px;
+    min-height: 24px;
+}
+
+QPushButton:hover {
+    background-color: #106EBE;
+    border: 1px solid #106EBE;
+}
+
+QPushButton:pressed {
+    background-color: #005A9E;
+    border: 1px solid #005A9E;
+}
+
+QPushButton:disabled {
+    background-color: #CCCCCC;
+    color: #888888;
+    border: 1px solid #CCCCCC;
+}
+
+/* Кнопки, которые выглядят как вторичные или "отмена" */
+QPushButton[objectName^="pushButton_cancel"],
+QPushButton[objectName^="pushButton_close"] {
+    background-color: #E1E1E1;
+    color: #1A1A1A;
+    border: 1px solid #CCCCCC;
+}
+
+QPushButton[objectName^="pushButton_cancel"]:hover,
+QPushButton[objectName^="pushButton_close"]:hover {
+    background-color: #D4D4D4;
+    border: 1px solid #B0B0B0;
+}
+
+/* Текстовые поля и ComboBox */
+QLineEdit, QComboBox, QDateEdit, QTimeEdit, QSpinBox, QDoubleSpinBox, QTextEdit {
+    background-color: white;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 4px;
+    min-height: 24px;
+    selection-background-color: #0078D4;
+    selection-color: white;
+}
+
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus {
+    border: 1px solid #0078D4;
+    outline: none;
+}
+
+QLineEdit:disabled, QComboBox:disabled, QDateEdit:disabled {
+    background-color: #F0F0F0;
+    color: #888888;
+}
+
+/* Выпадающий список ComboBox */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left-width: 0px;
+    border-left-color: darkgray;
+    border-left-style: solid; /* just a single line */
+    border-top-right-radius: 4px; /* same radius as the QComboBox */
+    border-bottom-right-radius: 4px;
+}
+
+QComboBox::down-arrow {
+    image: none; /* Мы используем системную стрелку или рисуем свою, если нужно. Для простоты оставим Fusion поведение. */
+}
+
+QComboBox QAbstractItemView {
+    border: 1px solid #CCCCCC;
+    selection-background-color: #0078D4;
+    selection-color: white;
+    background-color: white;
+}
+
+/* Таблицы (QTableWidget) */
+QTableWidget {
+    background-color: white;
+    alternate-background-color: #F9F9F9; /* Чередующийся цвет строк */
+    border: 1px solid #CCCCCC;
+    gridline-color: #E0E0E0;
+    selection-background-color: #0078D4;
+    selection-color: white;
+}
+
+QHeaderView::section {
+    background-color: #F3F3F3;
+    color: #1A1A1A;
+    padding: 4px;
+    border: 1px solid #E0E0E0;
+    border-top: none;
+    border-left: none;
+    font-weight: bold;
+}
+
+QTableWidget::item {
+    padding: 4px;
+}
+QTableWidget::item:selected {
+    background-color: #0078D4;
+    color: white;
+}
+
+
+/* Вкладки (QTabWidget) */
+QTabWidget::pane {
+    border: 1px solid #CCCCCC;
+    background-color: white;
+}
+
+QTabBar::tab {
+    background-color: #E1E1E1;
+    color: #1A1A1A;
+    padding: 6px 16px;
+    border: 1px solid #CCCCCC;
+    border-bottom-color: #CCCCCC;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: white;
+    border-bottom-color: white; /* Делаем вкладку "слитной" с контентом */
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #D4D4D4;
+}
+
+/* ScrollBars */
+QScrollBar:vertical {
+    border: none;
+    background: #F0F0F0;
+    width: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #CDCDCD;
+    min-height: 20px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #A6A6A6;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #F0F0F0;
+    height: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #CDCDCD;
+    min-width: 20px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #A6A6A6;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+}
+
+/* Группы (QGroupBox) */
+QGroupBox {
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    margin-top: 1ex; /* Оставляем место для заголовка */
+    padding-top: 10px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 3px;
+    color: #0078D4; /* Выделяем заголовки цветом акцента */
+}
+
+/* QCheckBox::indicator and QRadioButton::indicator left untouched to preserve native rendering */
