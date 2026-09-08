@@ -1,0 +1,110 @@
+/* Базовые настройки приложения */
+* {
+    font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    color: #333333;
+}
+
+/* Фон для основных окон */
+QMainWindow, QDialog {
+    background-color: #F3F3F3;
+}
+
+/* Поля ввода (QLineEdit, QTextEdit) */
+QLineEdit, QTextEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 6px;
+    selection-background-color: #0078D4;
+    selection-color: #FFFFFF;
+}
+
+QLineEdit:focus, QTextEdit:focus {
+    border: 1px solid #0078D4;
+    outline: none;
+}
+
+/* Кнопки (QPushButton) */
+QPushButton {
+    background-color: #E1E1E1;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #333333;
+}
+
+QPushButton:hover {
+    background-color: #D4D4D4;
+    border-color: #BDBDBD;
+}
+
+QPushButton:pressed {
+    background-color: #C0C0C0;
+    border-color: #9E9E9E;
+}
+
+/* Первичные кнопки (Ok, Сохранить и т.д. можно настраивать по objectName, но здесь глобальный стиль) */
+/* Для применения акцентного цвета к конкретным кнопкам лучше использовать objectName, например:
+   QPushButton#pushButton_save { background-color: #0078D4; color: white; border: none; }
+*/
+
+/* Таблицы (QTableWidget) */
+QTableWidget {
+    background-color: #FFFFFF;
+    alternate-background-color: #F9F9F9;
+    border: 1px solid #CCCCCC;
+    gridline-color: #E0E0E0;
+    selection-background-color: #0078D4;
+    selection-color: #FFFFFF;
+}
+
+QHeaderView::section {
+    background-color: #F3F3F3;
+    padding: 4px;
+    border: 1px solid #CCCCCC;
+    font-weight: bold;
+}
+
+/* Вкладки (QTabWidget) */
+QTabWidget::pane {
+    border: 1px solid #CCCCCC;
+    background-color: #FFFFFF;
+}
+
+QTabBar::tab {
+    background-color: #E1E1E1;
+    border: 1px solid #CCCCCC;
+    border-bottom-color: #CCCCCC; /* Одинаковая рамка вокруг вкладки */
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 6px 16px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: #FFFFFF;
+    border-bottom-color: #FFFFFF; /* Убрать линию под выбранной вкладкой */
+    font-weight: bold;
+}
+
+QTabBar::tab:hover {
+    background-color: #D4D4D4;
+}
+
+/* Лейблы */
+QLabel {
+    color: #333333;
+}
+
+/* Выпадающие списки (QComboBox) - Избегаем переопределения drop-down и indicator */
+QComboBox {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+QComboBox:focus {
+    border: 1px solid #0078D4;
+}

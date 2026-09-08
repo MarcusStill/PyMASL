@@ -3556,6 +3556,15 @@ class Payment:
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle("Fusion")
+
+    # Загрузка и применение стилей QSS
+    style_path = Path(__file__).parent / "files" / "style.qss"
+    try:
+        with open(style_path, "r", encoding="utf-8") as f:
+            app.setStyleSheet(f.read())
+    except Exception as e:
+        logger.error(f"Не удалось загрузить файл стилей {style_path}: {e}")
+
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
