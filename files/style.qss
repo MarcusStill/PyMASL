@@ -1,0 +1,92 @@
+/* Стилизация для Windows 10/11 в PyMASL */
+
+QWidget {
+    font-family: "Segoe UI", "San Francisco", "Helvetica Neue", sans-serif;
+    font-size: 14px;
+    color: #212121;
+}
+
+QMainWindow, QDialog {
+    background-color: #F3F3F3;
+}
+
+QPushButton {
+    background-color: #E1E1E1;
+    border: 1px solid #ADADAD;
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: #E5F1FB;
+    border: 1px solid #0078D4;
+}
+
+QPushButton:pressed {
+    background-color: #CCE4F7;
+    border: 1px solid #005499;
+}
+
+QPushButton:disabled {
+    background-color: #F0F0F0;
+    color: #A0A0A0;
+    border: 1px solid #D0D0D0;
+}
+
+QLineEdit, QComboBox, QDateEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-radius: 4px;
+    padding: 4px 8px;
+    selection-background-color: #0078D4;
+    selection-color: white;
+}
+
+QLineEdit:hover, QComboBox:hover, QDateEdit:hover {
+    border: 1px solid #0078D4;
+}
+
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
+    border: 2px solid #0078D4;
+    padding: 3px 7px; /* Компенсируем увеличение border */
+}
+
+QTableWidget {
+    background-color: #FFFFFF;
+    alternate-background-color: #F9F9F9;
+    border: 1px solid #CCCCCC;
+    gridline-color: #E0E0E0;
+    selection-background-color: #0078D4;
+    selection-color: white;
+}
+
+QHeaderView::section {
+    background-color: #F3F3F3;
+    padding: 4px;
+    border: none;
+    border-right: 1px solid #E0E0E0;
+    border-bottom: 1px solid #E0E0E0;
+    font-weight: bold;
+}
+
+QScrollBar:vertical {
+    border: none;
+    background-color: #F3F3F3;
+    width: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #CDCDCD;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #A6A6A6;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}

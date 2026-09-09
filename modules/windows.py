@@ -26,7 +26,7 @@ def info_dialog_window(title, text):
     buttonN.setText("Нет")
     # Отображаем окно поверх всех
     box.setWindowFlags(box.windowFlags() | Qt.WindowStaysOnTopHint)
-    box.exec_()
+    box.exec()
 
     if box.clickedButton() == buttonY:
         return 1
