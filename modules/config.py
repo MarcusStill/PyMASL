@@ -2,9 +2,9 @@ import logging
 import os
 from configparser import (
     ConfigParser,
-    NoSectionError,
-    NoOptionError,
     MissingSectionHeaderError,
+    NoOptionError,
+    NoSectionError,
 )
 from typing import List, Optional
 
@@ -121,7 +121,6 @@ class Config:
                         f"Отсутствует параметр '{key}' в секции '{section}'"
                     )
                 config_data[key] = config.get(section, key)
-
 
             return config_data
         except (NoSectionError, NoOptionError) as e:
