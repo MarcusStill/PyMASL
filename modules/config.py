@@ -122,6 +122,9 @@ class Config:
                     )
                 config_data[key] = config.get(section, key)
 
+            # Чтение необязательных параметров
+            if config.has_option("OTHER", "log_level"):
+                config_data["log_level"] = config.get("OTHER", "log_level")
 
             return config_data
         except (NoSectionError, NoOptionError) as e:
