@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape, letter
-from reportlab.lib.units import mm, inch
+from reportlab.lib.units import inch, mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -17,7 +17,7 @@ system = System()
 config = Config()
 
 
-def get_ticket_type(age:str) -> str:
+def get_ticket_type(age: str) -> str:
     """
     Определяет тип билета на основе возраста клиента.
 
@@ -45,7 +45,8 @@ def get_ticket_type(age:str) -> str:
     else:
         return "взрослый"
 
-def generate_saved_tickets(values: List[tuple]) -> None:
+
+def generate_saved_tickets(values: list[tuple]) -> None:
     """
     Генерирует PDF-файл с билетами для клиентов на основе переданных данных.
 
@@ -72,32 +73,79 @@ def generate_saved_tickets(values: List[tuple]) -> None:
     pdfmetrics.registerFont(TTFont("DejaVuSerif", "files/DejaVuSerif.ttf"))
     c = canvas.Canvas(path, pagesize=(landscape(letter)))
     for client in values:
-        (last_name, name, ticket_flag, price, category, client_id, age, hours, talents, date_time) = client
+        (
+            last_name,
+            name,
+            ticket_flag,
+            price,
+            category,
+            client_id,
+            age,
+            hours,
+            talents,
+            date_time,
+        ) = client
         ticket_type = get_ticket_type(age)
         if ticket_type == "бесплатный" or category == "н":
             continue  # Пропускаем бесплатных и "не идущих"
         c.setFont("DejaVuSerif", 12)
         # x - расстояние мм от левого края страницы
         # y - расстояние мм от нижнего края страницы
-        c.drawString(coordinates["name"]["x"] * mm,coordinates["name"]["y"] * mm, name)
-        c.drawString(coordinates["surname"]["x"] * mm, coordinates["surname"]["y"] * mm, last_name)
-        c.drawString(coordinates["age"]["x"] * mm, coordinates["age"]["y"] * mm, str(age))
+        c.drawString(coordinates["name"]["x"] * mm, coordinates["name"]["y"] * mm, name)
+        c.drawString(
+            coordinates["surname"]["x"] * mm,
+            coordinates["surname"]["y"] * mm,
+            last_name,
+        )
+        c.drawString(
+            coordinates["age"]["x"] * mm, coordinates["age"]["y"] * mm, str(age)
+        )
         duration_text = f"{hours} ч. пребывания"
         if hours == 3:
             duration_text += "-весь день"
-        c.drawString(coordinates["duration"]["x"] * mm, coordinates["duration"]["y"] * mm, duration_text)
+        c.drawString(
+            coordinates["duration"]["x"] * mm,
+            coordinates["duration"]["y"] * mm,
+            duration_text,
+        )
         if isinstance(date_time, str):
             date_time = datetime.strptime(date_time, "%Y-%m-%d")
-        c.drawString(coordinates["date"]["x"] * mm, coordinates["date"]["y"] * mm, date_time.strftime('%d.%m.%Y'))
-        c.drawString(coordinates["guest"]["x"] * mm, coordinates["guest"]["y"] * mm, "гость")
-        c.drawString(coordinates["city"]["x"] * mm, coordinates["city"]["y"] * mm, "БЕЛГОРОД")
-        c.drawString(coordinates["place"]["x"] * mm, coordinates["place"]["y"] * mm, "МАСТЕРСЛАВЛЬ")
-        c.drawString(coordinates["price"]["x"] * mm, coordinates["price"]["y"] * mm, f"{price} руб.")
-        c.drawString(coordinates["ticket_type"]["x"] * mm, coordinates["ticket_type"]["y"] * mm, ticket_type)
-        c.drawString(coordinates["notes"]["x"] * mm, coordinates["notes"]["y"] * mm, category)
+        c.drawString(
+            coordinates["date"]["x"] * mm,
+            coordinates["date"]["y"] * mm,
+            date_time.strftime("%d.%m.%Y"),
+        )
+        c.drawString(
+            coordinates["guest"]["x"] * mm, coordinates["guest"]["y"] * mm, "гость"
+        )
+        c.drawString(
+            coordinates["city"]["x"] * mm, coordinates["city"]["y"] * mm, "БЕЛГОРОД"
+        )
+        c.drawString(
+            coordinates["place"]["x"] * mm,
+            coordinates["place"]["y"] * mm,
+            "МАСТЕРСЛАВЛЬ",
+        )
+        c.drawString(
+            coordinates["price"]["x"] * mm,
+            coordinates["price"]["y"] * mm,
+            f"{price} руб.",
+        )
+        c.drawString(
+            coordinates["ticket_type"]["x"] * mm,
+            coordinates["ticket_type"]["y"] * mm,
+            ticket_type,
+        )
+        c.drawString(
+            coordinates["notes"]["x"] * mm, coordinates["notes"]["y"] * mm, category
+        )
         c.setFont("DejaVuSerif", 24)
         talents_str = "0" if ticket_type == "взрослый" else str(talents)
-        c.drawString(coordinates["talents"]["x"] * mm, coordinates["talents"]["y"] * mm, talents_str)
+        c.drawString(
+            coordinates["talents"]["x"] * mm,
+            coordinates["talents"]["y"] * mm,
+            talents_str,
+        )
         c.drawImage(
             img_file,
             coordinates["qr_code"]["x"],
@@ -134,13 +182,30 @@ def generate_ticket_report_table(ticket_summary: dict) -> list[list]:
     """
     logger.info("Запуск функции generate_ticket_report_table")
     type_ticket = [
-        "Взрослый, 1 ч.", "Взрослый, 2 ч.", "Взрослый, 3 ч.",
-        "Детский, 1 ч.", "Детский, 2 ч.", "Детский, 3 ч.",
-        "Многодетный взрослый, 1 ч.", "Многодетный взрослый, 2 ч.", "Многодетный взрослый, 3 ч.",
-        "Многодетный детский, 1 ч.", "Многодетный детский, 2 ч.", "Многодетный детский, 3 ч.",
-        "Инвалид, 3 ч.", "Сопровождающий, 3 ч.",
+        "Взрослый, 1 ч.",
+        "Взрослый, 2 ч.",
+        "Взрослый, 3 ч.",
+        "Детский, 1 ч.",
+        "Детский, 2 ч.",
+        "Детский, 3 ч.",
+        "Многодетный взрослый, 1 ч.",
+        "Многодетный взрослый, 2 ч.",
+        "Многодетный взрослый, 3 ч.",
+        "Многодетный детский, 1 ч.",
+        "Многодетный детский, 2 ч.",
+        "Многодетный детский, 3 ч.",
+        "Инвалид, 3 ч.",
+        "Сопровождающий, 3 ч.",
     ]
-    data = [["№\n п/п", "Тип\nбилета", "Цена,\n руб.", "Количество,\n шт.", "Стоимость,\n руб."]]
+    data = [
+        [
+            "№\n п/п",
+            "Тип\nбилета",
+            "Цена,\n руб.",
+            "Количество,\n шт.",
+            "Стоимость,\n руб.",
+        ]
+    ]
     # Счётчики для агрегатов
     total = {
         "adult": {"count": 0, "sum": 0},
@@ -182,23 +247,57 @@ def generate_ticket_report_table(ticket_summary: dict) -> list[list]:
 
     # Агрегированные строки
     data += [
-        ["", "Всего взрослых билетов", "", total["adult"]["count"], total["adult"]["sum"]],
-        ["", "Всего детских билетов", "", total["child"]["count"], total["child"]["sum"]],
-        ["", "Всего многодетных взрослых билетов", "", total["many_adult"]["count"], total["many_adult"]["sum"]],
-        ["", "Всего многодетных детских билетов", "", total["many_child"]["count"], total["many_child"]["sum"]],
+        [
+            "",
+            "Всего взрослых билетов",
+            "",
+            total["adult"]["count"],
+            total["adult"]["sum"],
+        ],
+        [
+            "",
+            "Всего детских билетов",
+            "",
+            total["child"]["count"],
+            total["child"]["sum"],
+        ],
+        [
+            "",
+            "Всего многодетных взрослых билетов",
+            "",
+            total["many_adult"]["count"],
+            total["many_adult"]["sum"],
+        ],
+        [
+            "",
+            "Всего многодетных детских билетов",
+            "",
+            total["many_child"]["count"],
+            total["many_child"]["sum"],
+        ],
         ["", "Инвалид, 3 ч.", "", total["disabled"]["count"], "0"],
         ["", "Сопровождающий, 3 ч.", "", total["maintainer"]["count"], "0"],
-        ["", "Итого билетов", "",
-         total["adult"]["count"] + total["child"]["count"] +
-         total["many_adult"]["count"] + total["many_child"]["count"] +
-         total["disabled"]["count"] + total["maintainer"]["count"],
-         total["adult"]["sum"] + total["child"]["sum"] +
-         total["many_adult"]["sum"] + total["many_child"]["sum"]],
+        [
+            "",
+            "Итого билетов",
+            "",
+            total["adult"]["count"]
+            + total["child"]["count"]
+            + total["many_adult"]["count"]
+            + total["many_child"]["count"]
+            + total["disabled"]["count"]
+            + total["maintainer"]["count"],
+            total["adult"]["sum"]
+            + total["child"]["sum"]
+            + total["many_adult"]["sum"]
+            + total["many_child"]["sum"],
+        ],
     ]
 
     return data
 
-def otchet_administratora(date_1: str, date_2: str, values: Dict) -> None:
+
+def otchet_administratora(date_1: str, date_2: str, values: dict) -> None:
     """
     Функция формирует отчет администратора в формате PDF.
 
@@ -253,15 +352,22 @@ def otchet_administratora(date_1: str, date_2: str, values: Dict) -> None:
     table_width = sum(custom_widths)
     if table_width > (page_width - left_margin - right_margin):
         # Корректировка ширины второго столбца
-        remaining_width = page_width - left_margin - right_margin - (sum(custom_widths) - custom_widths[1])
+        remaining_width = (
+            page_width
+            - left_margin
+            - right_margin
+            - (sum(custom_widths) - custom_widths[1])
+        )
         custom_widths[1] = remaining_width
     t = Table(data, colWidths=custom_widths, rowHeights=[0.3 * inch] * len(data))
     t.setStyle(
-        TableStyle([
-            ("FONT", (0, 0), (-1, -1), "DejaVuSerif", 8),
-            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.black),
-            ("BOX", (0, 0), (-1, -1), 0.25, colors.black),
-        ])
+        TableStyle(
+            [
+                ("FONT", (0, 0), (-1, -1), "DejaVuSerif", 8),
+                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.black),
+                ("BOX", (0, 0), (-1, -1), 0.25, colors.black),
+            ]
+        )
     )
     t.wrapOn(c, left_margin, 180 * mm)
     t.drawOn(c, left_margin, 60 * mm)
@@ -281,6 +387,7 @@ def otchet_administratora(date_1: str, date_2: str, values: Dict) -> None:
     c.showPage()
     c.save()
 
+
 def safe_int(value: Any) -> int:
     """
     Преобразует значение в целое число, если это возможно. Если значение None, строка 'None',
@@ -295,14 +402,22 @@ def safe_int(value: Any) -> int:
     if isinstance(value, (list, dict, set, tuple)):  # Проверка на неподобающие типы
         return 0
     try:
-        if value not in [None, 'None']:
-            return int(float(value))  # Преобразование строки с плавающей точкой в целое число
+        if value not in [None, "None"]:
+            return int(
+                float(value)
+            )  # Преобразование строки с плавающей точкой в целое число
         else:
             return 0
     except (ValueError, TypeError):  # Обработка ошибок для некорректных значений
         return 0
 
-def format_date_range(date1_str: str, date2_str: str, input_format: str = "%Y-%m-%d %H:%M:%S", output_format: str = "%d-%m-%Y") -> Tuple[str, str]:
+
+def format_date_range(
+    date1_str: str,
+    date2_str: str,
+    input_format: str = "%Y-%m-%d %H:%M:%S",
+    output_format: str = "%d-%m-%Y",
+) -> tuple[str, str]:
     """
     Преобразует строки с датами из одного формата в другой и возвращает кортеж из двух отформатированных строк.
 
@@ -321,7 +436,8 @@ def format_date_range(date1_str: str, date2_str: str, input_format: str = "%Y-%m
     dt2 = date_2.strftime(output_format)
     return dt1, dt2
 
-def otchet_kassira(val: List[int], date1: str, date2: str, kassir: Any) -> None:
+
+def otchet_kassira(val: list[int], date1: str, date2: str, kassir: Any) -> None:
     """
     Формирует PDF-отчет кассира за указанный период с разбивкой по типам оплат и возвратов.
 
@@ -345,7 +461,9 @@ def otchet_kassira(val: List[int], date1: str, date2: str, kassir: Any) -> None:
     logger.info("Запуск функции otchet_kassira")
     # Проверка на пустой список или недостаточное количество элементов
     if not val or len(val) < 4:
-        logger.error("Некорректные данные для отчета: данные не переданы или их недостаточно.")
+        logger.error(
+            "Некорректные данные для отчета: данные не переданы или их недостаточно."
+        )
         # Завершаем функцию, если данных недостаточно или они пустые
         return
     path = "./otchet.pdf"
@@ -423,10 +541,21 @@ def otchet_kassira(val: List[int], date1: str, date2: str, kassir: Any) -> None:
     c.showPage()
     c.save()
 
+
 def process_sales_and_returns(
-    sales: List[Tuple[str, int, Union[int, float]]],
-    sales_return: List[Tuple[str, int, Union[int, float], int]]
-) -> List[Tuple[Union[str, None], Union[int, float, None], Union[int, float, None], Union[int, float, None], Union[int, float, None], Union[int, float, None], Union[int, float]]]:
+    sales: list[tuple[str, int, int | float]],
+    sales_return: list[tuple[str, int, int | float, int]],
+) -> list[
+    tuple[
+        str | None,
+        int | float | None,
+        int | float | None,
+        int | float | None,
+        int | float | None,
+        int | float | None,
+        int | float,
+    ]
+]:
     """
     Обрабатывает продажи и возвраты, агрегируя информацию по каждому кассовому аппарату.
     Функция вычисляет суммы по картам и наличным, а также учитывает возвраты по каждому типу:
@@ -462,24 +591,29 @@ def process_sales_and_returns(
     logger.info("Запуск функции process_sales_and_returns")
     pcs = {
         name: {
-            "card": 0, "cash": 0,
-            "return": 0, "return_again": 0,
+            "card": 0,
+            "cash": 0,
+            "return": 0,
+            "return_again": 0,
             "return_partial": 0,
-            "return_card": 0, "return_cash": 0,
+            "return_card": 0,
+            "return_cash": 0,
         }
         for name in system.pcs
     }
 
     type_rm = [1, 2, 3]  # 1 - карта, 2 - наличные, 3 - offline
-    return_fields: dict[int, str] = {2: "return", 4: "return_again", 6: "return_partial"}
+    return_fields: dict[int, str] = {
+        2: "return",
+        4: "return_again",
+        6: "return_partial",
+    }
 
     for sale in sales:
         pc_name = sale[0]
         if pc_name not in pcs:
             continue
-        if sale[1] == type_rm[0] or sale[1] == type_rm[2]:
-            pcs[pc_name]["card"] += sale[2]
-        elif sale[1] == type_rm[2]:
+        if sale[1] == type_rm[0] or sale[1] == type_rm[2] or sale[1] == type_rm[2]:
             pcs[pc_name]["card"] += sale[2]
         else:
             pcs[pc_name]["cash"] += sale[2]
@@ -501,33 +635,40 @@ def process_sales_and_returns(
     data = []
     for name in system.pcs:
         stats = pcs[name]
-        data.append((
-            name,
-            stats["card"],
-            stats["cash"],
-            None,
-            stats["return_card"],
-            stats["return_cash"],
-            stats["return_card"] + stats["return_cash"]
-        ))
+        data.append(
+            (
+                name,
+                stats["card"],
+                stats["cash"],
+                None,
+                stats["return_card"],
+                stats["return_cash"],
+                stats["return_card"] + stats["return_cash"],
+            )
+        )
 
     total_card = sum(pc["card"] for pc in pcs.values())
     total_cash = sum(pc["cash"] for pc in pcs.values())
     total_return = sum(pc["return_card"] + pc["return_cash"] for pc in pcs.values())
 
-    data.append((
-        "Итого",
-        total_card,
-        total_cash,
-        total_card + total_cash,
-        None,
-        None,
-        total_return
-    ))
+    data.append(
+        (
+            "Итого",
+            total_card,
+            total_cash,
+            total_card + total_cash,
+            None,
+            None,
+            total_return,
+        )
+    )
     system.sales_data_summary = data
     return data
 
-def process_ticket_stats(tickets: List[Tuple[int, int, str, object, object, int]]) -> List[Tuple[str, Dict[str, int]]]:
+
+def process_ticket_stats(
+    tickets: list[tuple[int, int, str, object, object, int]],
+) -> list[tuple[str, dict[str, int]]]:
     """
     Обрабатывает информацию о билетах, суммируя количество и стоимость проданных билетов по категориям
     и времени пребывания. Возвращает данные, которые могут быть использованы для отображения статистики
@@ -555,10 +696,18 @@ def process_ticket_stats(tickets: List[Tuple[int, int, str, object, object, int]
     )
 
     TICKET_TYPE_MAP = {
-        (0, 1): "Взрослый, 1 ч.", (0, 2): "Взрослый, 2 ч.", (0, 3): "Взрослый, 3 ч.",
-        (1, 1): "Детский, 1 ч.", (1, 2): "Детский, 2 ч.", (1, 3): "Детский, 3 ч.",
-        (2, 1): "Многодетный взрослый, 1 ч.", (2, 2): "Многодетный взрослый, 2 ч.", (2, 3): "Многодетный взрослый, 3 ч.",
-        (3, 1): "Многодетный детский, 1 ч.", (3, 2): "Многодетный детский, 2 ч.", (3, 3): "Многодетный детский, 3 ч.",
+        (0, 1): "Взрослый, 1 ч.",
+        (0, 2): "Взрослый, 2 ч.",
+        (0, 3): "Взрослый, 3 ч.",
+        (1, 1): "Детский, 1 ч.",
+        (1, 2): "Детский, 2 ч.",
+        (1, 3): "Детский, 3 ч.",
+        (2, 1): "Многодетный взрослый, 1 ч.",
+        (2, 2): "Многодетный взрослый, 2 ч.",
+        (2, 3): "Многодетный взрослый, 3 ч.",
+        (3, 1): "Многодетный детский, 1 ч.",
+        (3, 2): "Многодетный детский, 2 ч.",
+        (3, 3): "Многодетный детский, 3 ч.",
         (4, 3): "Инвалид, 3 ч.",
         (5, 3): "Сопровождающий, 3 ч.",
     }
