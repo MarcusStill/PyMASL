@@ -55,7 +55,8 @@ from modules.worker import TransactionWorker
 
 system = System()
 config_data = system.config
-logger.add(system.log_file, rotation="1 MB", enqueue=True)
+_log_level = system.log_level.upper() if system.log_level else "DEBUG"
+logger.add(system.log_file, rotation="1 MB", enqueue=True, buffering=1, level=_log_level)
 
 
 def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
@@ -66,6 +67,7 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
     logger.opt(exception=(exc_type, exc_value, exc_traceback)).error(
         "Неперехваченное исключение"
     )
+    logger.complete()
 
 sys.excepthook = handle_uncaught_exception
 
@@ -3559,4 +3561,6 @@ if __name__ == "__main__":
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
-    sys.exit(app.exec())
+    exit_code = app.exec()
+    logger.complete()
+    sys.exit(exit_code)
