@@ -12,7 +12,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from db.models import Holiday, Workday, Price, User, Sale
+from db.models import Holiday, Price, Sale, User, Workday
 from modules.config import Config
 from modules.logger import logger, logger_wraps
 
@@ -24,7 +24,7 @@ class System:
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(System, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self):
@@ -167,7 +167,9 @@ class System:
                     logger.info(f"Успешная авторизация: {kassir.last_name}")
                     return 1
                 else:
-                    logger.warning(f"Неудачная попытка авторизации для пользователя {login}")
+                    logger.warning(
+                        f"Неудачная попытка авторизации для пользователя {login}"
+                    )
                     return 0
             else:
                 logger.warning(f"Пользователь {login} не найден")
@@ -241,7 +243,7 @@ class System:
                     db_prices[key] = default_prices[key]
         else:
             # Если записей нет, используем дефолтные значения для всех элементов
-            logger.warning(f"Используем дефолтные значения для прайс-листа")
+            logger.warning("Используем дефолтные значения для прайс-листа")
             db_prices = default_prices
 
         # Устанавливаем цены, используя данные из db_prices или дефолтные значения
@@ -410,24 +412,23 @@ class System:
             query = select(Sale.bank_pay).where(Sale.id == sale_id)
             load_slip = session.execute(query).scalars().one()
         try:
-            qr_match = re.search(r'Номер QR:\s+(\d+)', load_slip)
+            qr_match = re.search(r"Номер QR:\s+(\d+)", load_slip)
             if qr_match:
-                last_digits = re.search(r'Карта:\s+\*+\s*(\d{4})', load_slip)
-                card_tail = last_digits.group(1) if last_digits else ''
+                last_digits = re.search(r"Карта:\s+\*+\s*(\d{4})", load_slip)
+                card_tail = last_digits.group(1) if last_digits else ""
             else:
-                last_digits = re.search(r'Карта:\(?E\d*\)?\s+\*+\s*(\d{4})', load_slip)
-                card_tail = last_digits.group(1) if last_digits else ''
-            merchant = re.search(r'М:(\d+)', load_slip)
-            merchant_id = merchant.group(1) if merchant else ''
-            rrn = re.search(r'RRN:\s+(\d+)', load_slip)
-            rrn_value = rrn.group(1) if rrn else ''
+                last_digits = re.search(r"Карта:\(?E\d*\)?\s+\*+\s*(\d{4})", load_slip)
+                card_tail = last_digits.group(1) if last_digits else ""
+            merchant = re.search(r"М:(\d+)", load_slip)
+            merchant_id = merchant.group(1) if merchant else ""
+            rrn = re.search(r"RRN:\s+(\d+)", load_slip)
+            rrn_value = rrn.group(1) if rrn else ""
         except Exception as e:
             logger.warning(f"Ошибка при разборе чека: {e}")
-            card_tail = ''
-            merchant_id = ''
-            rrn_value = ''
-        return  card_tail, merchant_id, rrn_value, load_slip
-
+            card_tail = ""
+            merchant_id = ""
+            rrn_value = ""
+        return card_tail, merchant_id, rrn_value, load_slip
 
     def check_db_connection(self) -> bool:
         """Проверка подключения к базе данных."""

@@ -1,14 +1,16 @@
 import unittest
-from modules.logger import logger_wraps, logger
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+from modules.logger import logger, logger_wraps
+
 
 class TestLogger(unittest.TestCase):
     def test_logger_wraps_success(self):
         @logger_wraps()
         def test_func():
             return "success"
-            
-        with patch.object(logger, 'info') as mock_info:
+
+        with patch.object(logger, "info") as mock_info:
             res = test_func()
             self.assertEqual(res, "success")
 
@@ -16,8 +18,8 @@ class TestLogger(unittest.TestCase):
         @logger_wraps()
         def test_func():
             raise ValueError("Test Error")
-            
-        with patch.object(logger, 'exception') as mock_exc:
+
+        with patch.object(logger, "exception") as mock_exc:
             with self.assertRaises(ValueError):
                 test_func()
 
@@ -25,10 +27,11 @@ class TestLogger(unittest.TestCase):
         @logger_wraps(entry=False, exit=False)
         def test_func():
             return "success"
-            
-        with patch.object(logger, 'info') as mock_info:
+
+        with patch.object(logger, "info") as mock_info:
             res = test_func()
             self.assertEqual(res, "success")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

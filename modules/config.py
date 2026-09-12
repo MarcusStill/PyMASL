@@ -2,11 +2,10 @@ import logging
 import os
 from configparser import (
     ConfigParser,
-    NoSectionError,
-    NoOptionError,
     MissingSectionHeaderError,
+    NoOptionError,
+    NoSectionError,
 )
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ class Config:
         # Инициализируем список ПК
         self.pcs = self._get_pc_list()
 
-    def _get_pc_list(self) -> List[str]:
+    def _get_pc_list(self) -> list[str]:
         """Возвращает список имен ПК из конфигурации"""
         pc_count = int(self.get("kol"))
         pc_list = []
@@ -122,7 +121,6 @@ class Config:
                     )
                 config_data[key] = config.get(section, key)
 
-
             return config_data
         except (NoSectionError, NoOptionError) as e:
             logger.error(f"Ошибка в конфигурационном файле: {e}")
@@ -136,6 +134,6 @@ class Config:
             logger.error(f"Неизвестная ошибка при чтении файла конфигурации: {e}")
             raise RuntimeError(f"Неизвестная ошибка: {e}")
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         value = self.config_data.get(key)
         return value

@@ -3,7 +3,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QLabel, QLineEdit, QTabWidget, QTextEdit, QWidget
 
 
-class Ui_Dialog_Slip(object):
+class Ui_Dialog_Slip:
     def setupUi(self, Dialog_Slip):
         if not Dialog_Slip.objectName():
             Dialog_Slip.setObjectName("Dialog_Slip")
