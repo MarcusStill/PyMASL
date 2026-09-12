@@ -222,7 +222,9 @@ class AuthForm(QDialog):
             f"PyMASL ver. {system.software_version}. Пользователь: {user_full_name}. БД: {system.database}"
         )
         window.main_button_all_sales()
-        window.exec_()
+        # Сохраняем ссылку на окно, чтобы сборщик мусора не удалил его
+        QtWidgets.QApplication.instance().main_window = window
+        window.showMaximized()
 
 
 
@@ -429,7 +431,7 @@ class SaleForm(QDialog):
         # Сохраняем параметры данных об уже существующем клиенте
         system.client_update = 1
         logger.info(f"Обновляем инф. клиента {system.client_id}")
-        client.exec_()
+        client.exec()
 
     def adding_new_client_to_sale(self) -> None:
         """
@@ -2344,7 +2346,7 @@ class SaleForm(QDialog):
         # Передаем текст в форму PayForm
         pay.setText(txt)
 
-        res: int = pay.exec_()
+        res: int = pay.exec()
         # если пользователь нажал крестик или кнопку Escape,
         # то по-умолчанию возвращается QDialog.Rejected
         if res == QDialog.Rejected:
@@ -2523,7 +2525,7 @@ class SlipForm(QDialog):
         slip.ui.lineEdit.setText(rrn_value)
         slip.ui.textEdit.setText(load_slip)
         slip.show()
-        slip.exec_()
+        slip.exec()
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -3130,7 +3132,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             system.sale_id = int(sale_number)
             system.sale_tickets = client_in_sale
             logger.debug(f"Билеты сохраненной продажи: {system.sale_tickets}")
-            sale.exec_()
+            sale.exec()
 
     @logger_wraps(entry=True, exit=True, level="DEBUG")
     def main_button_all_sales(self) -> None:
@@ -3316,7 +3318,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         system.sale_id = None
         system.sale_status = 0 # Т.е. новая продажа
         system.sale_tickets = None
-        sale.exec_()
+        sale.exec()
 
     def main_get_statistic(self) -> None:
         """
@@ -3556,7 +3558,22 @@ class Payment:
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle("Fusion")
+
+    # Загружаем QSS стили
+    try:
+        style_path = Path(__file__).parent / "files" / "style.qss"
+        if style_path.exists():
+            with open(style_path, "r", encoding="utf-8") as style_file:
+                app.setStyleSheet(style_file.read())
+        else:
+            logger.warning(f"Файл стилей не найден: {style_path}")
+    except Exception as e:
+        logger.error(f"Ошибка при загрузке стилей: {e}")
+
     auth = AuthForm()
     auth.show()
     auth.ui.label_9.setText(system.database)
-    sys.exit(app.exec())
+
+    exit_code = app.exec()
+    logger.complete()
+    sys.exit(exit_code)
