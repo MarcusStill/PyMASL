@@ -1,6 +1,6 @@
 from PySide6.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QGroupBox, QLabel, QPushButton, QCheckBox
+from PySide6.QtWidgets import QCheckBox, QGroupBox, QLabel, QPushButton
 
 
 class Ui_Dialog_Pay(object):

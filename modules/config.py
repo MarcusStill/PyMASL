@@ -1,11 +1,7 @@
 import logging
 import os
-from configparser import (
-    ConfigParser,
-    NoSectionError,
-    NoOptionError,
-    MissingSectionHeaderError,
-)
+from configparser import (ConfigParser, MissingSectionHeaderError,
+                          NoOptionError, NoSectionError)
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -121,7 +117,6 @@ class Config:
                         f"Отсутствует параметр '{key}' в секции '{section}'"
                     )
                 config_data[key] = config.get(section, key)
-
 
             return config_data
         except (NoSectionError, NoOptionError) as e:
