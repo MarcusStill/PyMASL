@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 
@@ -57,7 +58,7 @@ class FakeIFptr:
     LIBFPTR_PARAM_RECEIPT_NUMBER = 1
     LIBFPTR_RT_CLOSED = 0
     LIBFPTR_RT_CLOSE_SHIFT = 1
-    
+
     def __init__(self, *args): pass
 
 fake_libfptr10.IFptr = FakeIFptr
@@ -74,9 +75,9 @@ class TestPE(unittest.TestCase):
         mock_fptr = MagicMock()
         mock_fptr.open.return_value = None
         mock_fptr.getParamInt.side_effect = [1, 100]
-        
+
         with patch("modules.payment_equipment.fptr", mock_fptr):
-            with patch("modules.payment_equipment.windows.info_window") as mock_info:
+            with patch("modules.payment_equipment.windows.info_window"):
                 res = pe.smena_info()
                 self.assertEqual(res, 1)
 
@@ -91,7 +92,7 @@ class TestPE(unittest.TestCase):
         with patch("modules.payment_equipment.fptr", mock_fptr):
             pe.report_payment()
             mock_fptr.report.assert_called_once()
-            
+
     def test_report_x(self):
         mock_fptr = MagicMock()
         with patch("modules.payment_equipment.fptr", mock_fptr):
@@ -101,22 +102,22 @@ class TestPE(unittest.TestCase):
     def test_deposit_of_money(self):
         mock_fptr = MagicMock()
         with patch("modules.payment_equipment.fptr", mock_fptr):
-            with patch("modules.payment_equipment.windows.info_window") as mock_info:
+            with patch("modules.payment_equipment.windows.info_window"):
                 pe.deposit_of_money(100.0)
                 mock_fptr.cashIncome.assert_called_once()
 
     def test_payment(self):
         mock_fptr = MagicMock()
         with patch("modules.payment_equipment.fptr", mock_fptr):
-            with patch("modules.payment_equipment.windows.info_window") as mock_info:
+            with patch("modules.payment_equipment.windows.info_window"):
                 pe.payment(100.0)
                 mock_fptr.cashOutcome.assert_called_once()
-                
+
     def test_balance_check(self):
         mock_fptr = MagicMock()
         mock_fptr.getParamDouble.return_value = 500.0
         with patch("modules.payment_equipment.fptr", mock_fptr):
-            with patch("modules.payment_equipment.windows.info_window") as mock_info:
+            with patch("modules.payment_equipment.windows.info_window"):
                 res = pe.balance_check()
                 self.assertEqual(res, 500.0)
                 self.assertEqual(mock_fptr.printText.call_count, 2)
@@ -129,7 +130,7 @@ class TestPE(unittest.TestCase):
                 mock_popen.return_value = mock_process
                 pe.run_terminal_command("1")
                 mock_popen.assert_called_once()
-            
+
     def test_check_terminal_file(self):
         with patch("builtins.open", mock_open(read_data="УСПЕШНО")):
             res = pe.check_terminal_file("УСПЕШНО")
@@ -140,7 +141,7 @@ class TestPE(unittest.TestCase):
         with patch("modules.payment_equipment.windows.info_window"):
             res = pe.process_success_result()
             self.assertEqual(res, pe.TERMINAL_SUCCESS_CODE)
-            
+
     def test_handle_error(self):
         with patch("modules.payment_equipment.windows.info_window"):
             res = pe.handle_error(1, "title", "msg", None)
@@ -166,13 +167,13 @@ class TestPE(unittest.TestCase):
             with patch("modules.payment_equipment.check_terminal_file", return_value=True):
                 res = pe.terminal_check_itog()
                 self.assertEqual(res, 1)
-            
+
     def test_terminal_menu(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=pe.TERMINAL_SUCCESS_CODE)
             res = pe.terminal_menu()
             self.assertIsNone(res)
-            
+
     def test_terminal_check_itog_window(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=pe.TERMINAL_SUCCESS_CODE)
@@ -180,14 +181,14 @@ class TestPE(unittest.TestCase):
                 with patch("modules.payment_equipment.windows.info_window") as mock_info:
                     pe.terminal_check_itog_window()
                     mock_info.assert_called_once()
-            
+
     def test_terminal_svod_check(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=pe.TERMINAL_SUCCESS_CODE)
             with patch("modules.payment_equipment.print_pinpad_check"):
                 res = pe.terminal_svod_check()
                 self.assertIsNone(res)
-            
+
     def test_terminal_control_lenta(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=pe.TERMINAL_SUCCESS_CODE)
@@ -208,7 +209,7 @@ class TestPE(unittest.TestCase):
             with patch("modules.payment_equipment.print_pinpad_check"):
                 res = pe.terminal_copy_last_check()
                 self.assertIsNone(res)
-            
+
     def test_is_kkt_connected(self):
         pe.kkt_available = True
         mock_fptr = MagicMock()
@@ -275,20 +276,20 @@ if __name__ == '__main__':
         with patch("modules.payment_equipment.kkt_available", False):
             with pe.fptr_connection(pe.fptr) as conn:
                 self.assertIsNone(conn)
-        
+
     def test_kkt_connection_not_opened(self):
         mock_device = MagicMock()
         mock_device.isOpened.return_value = False
         with pe.fptr_connection(mock_device) as conn:
             self.assertIsNone(conn)
             mock_device.open.assert_called_once()
-            
+
     def test_kkt_connection_exception_on_open(self):
         mock_device = MagicMock()
         mock_device.open.side_effect = Exception("Open failed")
         with pe.fptr_connection(mock_device) as conn:
             self.assertIsNone(conn)
-            
+
     def test_kkt_connection_success(self):
         mock_device = MagicMock()
         mock_device.isOpened.return_value = True
@@ -302,20 +303,20 @@ if __name__ == '__main__':
             mock_process = MagicMock()
             mock_process.communicate.side_effect = [subprocess.TimeoutExpired(cmd="", timeout=1), (b"", b"")]
             mock_popen.return_value = mock_process
-            res = pe.run_terminal_command("1", timeout=1)
+            pe.run_terminal_command("1", timeout=1)
             mock_process.terminate.assert_called_once()
-            
+
     def test_run_terminal_command_timeout_twice(self):
         with patch("subprocess.Popen") as mock_popen, \
              patch("os.path.isfile", return_value=True):
             mock_process = MagicMock()
             mock_process.communicate.side_effect = [
-                subprocess.TimeoutExpired(cmd="", timeout=1), 
-                subprocess.TimeoutExpired(cmd="", timeout=1), 
+                subprocess.TimeoutExpired(cmd="", timeout=1),
+                subprocess.TimeoutExpired(cmd="", timeout=1),
                 (b"", b"")
             ]
             mock_popen.return_value = mock_process
-            res = pe.run_terminal_command("1", timeout=1)
+            pe.run_terminal_command("1", timeout=1)
             mock_process.terminate.assert_called_once()
             mock_process.kill.assert_called_once()
 
@@ -323,7 +324,7 @@ if __name__ == '__main__':
         with patch("os.path.isfile", return_value=False):
             with self.assertRaises(FileNotFoundError):
                 pe.run_terminal_command("1")
-                
+
     def test_run_terminal_command_exception(self):
         with patch("os.path.isfile", return_value=True), \
              patch("subprocess.Popen", side_effect=Exception("Exec failed")):
@@ -350,7 +351,7 @@ if __name__ == '__main__':
         with patch("modules.payment_equipment.check_terminal_file", return_value=False):
             res = pe.process_success_result()
             self.assertEqual(res, 0)
-            
+
     def test_process_success_result_exception(self):
         with patch("modules.payment_equipment.check_terminal_file", side_effect=FileNotFoundError):
             res = pe.process_success_result()
@@ -370,7 +371,7 @@ if __name__ == '__main__':
         mock_callback = MagicMock(side_effect=Exception("Callback error"))
         pe.handle_error(1, "title", "msg", mock_callback)
         mock_callback.assert_called_once_with("title", "msg", 1)
-        
+
 
     def test_process_terminal_error_conditions(self):
         with patch("modules.payment_equipment.handle_error"):
@@ -384,10 +385,10 @@ if __name__ == '__main__':
             self.assertEqual(pe.process_terminal_error(pe.TERMINAL_OPERATION_CANCEL[0], None), 0)
             self.assertEqual(pe.process_terminal_error(pe.TERMINAL_LACK_PAPER[0], None), 0)
             self.assertEqual(pe.process_terminal_error(pe.TERMINAL_SUM_LIMIT[0], None), 0)
-            
+
             # Test default mapped error
             self.assertEqual(pe.process_terminal_error(4451, None), 0)
-            
+
             # Test unknown error
             self.assertEqual(pe.process_terminal_error(99999, None), 0)
 
@@ -405,12 +406,12 @@ if __name__ == '__main__':
         mock_signal = MagicMock()
         res = pe.universal_terminal_operation(pe.PAYMENT_OFFLINE, 100.0, mock_signal, operation_type=1)
         self.assertEqual(res, (1, 3))
-        
+
     def test_universal_terminal_operation_offline_not_payment(self):
         mock_signal = MagicMock()
         res = pe.universal_terminal_operation(pe.PAYMENT_OFFLINE, 100.0, mock_signal, operation_type=2)
         self.assertEqual(res, (0, 0))
-        
+
     def test_universal_terminal_operation_unknown_payment_type(self):
         mock_signal = MagicMock()
         res = pe.universal_terminal_operation(999, 100.0, mock_signal, operation_type=1)
@@ -437,13 +438,13 @@ if __name__ == '__main__':
             mock_run.return_value = None
             res = pe.terminal_check_itog()
             self.assertEqual(res, 0)
-            
+
     def test_terminal_check_itog_unknown_code(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=999)
             res = pe.terminal_check_itog()
             self.assertEqual(res, 0)
-            
+
     def test_terminal_check_itog_file_not_found(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=pe.TERMINAL_SUCCESS_CODE)
@@ -457,7 +458,7 @@ if __name__ == '__main__':
             with patch("modules.payment_equipment.windows.info_window") as mock_info:
                 pe.terminal_check_itog_window()
                 mock_info.assert_called_once()
-                
+
     def test_terminal_check_itog_window_file_not_found(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=pe.TERMINAL_SUCCESS_CODE)
@@ -465,7 +466,7 @@ if __name__ == '__main__':
                 with patch("modules.payment_equipment.windows.info_window") as mock_info:
                     pe.terminal_check_itog_window()
                     mock_info.assert_called_once()
-                    
+
     def test_terminal_check_itog_window_unknown_code(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=999)
@@ -484,7 +485,7 @@ if __name__ == '__main__':
             mock_run.return_value = MagicMock(returncode=pe.TERMINAL_SUCCESS_CODE)
             with patch("modules.payment_equipment.print_pinpad_check", side_effect=FileNotFoundError(1, "msg", "filename")):
                 pe.terminal_control_lenta()
-                
+
     def test_terminal_copy_last_check_file_not_found(self):
         with patch("modules.payment_equipment.run_terminal_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=pe.TERMINAL_SUCCESS_CODE)
