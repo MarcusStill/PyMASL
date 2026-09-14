@@ -3,7 +3,6 @@ import subprocess
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Optional
 
 from modules import windows
 from modules.config import Config
@@ -14,10 +13,12 @@ config = Config()
 
 # Получаем параметр available
 try:
-    kkt_available = config.get("available") == 'on'
+    kkt_available = config.get("available") == "on"
 except (KeyError, ValueError):
     kkt_available = False
-    logger.info("Параметр 'available' не найден в конфигурации, ККТ считается отключенным")
+    logger.info(
+        "Параметр 'available' не найден в конфигурации, ККТ считается отключенным"
+    )
 
 # Инициализация драйвера ККТ
 try:
@@ -27,7 +28,7 @@ try:
         fptr = None
         logger.info("ККТ отключен в конфигурации (available ≠ on)")
 except Exception as e:
-    logger.warning(f"Не установлен драйвер ККТ: {str(e)}")
+    logger.warning(f"Не установлен драйвер ККТ: {e!s}")
     kkt_available = False
     fptr = None
 
@@ -111,7 +112,6 @@ TERMINAL_PIN_PAD_ERROR: set[int] = {
     4144,
     4145,
     4146,
-    4146,
     4202,
     4203,
     4208,
@@ -164,7 +164,7 @@ def fptr_connection(device):
         device.open()
         connected = True
 
-        if not hasattr(device, 'isOpened') or not device.isOpened():
+        if not hasattr(device, "isOpened") or not device.isOpened():
             logger.warning("Не удалось открыть соединение с ККТ")
             yield None
             return
@@ -172,7 +172,7 @@ def fptr_connection(device):
         yield device
 
     except Exception as e:
-        logger.error(f"Ошибка подключения к ККТ: {str(e)}")
+        logger.error(f"Ошибка подключения к ККТ: {e!s}")
         yield None
 
     finally:
@@ -211,18 +211,24 @@ def run_terminal_command(command_params: str, timeout: int = 300):
     logger.info(f"Запуск команды: {pinpad_run}")
     try:
         process = subprocess.Popen(
-            pinpad_run, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            shell=True  # Важно для строки команды
+            pinpad_run,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,  # Важно для строки команды
         )
         try:
             stdout, stderr = process.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
-            logger.warning(f"Процесс превысил таймаут {timeout} секунд. Завершается автоматически.")
+            logger.warning(
+                f"Процесс превысил таймаут {timeout} секунд. Завершается автоматически."
+            )
             process.terminate()
             try:
                 stdout, stderr = process.communicate(timeout=5)
             except subprocess.TimeoutExpired:
-                logger.warning("Процесс не завершился после terminate(). Используется kill().")
+                logger.warning(
+                    "Процесс не завершился после terminate(). Используется kill()."
+                )
                 process.kill()
                 stdout, stderr = process.communicate()
 
@@ -296,6 +302,7 @@ def _safe_handle_error(returncode, title, message, error_callback):
     except Exception as e:
         logger.exception(f"Ошибка при вызове handle_error для кода {returncode}: {e}")
 
+
 @logger_wraps()
 def handle_error(code, title, message, error_callback=None):
     """Универсальная обработка ошибок терминала.
@@ -343,15 +350,15 @@ def process_terminal_error(returncode, error_callback=None):
     error_handlers = {
         TERMINAL_USER_CANCEL_CODE: (
             "Оплата отменена пользователем",
-            f"Оплата отменена пользователем. Код возврата: {returncode}."
+            f"Оплата отменена пользователем. Код возврата: {returncode}.",
         ),
         TERMINAL_USER_TIMEOUT: (
             "Слишком долгий ввод ПИН-кода",
-            f"Слишком долгий ввод ПИН-кода. Код возврата: {returncode}."
+            f"Слишком долгий ввод ПИН-кода. Код возврата: {returncode}.",
         ),
         TERMINAL_INVALID_CURRENCY_CODE: (
             "Указан неверный код валюты",
-            f"Указан неверный код валюты. Обратитесь в банк. Телефон поддержки {TERMINAL_SUPPORT}. Код: {returncode}."
+            f"Указан неверный код валюты. Обратитесь в банк. Телефон поддержки {TERMINAL_SUPPORT}. Код: {returncode}.",
         ),
         TERMINAL_NO_ADDRESS_TO_CONTACT: (
             "Терминал потерял связь с банком",
@@ -359,7 +366,7 @@ def process_terminal_error(returncode, error_callback=None):
         ),
         TERMINAL_OPERATION_CANCELED: (
             "Операция отменена",
-            f"Ошибка возникает тогда, когда карту достают из терминала быстрее, чем пройдет оплата. Необходимо повторить операцию.",
+            "Ошибка возникает тогда, когда карту достают из терминала быстрее, чем пройдет оплата. Необходимо повторить операцию.",
         ),
         TERMINAL_QR_ERROR: (
             "Ошибка операции по QR-коду",
@@ -377,8 +384,8 @@ def process_terminal_error(returncode, error_callback=None):
         _safe_handle_error(
             returncode,
             "Карта клиента заблокирована",
-            f"Карта клиента заблокирована. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
-            error_callback
+            "Карта клиента заблокирована. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_CARD_LIMIT:
@@ -386,7 +393,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Превышен лимит операций",
             "Превышен лимит операций. Попробуйте произвести оплату другой картой или обратитесь в банк для выяснения причины.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_BIOMETRIC_ERROR:
@@ -394,7 +401,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Ошибка в работе с биометрическими данными",
             f"Ошибка в работе с биометрическими данными. Обратитесь в банк для выяснения причины. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_ERROR_PIN_CODE:
@@ -402,7 +409,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Ошибка при вводе ПИН-кода",
             "ПИН-код не был введен, либо введен неверно, либо вводимый ПИН-код заблокирован. Попробуйте повторить операцию оплаты.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_NO_CONNECTION_BANK:
@@ -410,7 +417,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Нет связи с банком",
             f"Попробуйте повторить операцию через пару минут. При повторении ошибки необходимо обратиться в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_NEED_CASH_COLLECTION:
@@ -418,7 +425,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Необходимо произвести инкассацию",
             f"Необходимо произвести инкассацию. Обратитесь в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_LIMIT_OPERATION:
@@ -426,7 +433,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Превышен лимит операций",
             f"Превышен лимит операций. Обратитесь в службу поддержки. Телефон. тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_DATA_EXCHANGE:
@@ -434,7 +441,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Требуется сделать сверку итогов",
             "Требуется сделать сверку итогов и повторить операцию.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_KLK:
@@ -442,7 +449,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Ошибка в работе терминала",
             f"Необходимо обратиться в службу поддержки банка. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_CARD_ERROR:
@@ -450,7 +457,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Операцию невозможно выполнить для этой карты",
             f"Необходимо повторить попытку. Если проблема сохраняется – использовать другую карту. Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_SERVER_ROUTINE_MAINTENANCE:
@@ -458,15 +465,15 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Сервера Сбербанка недоступны",
             f"Сервера Сбербанка находятся на обслуживании/ремонте/регламентных работах. Попробуйте повторить операцию позже. Если проблема сохраняется - обратитесь в службу поддержки. Телефон тех.поддержки {TERMINAL_SUPPORT}.Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_NO_MONEY:
         _safe_handle_error(
             returncode,
             "Недостаточно средств на карте",
-            f"Недостаточно средств на карте. Попробуйте произвести оплату другой картой.",
-            error_callback
+            "Недостаточно средств на карте. Попробуйте произвести оплату другой картой.",
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_COMMAND_ERROR:
@@ -474,7 +481,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Нет нужного варианта связи для операции",
             f"Нет нужного варианта связи для операции. Обратитесь в службу поддержки ПО. Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     if returncode in TERMINAL_PIN_PAD_ERROR:
@@ -482,7 +489,7 @@ def process_terminal_error(returncode, error_callback=None):
             returncode,
             "Проблема в работе ПИН-пада.",
             f"Необходимо обратиться в службу поддержки банка. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
-            error_callback
+            error_callback,
         )
         return 0
     # Общие ошибки
@@ -499,7 +506,7 @@ def process_terminal_error(returncode, error_callback=None):
         returncode,
         "Ошибка терминала",
         f"Возвращен неизвестный код ошибки. Обратитесь в службу поддержки. Телефон тех.поддержки {TERMINAL_SUPPORT}. Код возврата: {returncode}.",
-        error_callback
+        error_callback,
     )
     return 0
 
@@ -519,7 +526,9 @@ def terminal_oplata(amount: float) -> int:
 
 
 @logger_wraps()
-def process_terminal_transaction(command_code: str, amount: float, operation_name: str, error_callback=None) -> int:
+def process_terminal_transaction(
+    command_code: str, amount: float, operation_name: str, error_callback=None
+) -> int:
     """
     Обрабатывает операцию на банковском терминале.
 
@@ -541,10 +550,10 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
     if result is None:
         logger.error(f"Ошибка при выполнении команды терминала: {command}")
         _safe_handle_error(
-            f"Нет ответа от терминала",
+            "Нет ответа от терминала",
             f"{operation_name} не была выполнена. Проверьте устройство.",
             "Код ошибки: отсутствует",
-            error_callback=error_callback
+            error_callback=error_callback,
         )
         return 0
 
@@ -567,11 +576,12 @@ def process_terminal_transaction(command_code: str, amount: float, operation_nam
 
 
 def universal_terminal_operation(
-        payment_type: int,
-        amount: float,
-        progress_signal,
-        operation_type: int = 1,
-        error_callback=None) -> tuple[int, int]:
+    payment_type: int,
+    amount: float,
+    progress_signal,
+    operation_type: int = 1,
+    error_callback=None,
+) -> tuple[int, int]:
     """
     Универсальный обработчик терминальных операций для оплаты или возврата.
 
@@ -621,7 +631,9 @@ def universal_terminal_operation(
                 except Exception:
                     pass  # Игнорируем ошибки emit
 
-            bank = process_terminal_transaction(command_code, amount, operation_name, error_callback)
+            bank = process_terminal_transaction(
+                command_code, amount, operation_name, error_callback
+            )
             if bank == 1:
                 if progress_signal is not None:
                     try:
@@ -638,12 +650,16 @@ def universal_terminal_operation(
                 return 0, 1
         elif payment_type == PAYMENT_OFFLINE:
             if operation_type != 1:
-                logger.warning("Оффлайн-режим не поддерживается для возврата или отмены")
+                logger.warning(
+                    "Оффлайн-режим не поддерживается для возврата или отмены"
+                )
                 progress_signal.emit("Оффлайн: только оплата", 100)
                 return 0, 0
 
             logger.info("Запускаем offline оплату по банковскому терминалу")
-            progress_signal.emit("Запускаем offline оплату по банковскому терминалу...", 35)
+            progress_signal.emit(
+                "Запускаем offline оплату по банковскому терминалу...", 35
+            )
             return 1, 3  # успех, offline
 
         else:
@@ -652,13 +668,15 @@ def universal_terminal_operation(
             return 0, 0
     except ValueError as ve:
         logger.error(f"Ошибка: {ve}")
-        progress_signal.emit(f"Ошибка: {str(ve)}", 100)
+        progress_signal.emit(f"Ошибка: {ve!s}", 100)
         return 0, 0
     except Exception as exp:
         logger.error(f"Неизвестная ошибка при проведении операции: {exp}")
         if progress_signal is not None:
             try:
-                progress_signal.emit(f"Неизвестная ошибка при проведении операции: {str(exp)}", 100)
+                progress_signal.emit(
+                    f"Неизвестная ошибка при проведении операции: {exp!s}", 100
+                )
             except RuntimeError:
                 pass
         return 0, 0
@@ -979,7 +997,8 @@ def print_pinpad_check(count: int = 2):
 
         count -= 1
 
-def get_info(hide: bool = False) -> Optional[int]:
+
+def get_info(hide: bool = False) -> int | None:
     """
     Запрос информации о ККТ.
     Запрашивает информацию о кассовом аппарате (модель, наименование и версия ПО).
@@ -1014,12 +1033,19 @@ def get_info(hide: bool = False) -> Optional[int]:
         return model
     except (ConnectionError, AttributeError) as e:
         logger.error(f"Ошибка при получении данных о ККТ: {e}")
-        windows.info_window("Ошибка", "Не удалось получить данные о ККТ.", "Проверьте настройки устройства.")
+        windows.info_window(
+            "Ошибка",
+            "Не удалось получить данные о ККТ.",
+            "Проверьте настройки устройства.",
+        )
         return None
     except Exception as e:
         logger.error(f"Неизвестная ошибка: {e}")
-        windows.info_window("Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова.")
+        windows.info_window(
+            "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
+        )
         return None
+
 
 def is_kkt_connected() -> bool:
     """
@@ -1046,6 +1072,7 @@ def is_kkt_connected() -> bool:
         logger.error(f"Ошибка при проверке подключения ККТ: {e}")
         return False
 
+
 @logger_wraps()
 def get_last_document(day: int = 7) -> None:
     """Запрос информации о последнем чеке в ФН и проверка даты.
@@ -1066,7 +1093,9 @@ def get_last_document(day: int = 7) -> None:
     except (ConnectionError, AttributeError) as e:
         logger.error(f"Ошибка при работе с ККТ: {e}")
         windows.info_window(
-            "Ошибка", "Не удалось получить данные от ККТ.", "Проверьте подключение и настройки."
+            "Ошибка",
+            "Не удалось получить данные от ККТ.",
+            "Проверьте подключение и настройки.",
         )
     except Exception as e:
         logger.exception(f"Неизвестная ошибка в get_last_document: {e}")
@@ -1074,8 +1103,9 @@ def get_last_document(day: int = 7) -> None:
             "Ошибка", "Произошла неизвестная ошибка.", "Попробуйте снова."
         )
 
+
 def get_last_document_datetime() -> datetime:
-    """ Получает дату и время последнего зарегистрированного чека из фискального накопителя.
+    """Получает дату и время последнего зарегистрированного чека из фискального накопителя.
 
     Возвращаемое значение:
         datetime: Дата и время последнего документа в фискальном накопителе.
@@ -1085,11 +1115,16 @@ def get_last_document_datetime() -> datetime:
     """
     logger.info("Запуск функции get_last_document_datetime")
     with fptr_connection(fptr):
-        fptr.setParam(IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_LAST_DOCUMENT)
+        fptr.setParam(
+            IFptr.LIBFPTR_PARAM_FN_DATA_TYPE, IFptr.LIBFPTR_FNDT_LAST_DOCUMENT
+        )
         fptr.fnQueryData()
-        last_check_datetime: datetime = fptr.getParamDateTime(IFptr.LIBFPTR_PARAM_DATE_TIME)
+        last_check_datetime: datetime = fptr.getParamDateTime(
+            IFptr.LIBFPTR_PARAM_DATE_TIME
+        )
 
         return last_check_datetime
+
 
 def check_stale_document(last_check: datetime, max_days: int = 7) -> None:
     """
@@ -1108,13 +1143,15 @@ def check_stale_document(last_check: datetime, max_days: int = 7) -> None:
     if (current_date - last_check) <= timedelta(days=max_days):
         # Ранний выход, если чек не старый
         return
-    info = f"Дата и время последнего чека в ФН: {last_check.strftime('%Y-%m-%d %H:%M:%S')}"
+    info = (
+        f"Дата и время последнего чека в ФН: {last_check.strftime('%Y-%m-%d %H:%M:%S')}"
+    )
     windows.info_window(
         "Внимание",
         "Дата последнего документа, записанного в фискальном накопителе, старше 7 дней.\n\n"
         "Для корректного проведения платежей по банковскому терминалу "
-        "необходимо сделать сверку итогов (вкладка \"Касса\" -> \"Сверка итогов\").\n",
-        info
+        'необходимо сделать сверку итогов (вкладка "Касса" -> "Сверка итогов").\n',
+        info,
     )
 
 
@@ -1402,7 +1439,9 @@ def kassir_reg(user):
     try:
         with fptr_connection(fptr):
             # Параметры для регистрации кассира
-            fptr.setParam(1021, f"{user.last_name} {user.first_name} {user.middle_name}")
+            fptr.setParam(
+                1021, f"{user.last_name} {user.first_name} {user.middle_name}"
+            )
             fptr.setParam(1203, user.inn)
             fptr.operatorLogin()
         logger.info(
@@ -1590,11 +1629,11 @@ def register_item(device, name, price, quantity, tax_type=IFptr.LIBFPTR_TAX_VAT2
     logger.info("Запуск функции register_item")
     logger.info(f"В функцию переданы параметры: {name}, {price}, {quantity}")
     device.setParam(IFptr.LIBFPTR_PARAM_COMMODITY_NAME, name)
-    logger.info(f"name: {name}") # TODO: убрать
+    logger.info(f"name: {name}")  # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_PRICE, price)
-    logger.info(f"price: {price}") # TODO: убрать
+    logger.info(f"price: {price}")  # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_QUANTITY, quantity)
-    logger.info(f"quantity: {quantity}") # TODO: убрать
+    logger.info(f"quantity: {quantity}")  # TODO: убрать
     device.setParam(IFptr.LIBFPTR_PARAM_TAX_TYPE, tax_type)
     device.registration()
 
@@ -1639,7 +1678,9 @@ def register_tickets(device, sale_dict, type_operation):
         None: Функция не возвращает значений, но выполняет регистрацию билетов в чеке.
     """
     logger.info("Запуск функции register_tickets")
-    logger.debug(f"В функцию переданы: device = {device}, sale_dict = {sale_dict}, type_operation = {type_operation}")
+    logger.debug(
+        f"В функцию переданы: device = {device}, sale_dict = {sale_dict}, type_operation = {type_operation}"
+    )
 
     if type_operation == 1:
         count_adult_with_discount = sale_dict["detail"][0]
@@ -1653,29 +1694,41 @@ def register_tickets(device, sale_dict, type_operation):
 
         # Взрослые без акции
         count_adult_no_discount = sale_dict["kol_adult"] - count_adult_with_discount
-        logger.debug(f"Взрослые без акции: kol_adult={sale_dict['kol_adult']}, price_adult= {sale_dict['price_adult']}")
+        logger.debug(
+            f"Взрослые без акции: kol_adult={sale_dict['kol_adult']}, price_adult= {sale_dict['price_adult']}"
+        )
 
         if count_adult_no_discount > 0:
             adults_no_discount_sum = count_adult_no_discount * sale_dict["price_adult"]
-            logger.info(f"Регистрируем взрослых без акции: {count_adult_no_discount} шт × {sale_dict['price_adult']} = {adults_no_discount_sum} руб")
+            logger.info(
+                f"Регистрируем взрослых без акции: {count_adult_no_discount} шт × {sale_dict['price_adult']} = {adults_no_discount_sum} руб"
+            )
             # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
                 f"Билет взрослый {time} ч.",
-                sale_dict['price_adult'],
+                sale_dict["price_adult"],
                 count_adult_no_discount,
             )
         else:
             logger.debug("Взрослые без акции: не регистрируем (количество = 0)")
 
         # Взрослые с акцией
-        logger.debug(f"Взрослые С акцией: count_adult_with_discount={count_adult_with_discount}, price_adult_with_discount={price_adult_with_discount}, discount={price_adult_with_discount}")
+        logger.debug(
+            f"Взрослые С акцией: count_adult_with_discount={count_adult_with_discount}, price_adult_with_discount={price_adult_with_discount}, discount={price_adult_with_discount}"
+        )
 
-        if (count_adult_with_discount > 0
-                and price_adult_with_discount > 0
-                and discount > 0):
-            adults_with_discount_sum = count_adult_with_discount * price_adult_with_discount
-            logger.info(f"Регистрируем взрослых с акцией: {count_adult_with_discount} шт × {price_adult_with_discount} = {adults_with_discount_sum} руб")
+        if (
+            count_adult_with_discount > 0
+            and price_adult_with_discount > 0
+            and discount > 0
+        ):
+            adults_with_discount_sum = (
+                count_adult_with_discount * price_adult_with_discount
+            )
+            logger.info(
+                f"Регистрируем взрослых с акцией: {count_adult_with_discount} шт × {price_adult_with_discount} = {adults_with_discount_sum} руб"
+            )
             # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
@@ -1690,29 +1743,43 @@ def register_tickets(device, sale_dict, type_operation):
 
         # Дети без акции
         count_child_no_discount = sale_dict["kol_child"] - count_child_with_discount
-        logger.debug(f"Дети без акции: kol_child={sale_dict['kol_child']}, count_child_with_discount={count_child_with_discount}, result={count_child_no_discount}")
+        logger.debug(
+            f"Дети без акции: kol_child={sale_dict['kol_child']}, count_child_with_discount={count_child_with_discount}, result={count_child_no_discount}"
+        )
 
         if count_child_no_discount > 0:
-            children_no_discount_sum = count_child_no_discount * sale_dict["price_child"]
-            logger.info(f"Регистрируем детей без акции: {count_child_no_discount} шт × {sale_dict['price_child']} = {children_no_discount_sum} руб")
+            children_no_discount_sum = (
+                count_child_no_discount * sale_dict["price_child"]
+            )
+            logger.info(
+                f"Регистрируем детей без акции: {count_child_no_discount} шт × {sale_dict['price_child']} = {children_no_discount_sum} руб"
+            )
             # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
                 f"Билет детский {time} ч.",
-                sale_dict['price_child'],
+                sale_dict["price_child"],
                 count_child_no_discount,
             )
         else:
             logger.debug("Дети без акции: не регистрируем (количество = 0)")
 
         # Дети с акцией
-        logger.debug(f"Дети с акцией: count_child_with_discount={count_child_with_discount}, price_child_with_discount={price_child_with_discount}, discount={price_adult_with_discount}")
+        logger.debug(
+            f"Дети с акцией: count_child_with_discount={count_child_with_discount}, price_child_with_discount={price_child_with_discount}, discount={price_adult_with_discount}"
+        )
 
-        if (count_child_with_discount > 0
-                and price_child_with_discount > 0
-                and discount > 0):
-            children_with_discount_sum = count_child_with_discount * price_child_with_discount
-            logger.info(f"Регистрируем детей с акцией: {count_child_with_discount} шт × {price_child_with_discount} = {children_with_discount_sum} руб")
+        if (
+            count_child_with_discount > 0
+            and price_child_with_discount > 0
+            and discount > 0
+        ):
+            children_with_discount_sum = (
+                count_child_with_discount * price_child_with_discount
+            )
+            logger.info(
+                f"Регистрируем детей с акцией: {count_child_with_discount} шт × {price_child_with_discount} = {children_with_discount_sum} руб"
+            )
             # if device is not None: # TODO: для теста без ККТ. + отступ внизу
             register_item(
                 device,
@@ -1724,15 +1791,17 @@ def register_tickets(device, sale_dict, type_operation):
             logger.debug("Дети с акцией: не регистрируем (условия не выполнены)")
     else:
         # Для других типов операций
-        logger.error(f"Другие типы операций.")
+        logger.error("Другие типы операций.")
         for item_name, item_data in sale_dict.items():
-            if (isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0):
+            if isinstance(item_data, list) and item_data[0] > 0 and item_data[1] > 0:
                 # Проверяем наличие количества и цены
-                logger.debug(f"item_name ={item_name}, item_data[0]={item_data[0]}, item_data[1]={item_data[1]}")
+                logger.debug(
+                    f"item_name ={item_name}, item_data[0]={item_data[0]}, item_data[1]={item_data[1]}"
+                )
                 register_item(device, item_name, item_data[0], item_data[1])
             else:
                 # Обработка других типов данных
-                logger.error(f"Ошибка типа данных. Item_data - не список.")
+                logger.error("Ошибка типа данных. Item_data - не список.")
 
 
 def process_payment(device, payment_type, bank_status, sale_dict, _):
@@ -1748,11 +1817,15 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
         bool: Возвращает `True`, если оплата прошла успешно, иначе — `False`.
     """
     logger.info("Запуск функции process_payment")
-    logger.debug(f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {_}")
+    logger.debug(
+        f"В функцию переданы: device = {device}, payment_type = {payment_type}, bank = {bank_status}, sale_dict = {sale_dict}, price = {_}"
+    )
     try:
         # Проверка payment_type
         if not isinstance(payment_type, int):
-            logger.error(f"Некорректный тип payment_type: {type(payment_type)}, значение: {payment_type}")
+            logger.error(
+                f"Некорректный тип payment_type: {type(payment_type)}, значение: {payment_type}"
+            )
             return False
 
         # Определение суммы
@@ -1763,7 +1836,9 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
             try:
                 payment_amount = sale_dict["detail"][7]
                 if isinstance(payment_amount, (int, float)) and payment_amount > 0:
-                    logger.debug(f"Сумма получена из sale_dict['detail'][7]: {payment_amount}")
+                    logger.debug(
+                        f"Сумма получена из sale_dict['detail'][7]: {payment_amount}"
+                    )
             except (IndexError, TypeError):
                 pass
 
@@ -1775,7 +1850,12 @@ def process_payment(device, payment_type, bank_status, sale_dict, _):
                 if isinstance(item_data, list) and len(item_data) >= 2:
                     price = item_data[0]
                     qty = item_data[1]
-                    if isinstance(price, (int, float)) and isinstance(qty, int) and price > 0 and qty > 0:
+                    if (
+                        isinstance(price, (int, float))
+                        and isinstance(qty, int)
+                        and price > 0
+                        and qty > 0
+                    ):
                         total += price * qty
                         valid = True
             if valid and total > 0:
@@ -1846,15 +1926,23 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
     logger.info("Запуск функции handle_document_errors")
     # Проверяем, закрыт ли документ
     while device.checkDocumentClosed() < 0:
-        logger.warning(f"Не удалось проверить состояние документа: {device.errorDescription()}")
+        logger.warning(
+            f"Не удалось проверить состояние документа: {device.errorDescription()}"
+        )
         if retry_count >= max_retries - 1:
             if on_error:
-                on_error("Ошибка ККТ", f"Не удалось проверить состояние документа после {max_retries} попыток. "
-                                       f"Проверьте соединение с ККТ и не выключайте ПК.")
+                on_error(
+                    "Ошибка ККТ",
+                    f"Не удалось проверить состояние документа после {max_retries} попыток. "
+                    f"Проверьте соединение с ККТ и не выключайте ПК.",
+                )
             return False
 
         if on_error:
-            on_error("Ошибка ККТ", f"Ошибка: {device.errorDescription()}. Повторная попытка...")
+            on_error(
+                "Ошибка ККТ",
+                f"Ошибка: {device.errorDescription()}. Повторная попытка...",
+            )
 
         retry_count += 1
         time.sleep(5)
@@ -1868,12 +1956,17 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
         except Exception as e:
             logger.critical(f"Ошибка при отмене чека: {e}")
             if on_error:
-                on_error("Критическая ошибка", "Не удалось отменить чек. Требуется перезагрузка ККТ.")
+                on_error(
+                    "Критическая ошибка",
+                    "Не удалось отменить чек. Требуется перезагрузка ККТ.",
+                )
             # Пробрасываем исключение наверх
             raise
 
         if on_error:
-            on_error("Документ не закрыт", "Чек отменен. Требуется сформировать его заново.")
+            on_error(
+                "Документ не закрыт", "Чек отменен. Требуется сформировать его заново."
+            )
         return False
 
     # Если документ не напечатан — попробовать допечатать
@@ -1884,12 +1977,19 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
                 logger.info("Документ успешно допечатан")
                 return True
 
-            logger.warning(f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}")
+            logger.warning(
+                f"Попытка допечатки №{print_attempt + 1} не удалась: {device.errorDescription()}"
+            )
             if on_error:
-                on_error("Ошибка печати", f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.")
+                on_error(
+                    "Ошибка печати",
+                    f"Ошибка допечатки: {device.errorDescription()}. Повторите попытку.",
+                )
             time.sleep(3)
 
-        logger.error("Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции.")
+        logger.error(
+            "Не удалось допечатать документ после 5 попыток. Он будет допечатан автоматически при следующей операции."
+        )
         # Документ закрыт, но не допечатан — допустимо.
         # Документ будет автоматически допечатан при следующей печатной операции.
 
@@ -1901,7 +2001,15 @@ def handle_document_errors(device, retry_count, max_retries, on_error=None):
     return True
 
 
-def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_status, on_error=None):
+def check_open(
+    sale_dict,
+    payment_type,
+    user,
+    type_operation,
+    print_check,
+    bank_status,
+    on_error=None,
+):
     """
     Проведение операции оплаты.
 
@@ -1941,12 +2049,16 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_
             setup_fptr(device, user, type_operation, print_check)
 
             # Проверка состояния чека
-            device.setParam(IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_RECEIPT_STATE)
+            device.setParam(
+                IFptr.LIBFPTR_PARAM_DATA_TYPE, IFptr.LIBFPTR_DT_RECEIPT_STATE
+            )
             device.queryData()
-            receipt_number   = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_NUMBER)
-            document_number  = device.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
+            receipt_number = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_NUMBER)
+            document_number = device.getParamInt(IFptr.LIBFPTR_PARAM_DOCUMENT_NUMBER)
             receipt_type = device.getParamInt(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE)
-            logger.debug(f"receipt_type: {receipt_type}, receipt_number: {receipt_number}, document_number: {document_number}")
+            logger.debug(
+                f"receipt_type: {receipt_type}, receipt_number: {receipt_number}, document_number: {document_number}"
+            )
             if receipt_type != IFptr.LIBFPTR_RT_CLOSED:
                 logger.error(f"Чек уже открыт! Тип: {receipt_type}")
                 if on_error:
@@ -1955,9 +2067,13 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_
 
             # Установка типа чека
             if type_operation == 1:
-                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL)      # Продажа
+                device.setParam(
+                    IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL
+                )  # Продажа
             elif type_operation == 2:
-                device.setParam(IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN)    # Возврат
+                device.setParam(
+                    IFptr.LIBFPTR_PARAM_RECEIPT_TYPE, IFptr.LIBFPTR_RT_SELL_RETURN
+                )  # Возврат
             else:
                 logger.error(f"Неизвестный тип операции: {type_operation}")
                 return False
@@ -1980,10 +2096,11 @@ def check_open(sale_dict, payment_type, user, type_operation, print_check, bank_
         return 1
 
     except Exception as e:
-        logger.error(f"Критическая ошибка в check_open: {str(e)}")
+        logger.error(f"Критическая ошибка в check_open: {e!s}")
         if on_error:
-            on_error("Ошибка ККТ", f"Критическая ошибка: {str(e)}")
+            on_error("Ошибка ККТ", f"Критическая ошибка: {e!s}")
         return 0
+
 
 @logger_wraps()
 def smena_close(user):
