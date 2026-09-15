@@ -15,14 +15,14 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QStatusBar,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QWidget,
 )
 
 
-class Ui_MainWindow(object):
+class Ui_MainWindow:
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName("MainWindow")

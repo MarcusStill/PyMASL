@@ -1,0 +1,38 @@
+diff --git a/fix_tests.py b/fix_tests.py
+deleted file mode 100644
+index a75b10e..0000000
+--- a/fix_tests.py
++++ /dev/null
+@@ -1,32 +0,0 @@
+-files_to_fix = [
+-    "tests/test_windows.py",
+-    "tests/test_payment_equipment.py",
+-    "tests/test_otchet.py",
+-    "tests/test_worker.py",
+-    "tests/test_progress_window.py"
+-]
+-
+-for filepath in files_to_fix:
+-    with open(filepath, encoding="utf-8") as f:
+-        content = f.read()
+-
+-    lines = content.splitlines()
+-
+-    last_sys = -1
+-    for i, line in enumerate(lines):
+-        if line.strip().startswith("sys.modules"):
+-            last_sys = i
+-
+-    if last_sys != -1:
+-        if "# isort: split" not in content:
+-            lines.insert(last_sys + 1, "# isort: split")
+-            last_sys += 1
+-
+-        for i in range(len(lines)):
+-            if i > last_sys:
+-                if lines[i].startswith("import ") or lines[i].startswith("from "):
+-                    if "# noqa: E402" not in lines[i]:
+-                        lines[i] = lines[i] + "  # noqa: E402"
+-
+-    with open(filepath, "w", encoding="utf-8") as f:
+-        f.write("\n".join(lines) + "\n")
