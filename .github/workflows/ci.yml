@@ -1,4 +1,5 @@
 name: CI
+# GitHub Actions workflow for automated testing
 
 on:
   push:
