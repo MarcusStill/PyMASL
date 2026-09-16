@@ -1,7 +1,9 @@
-import unittest
 import os
 import tempfile
+import unittest
+
 from modules.config import Config
+
 
 class TestConfig(unittest.TestCase):
 
@@ -120,7 +122,9 @@ available = on
 
         with self.assertRaises(RuntimeError) as context:
             Config(config_file=self.config_path)
-        self.assertIn("Неизвестная ошибка: Отсутствует параметр 'pc_2'", str(context.exception))
+        self.assertIn(
+            "Неизвестная ошибка: Отсутствует параметр 'pc_2'", str(context.exception)
+        )
 
     def test_empty_pc_name(self):
         invalid_content = """
@@ -155,7 +159,8 @@ available = on
             Config(config_file=self.config_path)
         self.assertIn("Неизвестная ошибка: Пустое значение", str(context.exception))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
 
     def test_missing_pc_name_empty(self):
@@ -198,4 +203,3 @@ available = on
 
         with self.assertRaises(RuntimeError):
             Config(config_file=self.config_path)
-
