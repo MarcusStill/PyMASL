@@ -1,17 +1,19 @@
-import unittest
 import sys
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest.mock import MagicMock, patch
 
 # Mock PySide6 BEFORE importing modules.windows
-sys.modules['PySide6'] = MagicMock()
-sys.modules['PySide6.QtCore'] = MagicMock()
-sys.modules['PySide6.QtWidgets'] = MagicMock()
+sys.modules["PySide6"] = MagicMock()
+sys.modules["PySide6.QtCore"] = MagicMock()
+sys.modules["PySide6.QtWidgets"] = MagicMock()
+# isort: split
 
 import modules.windows
 
+
 class TestWindows(unittest.TestCase):
 
-    @patch('modules.windows.QMessageBox')
+    @patch("modules.windows.QMessageBox")
     def test_info_window(self, mock_msgbox_class):
         mock_msgbox_inst = MagicMock()
         mock_msgbox_class.return_value = mock_msgbox_inst
@@ -23,7 +25,7 @@ class TestWindows(unittest.TestCase):
         mock_msgbox_inst.setDetailedText.assert_called_with("Detail")
         self.assertTrue(mock_msgbox_inst.exec.called)
 
-    @patch('modules.windows.QMessageBox')
+    @patch("modules.windows.QMessageBox")
     def test_info_dialog_window_yes(self, mock_msgbox_class):
         mock_msgbox_inst = MagicMock()
         mock_msgbox_class.return_value = mock_msgbox_inst
@@ -41,7 +43,7 @@ class TestWindows(unittest.TestCase):
         self.assertTrue(mock_msgbox_inst.exec_.called)
         self.assertEqual(result, 1)
 
-    @patch('modules.windows.QMessageBox')
+    @patch("modules.windows.QMessageBox")
     def test_info_dialog_window_no(self, mock_msgbox_class):
         mock_msgbox_inst = MagicMock()
         mock_msgbox_class.return_value = mock_msgbox_inst
@@ -56,5 +58,6 @@ class TestWindows(unittest.TestCase):
 
         self.assertEqual(result, 0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
